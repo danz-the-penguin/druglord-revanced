@@ -4,13 +4,15 @@ import { CITIES } from '../engine/constants';
 import { getCityHeat, getInventoryTotalUnits } from '../engine/game';
 import { AIRPORT_REGISTRY } from '../engine/flightNetwork';
 import { AIRCRAFT_MAP, calculateAircraftFlightCost } from '../engine/aviation';
-import { Plane, ShieldAlert, AlertTriangle, Check, DollarSign, Globe, Search, Sparkles, Flame, ExternalLink } from 'lucide-react';
+import { SmugglingMap } from './SmugglingMap';
+import { Plane, ShieldAlert, AlertTriangle, Check, DollarSign, Globe, Search, Sparkles, Flame, ExternalLink, Map as MapIcon, LayoutGrid } from 'lucide-react';
 
 const REGIONS = ['All', 'Americas', 'Europe', 'Asia-Pacific', 'Middle East & Africa'] as const;
 type RegionFilter = (typeof REGIONS)[number];
 
 export const TravelModal: React.FC = () => {
   const { player, travel, openFlightBoard } = useGameStore();
+  const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
   const [selectedRegion, setSelectedRegion] = useState<RegionFilter>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -38,7 +40,54 @@ export const TravelModal: React.FC = () => {
   const unmaskedDrugs = Math.max(0, totalDrugs - maskedUnits);
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md font-mono">
+    <div className="space-y-4 font-mono">
+      {/* Top Command Mode Switcher Banner */}
+      <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 backdrop-blur-md shadow-lg">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('map')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              viewMode === 'map'
+                ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-950'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <MapIcon className="w-3.5 h-3.5" />
+            <span>🗺️ Tactical Smuggling Map</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              viewMode === 'grid'
+                ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-950'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>📋 Destination Dossier Grid</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span className="text-[11px] text-slate-500 hidden sm:inline">
+            Hotkeys: <strong>M</strong> toggles map • <strong>T</strong> opens travel
+          </span>
+          <button
+            onClick={openFlightBoard}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 hover:border-sky-500 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            title="Open Live Airport Departure Flip-Board"
+          >
+            <Plane className="w-3.5 h-3.5" />
+            <span>Airport Flip-Board</span>
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'map' ? (
+        <SmugglingMap />
+      ) : (
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md font-mono">
       {/* Header bar */}
       <div className="px-5 py-4 bg-slate-800/80 border-b border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -337,6 +386,8 @@ export const TravelModal: React.FC = () => {
           </div>
         )}
       </div>
+    </div>
+      )}
     </div>
   );
 };

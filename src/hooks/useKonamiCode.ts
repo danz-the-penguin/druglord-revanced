@@ -19,6 +19,7 @@ export function useKonamiCode() {
   const applyKonamiCode = useGameStore((s) => s.applyKonamiCode);
   const toggleTerminal = useGameStore((s) => s.toggleTerminal);
   const checkMemoryUpdates = useGameStore((s) => s.checkMemoryUpdates);
+  const setActiveTab = useGameStore((s) => s.setActiveTab);
 
   useEffect(() => {
     // Polling interval to check if Cheat Engine changed values directly in memory!
@@ -31,6 +32,18 @@ export function useKonamiCode() {
       if (e.code === 'Backquote' || e.key === '`' || e.key === '~' || (e.ctrlKey && e.shiftKey && e.code === 'KeyD')) {
         e.preventDefault();
         toggleTerminal();
+        return;
+      }
+
+      // Check if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      // 'M' toggles Tactical Smuggling Map
+      if (e.code === 'KeyM' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const currentTab = useGameStore.getState().activeTab;
+        setActiveTab(currentTab === 'travel' ? 'market' : 'travel');
         return;
       }
 

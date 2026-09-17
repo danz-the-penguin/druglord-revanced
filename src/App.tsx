@@ -17,7 +17,7 @@ import { FlightBoardModal } from './components/FlightBoardModal';
 import { SyndicateModal } from './components/SyndicateModal';
 import { EventLog } from './components/EventLog';
 import { useKonamiCode } from './hooks/useKonamiCode';
-import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal, HardDrive, AlertTriangle, X, Sparkles, Trophy, Handshake } from 'lucide-react';
+import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal, HardDrive, AlertTriangle, X, Sparkles, Trophy, Handshake, Map as MapIcon } from 'lucide-react';
 import { DURATION_MODES, GameDurationMode } from './engine/types';
 
 export const App: React.FC = () => {
@@ -96,13 +96,14 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('travel')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
                 activeTab === 'travel'
                   ? 'bg-sky-500 text-slate-950 shadow-sm shadow-sky-900/50'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               }`}
+              title="Open Interactive Tactical Smuggling Map (Hotkey: M)"
             >
-              <Plane className="w-4 h-4" /> Airport Travel
+              <MapIcon className="w-4 h-4" /> Smuggling Map & Travel
             </button>
 
             <button

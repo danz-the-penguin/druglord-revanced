@@ -4,6 +4,7 @@ import { PlayerState } from './types';
 import { soundEngine, SoundEffect } from '../utils/audio';
 import { PRECURSORS } from './production';
 import { CORRUPT_MAP, CorruptOfficialId, emergencyExtraditionEscape } from './corruption';
+import { evaluateCityHotspots } from './smugglingMapData';
 
 export interface CheatExecutionResult {
   success: boolean;
@@ -57,6 +58,8 @@ export function executeCheat(
           '• rico <0-100>             : Set Federal Grand Jury RICO Indictment Meter\n' +
           '• corrupt <official_id>    : Instantly recruit corrupt official onto payroll\n' +
           '• escape <sanctuary_id>   : Execute emergency sovereign extradition escape\n' +
+          '• hotspots                 : Inspect active geopolitical smuggling hotspots\n' +
+          '• blockade <city_id>       : Trigger tactical DEA / SWAT blockade & raid alert\n' +
           '• vault                    : Inspect multi-city safehouse vaults\n' +
           '• shipments                : Inspect in-transit courier shipments\n' +
           '• vault_give <city> <d> <n>: Stash contraband directly in vault\n' +
@@ -361,6 +364,36 @@ export function executeCheat(
       return {
         success: res.success,
         message: res.message,
+      };
+    }
+
+    case 'hotspots': {
+      const spots = evaluateCityHotspots(state.player, state.player.currentDay);
+      if (spots.length === 0) return { success: true, message: 'No active geopolitical hotspots detected.' };
+      const lines = spots.map(
+        (s) => `• [${s.badgeLabel}] ${s.cityName}: ${s.title} (${s.severity.toUpperCase()})`
+      );
+      return {
+        success: true,
+        message: `Active Geopolitical Smuggling Hotspots:\n${lines.join('\n')}`,
+      };
+    }
+
+    case 'blockade': {
+      const cityId = (arg1 || state.player.currentCityId).toLowerCase();
+      const city = CITY_MAP.get(cityId);
+      if (!city) return { success: false, message: `Unknown city "${arg1}"` };
+      if (!state.player.cityHeat) state.player.cityHeat = {};
+      state.player.cityHeat[city.id] = 85;
+      state.player.pendingRaidWarning = {
+        cityId: city.id,
+        day: state.player.currentDay + 1,
+        message: `DISPATCH WIRE: SWAT task force raid planned for ${city.name}!`,
+        severity: 'imminent',
+      };
+      return {
+        success: true,
+        message: `Enforced tactical DEA / SWAT blockade cordon on ${city.name} (Heat set to 85%, raid alert triggered).`,
       };
     }
 

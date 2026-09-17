@@ -47,6 +47,7 @@ export const Header: React.FC = () => {
   const isAudioMuted = useGameStore((s) => s.isAudioMuted);
   const setAudioVolume = useGameStore((s) => s.setAudioVolume);
   const toggleAudioMute = useGameStore((s) => s.toggleAudioMute);
+  const setActiveTab = useGameStore((s) => s.setActiveTab);
   const city = CITY_MAP.get(player.currentCityId);
 
   const totalUnits = getInventoryTotalUnits(player);
@@ -78,10 +79,14 @@ export const Header: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-400 mt-1 flex-wrap">
-              <span className="flex items-center gap-1 text-sky-400">
+              <button
+                onClick={() => setActiveTab('travel')}
+                className="flex items-center gap-1 text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
+                title="Open Interactive Tactical Smuggling Map (Hotkey: M)"
+              >
                 <MapPin className="w-3.5 h-3.5" />
-                {city?.name ?? 'Unknown'}, {city?.country}
-              </span>
+                <span className="font-semibold">{city?.name ?? 'Unknown'}, {city?.country}</span>
+              </button>
 
               {/* City Police Heat Indicator */}
               <span
