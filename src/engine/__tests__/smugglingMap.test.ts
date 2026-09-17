@@ -8,6 +8,8 @@ import {
   DEA_BLOCKADE_ZONES,
   evaluateCityHotspots,
   calculateCourierBlips,
+  generateGeodesicArcSegments,
+  getGeodesicPointAt,
 } from '../smugglingMapData';
 import { AIRPORT_REGISTRY } from '../flightNetwork';
 import { CITIES } from '../constants';
@@ -146,5 +148,57 @@ describe('Smuggling Map Engine & Geodesic Navigation', () => {
     expect(blips[0].units).toBe(1500);
     expect(blips[0].currentPosition.x).toBeGreaterThan(200);
     expect(blips[0].currentPosition.y).toBeGreaterThan(150);
+  });
+
+  it('splits trans-pacific geodesic arcs cleanly across the antimeridian without screen jumping', () => {
+    // Tokyo (lat 35.67, lng 139.65) to Los Angeles (lat 33.94, lng -118.40) crosses the 180° antimeridian
+    const tokyoAirport = AIRPORT_REGISTRY['tokyo'];
+    const laAirport = AIRPORT_REGISTRY['los_angeles'];
+    expect(tokyoAirport).toBeDefined();
+    expect(laAirport).toBeDefined();
+
+    const segments = generateGeodesicArcSegments(
+      tokyoAirport.coordinates.lat,
+      tokyoAirport.coordinates.lng,
+      laAirport.coordinates.lat,
+      laAirport.coordinates.lng,
+      60
+    );
+
+    // Must split into at least 2 clean segments
+    expect(segments.length).toBeGreaterThanOrEqual(2);
+
+    // Verify that NO consecutive points inside any segment have |deltaLng| > 180 (no screen jumps!)
+    for (const segment of segments) {
+      for (let i = 1; i < segment.length; i++) {
+        const deltaLng = Math.abs(segment[i][1] - segment[i - 1][1]);
+        expect(deltaLng).toBeLessThanOrEqual(180);
+      }
+    }
+
+    // A route not crossing the antimeridian (e.g. Miami to London) should remain 1 segment
+    const miami = AIRPORT_REGISTRY['miami'].coordinates;
+    const london = AIRPORT_REGISTRY['london'].coordinates;
+    const singleSegment = generateGeodesicArcSegments(miami.lat, miami.lng, london.lat, london.lng, 30);
+    expect(singleSegment.length).toBe(1);
+  });
+
+  it('calculates continuous geodesic points and headings along flight routes', () => {
+    const ny = AIRPORT_REGISTRY['new_york'].coordinates;
+    const singapore = AIRPORT_REGISTRY['singapore'].coordinates;
+
+    const start = getGeodesicPointAt(ny.lat, ny.lng, singapore.lat, singapore.lng, 0);
+    expect(start.lat).toBeCloseTo(ny.lat, 1);
+    expect(start.lng).toBeCloseTo(ny.lng, 1);
+
+    const end = getGeodesicPointAt(ny.lat, ny.lng, singapore.lat, singapore.lng, 1);
+    expect(end.lat).toBeCloseTo(singapore.lat, 1);
+    expect(end.lng).toBeCloseTo(singapore.lng, 1);
+
+    const mid = getGeodesicPointAt(ny.lat, ny.lng, singapore.lat, singapore.lng, 0.5);
+    expect(mid.lat).toBeDefined();
+    expect(mid.lng).toBeDefined();
+    expect(mid.headingDeg).toBeGreaterThanOrEqual(0);
+    expect(mid.headingDeg).toBeLessThanOrEqual(360);
   });
 });

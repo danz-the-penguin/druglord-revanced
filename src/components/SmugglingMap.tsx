@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import L from 'leaflet';
+import '@maplibre/maplibre-gl-leaflet';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { useGameStore } from '../store/gameStore';
 import { CITIES } from '../engine/constants';
 import { AIRPORT_REGISTRY } from '../engine/flightNetwork';
@@ -11,6 +13,8 @@ import {
   evaluateCityHotspots,
   calculateCourierBlips,
   ASEAN_WATERWAYS,
+  generateGeodesicArcSegments,
+  getGeodesicPointAt,
 } from '../engine/smugglingMapData';
 import {
   GeopoliticalHotspot,
@@ -37,7 +41,7 @@ import {
 const REGIONS = ['All', 'Americas', 'Europe', 'Asia-Pacific', 'Middle East & Africa'] as const;
 type RegionFilter = (typeof REGIONS)[number];
 
-type MapTileStyle = 'dark' | 'satellite' | 'voyager';
+export type MapTileStyle = 'fiord' | 'liberty' | 'satellite' | 'dark_canvas';
 
 const REGION_CENTERS: Record<RegionFilter, { lat: number; lng: number; zoom: number }> = {
   All: { lat: 20, lng: 10, zoom: 2 },
@@ -48,63 +52,61 @@ const REGION_CENTERS: Record<RegionFilter, { lat: number; lng: number; zoom: num
 };
 
 const TILE_CONFIGS: Record<MapTileStyle, { name: string; url: string; attribution: string }> = {
-  dark: {
-    name: 'Tactical Dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  fiord: {
+    name: 'OpenFreeMap Fiord',
+    url: 'https://tiles.openfreemap.org/styles/fiord',
+    attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
+  },
+  liberty: {
+    name: 'OpenFreeMap Liberty',
+    url: 'https://tiles.openfreemap.org/styles/liberty',
+    attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
   },
   satellite: {
     name: 'Orbital Recon',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri &copy; Earthstar Geographics',
   },
-  voyager: {
-    name: 'Topographical',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  dark_canvas: {
+    name: 'Tactical Radar',
+    url: '',
+    attribution: 'Tactical Vector Canvas Grid',
   },
 };
 
 /**
- * Generates an array of [lat, lng] points forming a curved geodesic great-circle route.
+ * Creates an offline-resilient tactical radar grid layer using native HTML5 Canvas
  */
-function generateGeodesicArcPoints(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-  numPoints = 40
-): [number, number][] {
-  const points: [number, number][] = [];
-  const p1Lat = (lat1 * Math.PI) / 180;
-  const p1Lng = (lng1 * Math.PI) / 180;
-  const p2Lat = (lat2 * Math.PI) / 180;
-  const p2Lng = (lng2 * Math.PI) / 180;
+function createDarkCanvasGridLayer(): L.GridLayer {
+  const DarkCanvasGrid = L.GridLayer.extend({
+    createTile: function () {
+      const tile = document.createElement('canvas');
+      tile.width = 256;
+      tile.height = 256;
+      const ctx = tile.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#070b16';
+        ctx.fillRect(0, 0, 256, 256);
 
-  const d =
-    2 *
-    Math.asin(
-      Math.sqrt(
-        Math.pow(Math.sin((p1Lat - p2Lat) / 2), 2) +
-          Math.cos(p1Lat) * Math.cos(p2Lat) * Math.pow(Math.sin((p1Lng - p2Lng) / 2), 2)
-      )
-    );
+        // Tactical radar grid borders
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(0, 0, 256, 256);
 
-  if (d === 0) return [[lat1, lng1]];
-
-  for (let i = 0; i <= numPoints; i++) {
-    const f = i / numPoints;
-    const A = Math.sin((1 - f) * d) / Math.sin(d);
-    const B = Math.sin(f * d) / Math.sin(d);
-    const x = A * Math.cos(p1Lat) * Math.cos(p1Lng) + B * Math.cos(p2Lat) * Math.cos(p2Lng);
-    const y = A * Math.cos(p1Lat) * Math.sin(p1Lng) + B * Math.cos(p2Lat) * Math.sin(p2Lng);
-    const z = A * Math.sin(p1Lat) + B * Math.sin(p2Lat);
-    const lat = Math.atan2(z, Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)));
-    const lng = Math.atan2(y, x);
-    points.push([(lat * 180) / Math.PI, (lng * 180) / Math.PI]);
-  }
-
-  return points;
+        // Subtle center crosshair
+        ctx.strokeStyle = '#0284c730';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(122, 128);
+        ctx.lineTo(134, 128);
+        ctx.moveTo(128, 122);
+        ctx.lineTo(128, 134);
+        ctx.stroke();
+      }
+      return tile;
+    },
+  });
+  return new (DarkCanvasGrid as any)();
 }
 
 export const SmugglingMap: React.FC = () => {
@@ -118,7 +120,7 @@ export const SmugglingMap: React.FC = () => {
     player.currentCityId === 'miami' ? 'bogota' : 'miami'
   );
   const [selectedRegion, setSelectedRegion] = useState<RegionFilter>('All');
-  const [tileStyle, setTileStyle] = useState<MapTileStyle>('dark');
+  const [tileStyle, setTileStyle] = useState<MapTileStyle>('fiord');
 
   // Layer Toggles
   const [showDirectCorridors, setShowDirectCorridors] = useState(true);
@@ -134,7 +136,7 @@ export const SmugglingMap: React.FC = () => {
   // Leaflet references
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const tileLayerRef = useRef<L.Layer | null>(null);
   const cityMarkersGroupRef = useRef<L.LayerGroup | null>(null);
   const routesGroupRef = useRef<L.LayerGroup | null>(null);
   const waterwaysGroupRef = useRef<L.LayerGroup | null>(null);
@@ -170,6 +172,51 @@ export const SmugglingMap: React.FC = () => {
 
   const activeCouriers = useMemo(() => calculateCourierBlips(player), [player]);
 
+  const applyTileLayer = (map: L.Map, style: MapTileStyle) => {
+    if (tileLayerRef.current) {
+      try {
+        map.removeLayer(tileLayerRef.current);
+      } catch {
+        // Safe layer cleanup
+      }
+      tileLayerRef.current = null;
+    }
+
+    try {
+      if (style === 'fiord' || style === 'liberty') {
+        if (typeof (L as any).maplibreGL === 'function') {
+          const maplibreLayer = (L as any).maplibreGL({
+            style: TILE_CONFIGS[style].url,
+            attribution: TILE_CONFIGS[style].attribution,
+          });
+          maplibreLayer.addTo(map);
+          tileLayerRef.current = maplibreLayer;
+          return;
+        }
+      }
+
+      if (style === 'dark_canvas') {
+        const canvasLayer = createDarkCanvasGridLayer();
+        canvasLayer.addTo(map);
+        tileLayerRef.current = canvasLayer;
+        return;
+      }
+
+      // Raster layer fallback (e.g. Orbital Recon)
+      const tile = L.tileLayer(TILE_CONFIGS[style].url, {
+        maxZoom: 7,
+        subdomains: 'abcd',
+        attribution: TILE_CONFIGS[style].attribution,
+      }).addTo(map);
+      tileLayerRef.current = tile;
+    } catch (err) {
+      console.warn('Fallback to tactical radar canvas grid:', err);
+      const fallbackLayer = createDarkCanvasGridLayer();
+      fallbackLayer.addTo(map);
+      tileLayerRef.current = fallbackLayer;
+    }
+  };
+
   // Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -184,12 +231,8 @@ export const SmugglingMap: React.FC = () => {
       worldCopyJump: true,
     });
 
-    const tile = L.tileLayer(TILE_CONFIGS[tileStyle].url, {
-      maxZoom: 7,
-      subdomains: 'abcd',
-    }).addTo(map);
+    applyTileLayer(map, tileStyle);
 
-    tileLayerRef.current = tile;
     cityMarkersGroupRef.current = L.layerGroup().addTo(map);
     routesGroupRef.current = L.layerGroup().addTo(map);
     waterwaysGroupRef.current = L.layerGroup().addTo(map);
@@ -199,6 +242,14 @@ export const SmugglingMap: React.FC = () => {
     mapInstanceRef.current = map;
 
     return () => {
+      if (tileLayerRef.current && mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.removeLayer(tileLayerRef.current);
+        } catch {
+          // ignore
+        }
+        tileLayerRef.current = null;
+      }
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -206,13 +257,8 @@ export const SmugglingMap: React.FC = () => {
 
   // Update Tile Style
   useEffect(() => {
-    if (!mapInstanceRef.current || !tileLayerRef.current) return;
-    mapInstanceRef.current.removeLayer(tileLayerRef.current);
-    const newTile = L.tileLayer(TILE_CONFIGS[tileStyle].url, {
-      maxZoom: 7,
-      subdomains: 'abcd',
-    }).addTo(mapInstanceRef.current);
-    tileLayerRef.current = newTile;
+    if (!mapInstanceRef.current) return;
+    applyTileLayer(mapInstanceRef.current, tileStyle);
   }, [tileStyle]);
 
   // Update Region Center / Pan
@@ -324,15 +370,15 @@ export const SmugglingMap: React.FC = () => {
         const destAirport = AIRPORT_REGISTRY[destId];
         if (!destAirport || destId === selectedCityId) continue;
 
-        const arcPoints = generateGeodesicArcPoints(
+        const arcSegments = generateGeodesicArcSegments(
           originAirport.coordinates.lat,
           originAirport.coordinates.lng,
           destAirport.coordinates.lat,
           destAirport.coordinates.lng,
-          25
+          30
         );
 
-        const poly = L.polyline(arcPoints, {
+        const poly = L.polyline(arcSegments as L.LatLngExpression[][], {
           color: '#0284c7',
           weight: 1.5,
           opacity: 0.35,
@@ -345,23 +391,23 @@ export const SmugglingMap: React.FC = () => {
 
     // 2. High-priority selected corridor
     if (selectedCityId && selectedCityId !== player.currentCityId && targetAirport) {
-      const selectedArc = generateGeodesicArcPoints(
+      const selectedArcSegments = generateGeodesicArcSegments(
         originAirport.coordinates.lat,
         originAirport.coordinates.lng,
         targetAirport.coordinates.lat,
         targetAirport.coordinates.lng,
-        40
+        50
       );
 
       // Glow layer
-      const glowPoly = L.polyline(selectedArc, {
+      const glowPoly = L.polyline(selectedArcSegments as L.LatLngExpression[][], {
         color: '#06b6d4',
         weight: 6,
         opacity: 0.3,
       });
 
       // Sharp central route line
-      const routePoly = L.polyline(selectedArc, {
+      const routePoly = L.polyline(selectedArcSegments as L.LatLngExpression[][], {
         color: '#22d3ee',
         weight: 2.5,
         opacity: 0.95,
@@ -473,16 +519,13 @@ export const SmugglingMap: React.FC = () => {
       const dest = AIRPORT_REGISTRY[courier.targetCityId];
       if (!orig || !dest) continue;
 
-      const arc = generateGeodesicArcPoints(
+      const pt = getGeodesicPointAt(
         orig.coordinates.lat,
         orig.coordinates.lng,
         dest.coordinates.lat,
         dest.coordinates.lng,
-        30
+        courier.progressPercent / 100
       );
-
-      const idx = Math.min(arc.length - 1, Math.floor(arc.length * (courier.progressPercent / 100)));
-      const pos = arc[idx];
 
       const courierIcon = L.divIcon({
         className: 'courier-blip',
@@ -498,7 +541,7 @@ export const SmugglingMap: React.FC = () => {
         iconSize: [20, 20],
       });
 
-      const marker = L.marker(pos, { icon: courierIcon });
+      const marker = L.marker([pt.lat, pt.lng], { icon: courierIcon });
       couriersGroupRef.current.addLayer(marker);
     }
   }, [activeCouriers, showCouriers]);
@@ -547,21 +590,11 @@ export const SmugglingMap: React.FC = () => {
 
     setFlightAnim(initialAnim);
 
-    // Generate path points for flight
-    const flightArc = originAirport && targetAirport
-      ? generateGeodesicArcPoints(
-          originAirport.coordinates.lat,
-          originAirport.coordinates.lng,
-          targetAirport.coordinates.lat,
-          targetAirport.coordinates.lng,
-          60
-        )
-      : [];
-
+    // Set up plane marker for flight
     const planeIcon = L.divIcon({
       className: 'flight-anim-plane',
       html: `
-        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
+        <div id="flight-anim-plane-icon" class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 transition-transform duration-75">
           <span class="absolute w-8 h-8 rounded-full bg-cyan-400/40 animate-ping"></span>
           <div class="w-7 h-7 rounded-full bg-cyan-500 border border-slate-900 shadow-xl flex items-center justify-center text-slate-950 font-black text-sm">
             ✈️
@@ -571,21 +604,36 @@ export const SmugglingMap: React.FC = () => {
       iconSize: [28, 28],
     });
 
-    if (mapInstanceRef.current && flightArc.length > 0) {
+    if (mapInstanceRef.current && originAirport) {
       if (animatedFlightMarkerRef.current) {
         mapInstanceRef.current.removeLayer(animatedFlightMarkerRef.current);
       }
-      animatedFlightMarkerRef.current = L.marker(flightArc[0], { icon: planeIcon }).addTo(mapInstanceRef.current);
+      animatedFlightMarkerRef.current = L.marker(
+        [originAirport.coordinates.lat, originAirport.coordinates.lng],
+        { icon: planeIcon }
+      ).addTo(mapInstanceRef.current);
     }
 
     const animate = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / totalDurationMs);
 
-      if (flightArc.length > 0 && animatedFlightMarkerRef.current) {
-        const pointIdx = Math.min(flightArc.length - 1, Math.floor(progress * (flightArc.length - 1)));
-        const currentCoord = flightArc[pointIdx];
-        animatedFlightMarkerRef.current.setLatLng(currentCoord);
+      let currentHeading = 90;
+      if (originAirport && targetAirport && animatedFlightMarkerRef.current) {
+        const pt = getGeodesicPointAt(
+          originAirport.coordinates.lat,
+          originAirport.coordinates.lng,
+          targetAirport.coordinates.lat,
+          targetAirport.coordinates.lng,
+          progress
+        );
+        animatedFlightMarkerRef.current.setLatLng([pt.lat, pt.lng]);
+        currentHeading = Math.round(pt.headingDeg);
+
+        const planeEl = document.getElementById('flight-anim-plane-icon');
+        if (planeEl) {
+          planeEl.style.transform = `rotate(${pt.headingDeg - 45}deg)`;
+        }
       }
 
       setFlightAnim((prev) =>
@@ -594,6 +642,7 @@ export const SmugglingMap: React.FC = () => {
               ...prev,
               progress,
               elapsedMs: elapsed,
+              headingDegrees: currentHeading,
               altitudeFt: Math.round(
                 progress < 0.2
                   ? 5000 + progress * 5 * 36000
@@ -695,7 +744,7 @@ export const SmugglingMap: React.FC = () => {
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Tile Style Picker */}
           <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 text-xs">
-            {(['dark', 'satellite', 'voyager'] as MapTileStyle[]).map((style) => (
+            {(['fiord', 'liberty', 'satellite', 'dark_canvas'] as MapTileStyle[]).map((style) => (
               <button
                 key={style}
                 onClick={() => {

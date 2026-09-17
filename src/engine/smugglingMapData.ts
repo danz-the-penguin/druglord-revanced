@@ -115,6 +115,163 @@ export function interpolateQuadraticBezier(
 }
 
 /**
+ * Generates an array of continuous geodesic arc segments, cleanly splitting
+ * any segments that cross the antimeridian (180° / -180° longitude) so
+ * Trans-Pacific or high-latitude routes (e.g. New York to Singapore, Tokyo to Los Angeles)
+ * render smoothly without snapping across the screen.
+ */
+export function generateGeodesicArcSegments(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+  numPoints = 60
+): [number, number][][] {
+  const p1Lat = (lat1 * Math.PI) / 180;
+  const p1Lng = (lng1 * Math.PI) / 180;
+  const p2Lat = (lat2 * Math.PI) / 180;
+  const p2Lng = (lng2 * Math.PI) / 180;
+
+  // Haversine angular distance
+  const d =
+    2 *
+    Math.asin(
+      Math.sqrt(
+        Math.pow(Math.sin((p1Lat - p2Lat) / 2), 2) +
+          Math.cos(p1Lat) * Math.cos(p2Lat) * Math.pow(Math.sin((p1Lng - p2Lng) / 2), 2)
+      )
+    );
+
+  if (d < 1e-6) return [[[lat1, lng1]]];
+
+  const rawPoints: [number, number][] = [];
+
+  for (let i = 0; i <= numPoints; i++) {
+    const f = i / numPoints;
+    const A = Math.sin((1 - f) * d) / Math.sin(d);
+    const B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(p1Lat) * Math.cos(p1Lng) + B * Math.cos(p2Lat) * Math.cos(p2Lng);
+    const y = A * Math.cos(p1Lat) * Math.sin(p1Lng) + B * Math.cos(p2Lat) * Math.sin(p2Lng);
+    const z = A * Math.sin(p1Lat) + B * Math.sin(p2Lat);
+    const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
+    const lng = Math.atan2(y, x);
+    rawPoints.push([(lat * 180) / Math.PI, (lng * 180) / Math.PI]);
+  }
+
+  // Antimeridian wrapping splitter
+  const segments: [number, number][][] = [];
+  let currentSegment: [number, number][] = [];
+
+  for (let i = 0; i < rawPoints.length; i++) {
+    const pt = rawPoints[i];
+    if (currentSegment.length === 0) {
+      currentSegment.push(pt);
+      continue;
+    }
+
+    const prevPt = currentSegment[currentSegment.length - 1];
+    const deltaLng = pt[1] - prevPt[1];
+
+    if (Math.abs(deltaLng) > 180) {
+      let t = 0.5;
+      let crossLng1 = 180;
+      let crossLng2 = -180;
+
+      if (deltaLng < -180) {
+        // Crossing from +180 to -180 (eastbound across antimeridian)
+        const d1 = 180 - prevPt[1];
+        const d2 = pt[1] - (-180);
+        t = (d1 + d2) > 0 ? d1 / (d1 + d2) : 0.5;
+        crossLng1 = 180;
+        crossLng2 = -180;
+      } else {
+        // Crossing from -180 to +180 (westbound across antimeridian)
+        const d1 = prevPt[1] - (-180);
+        const d2 = 180 - pt[1];
+        t = (d1 + d2) > 0 ? d1 / (d1 + d2) : 0.5;
+        crossLng1 = -180;
+        crossLng2 = 180;
+      }
+
+      const crossLat = prevPt[0] + t * (pt[0] - prevPt[0]);
+      currentSegment.push([crossLat, crossLng1]);
+      segments.push(currentSegment);
+      currentSegment = [[crossLat, crossLng2], pt];
+    } else {
+      currentSegment.push(pt);
+    }
+  }
+
+  if (currentSegment.length > 0) {
+    segments.push(currentSegment);
+  }
+
+  return segments;
+}
+
+/**
+ * Calculates the exact spherical position [lat, lng] and tangent heading
+ * along a great-circle arc at a given progress fraction (0.0 to 1.0).
+ */
+export function getGeodesicPointAt(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+  fraction: number
+): { lat: number; lng: number; headingDeg: number } {
+  const f = Math.max(0, Math.min(1, fraction));
+  const p1Lat = (lat1 * Math.PI) / 180;
+  const p1Lng = (lng1 * Math.PI) / 180;
+  const p2Lat = (lat2 * Math.PI) / 180;
+  const p2Lng = (lng2 * Math.PI) / 180;
+
+  const d =
+    2 *
+    Math.asin(
+      Math.sqrt(
+        Math.pow(Math.sin((p1Lat - p2Lat) / 2), 2) +
+          Math.cos(p1Lat) * Math.cos(p2Lat) * Math.pow(Math.sin((p1Lng - p2Lng) / 2), 2)
+      )
+    );
+
+  if (d < 1e-6) {
+    return { lat: lat1, lng: lng1, headingDeg: 0 };
+  }
+
+  const A = Math.sin((1 - f) * d) / Math.sin(d);
+  const B = Math.sin(f * d) / Math.sin(d);
+  const x = A * Math.cos(p1Lat) * Math.cos(p1Lng) + B * Math.cos(p2Lat) * Math.cos(p2Lng);
+  const y = A * Math.cos(p1Lat) * Math.sin(p1Lng) + B * Math.cos(p2Lat) * Math.sin(p2Lng);
+  const z = A * Math.sin(p1Lat) + B * Math.sin(p2Lat);
+  const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
+  const lng = Math.atan2(y, x);
+
+  // Compute tangent heading by taking a tiny epsilon step forward
+  const fNext = Math.min(1, f + 0.01);
+  const An = Math.sin((1 - fNext) * d) / Math.sin(d);
+  const Bn = Math.sin(fNext * d) / Math.sin(d);
+  const xn = An * Math.cos(p1Lat) * Math.cos(p1Lng) + Bn * Math.cos(p2Lat) * Math.cos(p2Lng);
+  const yn = An * Math.cos(p1Lat) * Math.sin(p1Lng) + Bn * Math.cos(p2Lat) * Math.sin(p2Lng);
+  const zn = An * Math.sin(p1Lat) + Bn * Math.sin(p2Lat);
+  const latNext = Math.atan2(zn, Math.sqrt(xn * xn + yn * yn));
+  const lngNext = Math.atan2(yn, xn);
+
+  const yDelta = Math.sin(lngNext - lng) * Math.cos(latNext);
+  const xDelta =
+    Math.cos(lat) * Math.sin(latNext) -
+    Math.sin(lat) * Math.cos(latNext) * Math.cos(lngNext - lng);
+  let bearing = (Math.atan2(yDelta, xDelta) * 180) / Math.PI;
+  if (bearing < 0) bearing += 360;
+
+  return {
+    lat: (lat * 180) / Math.PI,
+    lng: (lng * 180) / Math.PI,
+    headingDeg: Math.round(bearing),
+  };
+}
+
+/**
  * High-fidelity, smooth SVG vector landmass paths representing realistic world coastlines.
  */
 export const WORLD_LANDMASS_PATHS: Array<{ id: string; name: string; d: string }> = [
