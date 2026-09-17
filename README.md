@@ -17,7 +17,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Vitest-88%2F88%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-105%2F105%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 <p align="center">
@@ -25,7 +25,7 @@
   Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
 </p>
 
-[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
+[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
 
 ---
 
@@ -156,30 +156,40 @@ Encounter local street cops, DEA federal task forces, tactical SWAT squads, and 
 
 ## 👾 Cartel Debug Terminal & Cheat Table
 
-Press **`~`** (tilde) or click the **Terminal** button in the header to open the Cheat Engine-inspired memory inspector.
+Press **`~`** (tilde), press **`Ctrl + Shift + D`**, or click the **`[>_]` Terminal** button in the dashboard header to open the Cartel Debug Terminal and Cheat Engine memory inspector.
 
-### Memory Offset Table
+> [!TIP]
+> For the comprehensive guide with all 25 drug IDs, 30 city IDs, syntax breakdown, Cheat Engine table download, and browser console API, see **[🕵️ CHEATS.md](CHEATS.md)**.
+
+### Static 4-Byte Memory Offset Map
+The live state is mapped to an internal 32-bit linear memory mirror:
 ```
-[Address]      [Type]    [Description]                          [Value]
-0x00401000     DWORD     Player Liquid Cash                     $450,000
-0x00401004     DWORD     Swiss Bank Account Balance             $1,250,000
-0x00401008     DWORD     Loan Shark Principal Debt              $0
-0x0040100C     BYTE      Player Health (0-100 HP)               100
-0x00401010     WORD      Current Game Day                       14
-0x00401014     BYTE      Current City Police Heat (0-100%)      15%
-0x00401018     STRING    Current Location City ID               "medellin"
-0x0040101C     WORD      Bonus Stash Capacity Units             +500
+[Offset]     [Type]       [Description]                          [Live Sync]
++0x00        4-Byte Int   Player Liquid Cash                     Auto-synced every 250ms
++0x04        4-Byte Int   Swiss Bank Account Balance             Auto-synced every 250ms
++0x08        4-Byte Int   Loan Shark Principal Debt              Auto-synced every 250ms
++0x0C        4-Byte Int   Player Health (0-100 HP)               Auto-synced every 250ms
++0x10        4-Byte Int   Current Game Day                       Auto-synced every 250ms
++0x14        4-Byte Int   Max Campaign Days                      Auto-synced every 250ms
++0x18        4-Byte Int   Cartel God Mode Flag (1=On, 0=Off)     Auto-synced every 250ms
++0x1C        4-Byte Int   Extra Stash Carrying Capacity          Auto-synced every 250ms
 ```
 
-### Console Commands
-* `hesoyam` — Classic refill: Grants +$250,000 cash, 100 HP, and repairs active armor.
-* `god` — Toggles invincibility and maximum combat damage.
-* `teleport <city_id>` — Instant transit to any world city with zero travel days consumed.
-* `give <drug_id> <quantity>` — Spawn specified contraband units directly into your pocket.
-* `clear_heat` — Wipes all police and DEA attention in the current city back to 0%.
-* `clear_debt` — Liquidates all outstanding loan shark debt immediately.
-* `rep <syndicate_id> <value>` — Sets syndicate standing (-100 to +100).
-* `day <day_number>` — Skips or rewinds the calendar day.
+### Essential Cheat Commands
+* `cash <val>` / `cash +<val>` — Set or inject liquid cash.
+* `bank <val>` / `bank +<val>` — Set or wire funds to offshore bank.
+* `debt 0` / `clear_debt` — Wipe all loan shark debts immediately.
+* `heal` / `health <1-100>` — Restore health to 100% HP.
+* `god` — Toggle Cartel God Mode (invulnerability + 100% flee success).
+* `capacity <val>` — Add extra pocket carrying capacity units.
+* `teleport <city_id>` — Instant transit to any of the 30 world cities (e.g. `teleport bogota`).
+* `rig <drug_id> <price>` — Rig the local street price of any commodity (e.g. `rig cocaine 50000`).
+* `vault_give <city_id> <drug_id> <qty>` — Stash contraband directly in safehouse vaults.
+* `noscent <count>` — Spawn DEA K-9 No-Scent masking spray cans.
+* `wire` — Intercept upcoming market surge intel and police wiretaps.
+* `sfx <name>` — Test retro Web Audio sound synthesis (e.g. `sfx pager`).
+
+👉 **Read the full [Cheats & Drug ID Guide (CHEATS.md)](CHEATS.md)** for complete tables and copy-pasteable scripts.
 
 ---
 
