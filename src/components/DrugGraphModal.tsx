@@ -17,8 +17,14 @@ import {
   Minus,
   Repeat,
   Activity,
+  Crosshair,
+  Calculator,
+  Clock,
+  Gauge,
+  Sparkles,
 } from 'lucide-react';
 import { DEFAULT_SPEEDS, stepPlaybackSpeed } from '../utils/graphAnimation';
+import { calculatePriceEstimate } from '../engine/priceEstimator';
 
 const SPEEDS = DEFAULT_SPEEDS;
 
@@ -76,6 +82,20 @@ export const DrugGraphModal: React.FC = () => {
   const avg = useMemo(() => Math.round(rawSeries.reduce((a, b) => a + b, 0) / rawSeries.length), [rawSeries]);
 
   const baseRatio = drug.basePrice > 0 ? ((currentPrice - drug.basePrice) / drug.basePrice) * 100 : 0;
+
+  // Target Price & Time-to-Peak Estimator State
+  const [targetPriceInput, setTargetPriceInput] = useState<string>('');
+
+  const parsedTargetPrice = useMemo(() => {
+    if (!targetPriceInput.trim()) return null;
+    const num = parseInt(targetPriceInput.replace(/[^0-9]/g, ''), 10);
+    return isNaN(num) || num <= 0 ? null : num;
+  }, [targetPriceInput]);
+
+  const priceEstimate = useMemo(() => {
+    if (parsedTargetPrice === null) return null;
+    return calculatePriceEstimate(currentPrice, parsedTargetPrice, rawSeries, drug.volatility);
+  }, [currentPrice, parsedTargetPrice, rawSeries, drug.volatility]);
 
   // Reset playback to start whenever drug or city changes
   useEffect(() => {
@@ -187,8 +207,10 @@ export const DrugGraphModal: React.FC = () => {
   const chartWidth = svgWidth - paddingLeft - paddingRight;
   const chartHeight = svgHeight - paddingTop - paddingBottom;
 
-  const minVal = Math.floor(atl * 0.88);
-  const maxVal = Math.ceil(ath * 1.12);
+  const baseMinVal = Math.floor(atl * 0.88);
+  const baseMaxVal = Math.ceil(ath * 1.12);
+  const minVal = parsedTargetPrice !== null ? Math.min(baseMinVal, Math.floor(parsedTargetPrice * 0.95)) : baseMinVal;
+  const maxVal = parsedTargetPrice !== null ? Math.max(baseMaxVal, Math.ceil(parsedTargetPrice * 1.05)) : baseMaxVal;
   const valRange = Math.max(1, maxVal - minVal);
 
   const getX = (index: number) => {
@@ -199,6 +221,8 @@ export const DrugGraphModal: React.FC = () => {
   const getY = (val: number) => {
     return paddingTop + chartHeight - ((val - minVal) / valRange) * chartHeight;
   };
+
+  const targetY = parsedTargetPrice !== null ? getY(parsedTargetPrice) : 0;
 
   // Interpolation & Physics Calculations
   const maxSeriesIdx = Math.max(1, rawSeries.length - 1);
@@ -391,6 +415,11 @@ export const DrugGraphModal: React.FC = () => {
                 <span className="flex items-center gap-1 text-violet-400 font-bold">
                   <span className="w-2 h-0.5 bg-violet-400 border-t border-dashed" /> Avg (${avg.toLocaleString()})
                 </span>
+                {parsedTargetPrice !== null && (
+                  <span className="flex items-center gap-1 text-amber-300 font-black bg-amber-950/80 border border-amber-500/80 px-2 py-0.5 rounded shadow-xs animate-pulse">
+                    <span className="w-2.5 h-0.5 bg-amber-400 border-t border-dashed" /> Target (${parsedTargetPrice.toLocaleString()})
+                  </span>
+                )}
               </div>
               <span className="text-slate-500 text-[10px] font-mono">
                 Historical Window: Last {rawSeries.length} Days Recorded
@@ -613,6 +642,58 @@ export const DrugGraphModal: React.FC = () => {
                   </text>
                 </g>
 
+                {/* Horizontal Target Price Line Overlay */}
+                {parsedTargetPrice !== null && (
+                  <g id="targetPriceOverlay">
+                    {/* Glowing outer aura */}
+                    <line
+                      x1={paddingLeft}
+                      y1={targetY}
+                      x2={svgWidth - paddingRight}
+                      y2={targetY}
+                      stroke="#f59e0b"
+                      strokeWidth="3.5"
+                      strokeOpacity="0.35"
+                    />
+                    {/* High-contrast dashed target guideline */}
+                    <line
+                      x1={paddingLeft}
+                      y1={targetY}
+                      x2={svgWidth - paddingRight}
+                      y2={targetY}
+                      stroke="#f59e0b"
+                      strokeWidth="1.8"
+                      strokeDasharray="6 3"
+                    />
+                    {/* Target Price Pin Badge on the right margin */}
+                    <g transform={`translate(${svgWidth - paddingRight}, ${targetY})`}>
+                      <rect
+                        x="-96"
+                        y="-10.5"
+                        width="96"
+                        height="21"
+                        rx="5"
+                        fill="#0f172a"
+                        stroke="#f59e0b"
+                        strokeWidth="1.5"
+                        fillOpacity="0.96"
+                        filter="drop-shadow(0 2px 4px rgba(0,0,0,0.6))"
+                      />
+                      <text
+                        x="-48"
+                        y="4"
+                        fill="#f59e0b"
+                        fontSize="9.5"
+                        fontWeight="900"
+                        textAnchor="middle"
+                        fontFamily="monospace"
+                      >
+                        TARGET: ${parsedTargetPrice.toLocaleString()}
+                      </text>
+                    </g>
+                  </g>
+                )}
+
                 {/* Hover Tooltip inside SVG */}
                 {hoveredPoint && (
                   <g transform={`translate(${hoveredPoint.x}, ${Math.max(paddingTop + 15, hoveredPoint.y - 30)})`}>
@@ -814,6 +895,186 @@ export const DrugGraphModal: React.FC = () => {
                 <span className={`text-[11px] font-black shrink-0 ${textClass}`}>
                   ${activePrice.toLocaleString()}
                 </span>
+              </div>
+            )}
+          </div>
+
+          {/* Target Price & Time-to-Peak Estimator Calculator Widget */}
+          <div className="p-4 bg-slate-900/95 border-2 border-amber-500/60 rounded-2xl flex flex-col gap-3 font-mono shadow-lg relative overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-950/80 border border-amber-600/80 text-amber-400">
+                  <Crosshair className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Target Price & Time-to-Peak Estimator</span>
+                    <span className="px-1.5 py-0.2 rounded bg-amber-950 text-[9px] text-amber-400 font-bold border border-amber-800">
+                      ALGORITHMIC PROJECTION
+                    </span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400">
+                    Project days to price threshold, momentum direction, and probability score
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[10px] text-slate-500 font-bold uppercase mr-1">Presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setTargetPriceInput(Math.round(currentPrice * 1.1).toString())}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors cursor-pointer"
+                >
+                  +10%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetPriceInput(Math.round(currentPrice * 1.25).toString())}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors cursor-pointer"
+                >
+                  +25%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetPriceInput(Math.round(currentPrice * 1.5).toString())}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors cursor-pointer"
+                >
+                  +50%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetPriceInput(ath.toString())}
+                  className="px-2 py-0.5 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 text-[10px] font-bold border border-amber-700 transition-colors cursor-pointer"
+                >
+                  ATH (${ath.toLocaleString()})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetPriceInput((currentPrice * 2).toString())}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors cursor-pointer"
+                >
+                  2x Spot
+                </button>
+                {targetPriceInput && (
+                  <button
+                    type="button"
+                    onClick={() => setTargetPriceInput('')}
+                    className="px-2 py-0.5 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[10px] font-bold border border-rose-800 transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Input Row & Live Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+              {/* Target Price Input Box */}
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Calculator className="w-3 h-3 text-amber-400" /> Enter Target Price ($)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">$</span>
+                  <input
+                    type="text"
+                    value={targetPriceInput}
+                    onChange={(e) => setTargetPriceInput(e.target.value)}
+                    placeholder={`e.g. ${Math.round(currentPrice * 1.25).toLocaleString()}`}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-sm text-amber-300 font-black placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Metric 1: Estimated Days to Target */}
+              <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-xl">
+                <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-sky-400" /> Estimated Days to Target
+                </span>
+                {priceEstimate ? (
+                  <div className="mt-1">
+                    <div className="text-base font-black text-sky-300 flex items-center gap-1.5">
+                      <span>{priceEstimate.estimatedDaysLabel}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      {priceEstimate.percentDelta >= 0 ? '+' : ''}{priceEstimate.percentDelta}% move • Daily step ~{Math.round(priceEstimate.dailyVolatilityPct * 100)}%
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-600 italic block mt-1">Enter target above</span>
+                )}
+              </div>
+
+              {/* Metric 2: Probability Score & Meter */}
+              <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-xl">
+                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3 text-emerald-400" /> Probability Score
+                  </span>
+                  {priceEstimate && (
+                    <span className={`font-black ${
+                      priceEstimate.probabilityScore >= 65
+                        ? 'text-emerald-400'
+                        : priceEstimate.probabilityScore >= 40
+                        ? 'text-amber-400'
+                        : 'text-rose-400'
+                    }`}>
+                      {priceEstimate.probabilityScore}%
+                    </span>
+                  )}
+                </div>
+                {priceEstimate ? (
+                  <div className="mt-1.5 space-y-1">
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          priceEstimate.probabilityScore >= 65
+                            ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
+                            : priceEstimate.probabilityScore >= 40
+                            ? 'bg-gradient-to-r from-amber-600 to-amber-400'
+                            : 'bg-gradient-to-r from-rose-600 to-rose-400'
+                        }`}
+                        style={{ width: `${priceEstimate.probabilityScore}%` }}
+                      />
+                    </div>
+                    <span className="text-[9.5px] text-slate-300 block truncate">
+                      {priceEstimate.probabilityLabel}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-600 italic block mt-1">Awaiting target input</span>
+                )}
+              </div>
+            </div>
+
+            {/* Recommendation / Forecast Callout Banner */}
+            {priceEstimate && (
+              <div className="px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800/90 text-xs flex items-start gap-2.5">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                    <span className="font-bold text-slate-200">Momentum Drift:</span>
+                    <span className={`font-bold ${
+                      priceEstimate.momentumState.includes('bull')
+                        ? 'text-emerald-400'
+                        : priceEstimate.momentumState.includes('bear')
+                        ? 'text-rose-400'
+                        : 'text-slate-400'
+                    }`}>
+                      {priceEstimate.momentumLabel}
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="text-slate-400">
+                      Envelope: {priceEstimate.isInHistoricalRange ? 'Inside ATH/ATL Range' : priceEstimate.direction === 'up' ? 'New All-Time High' : 'New All-Time Low'}
+                    </span>
+                  </div>
+                  <p className="text-slate-300 text-[11px] mt-0.5 leading-snug">
+                    {priceEstimate.recommendation}
+                  </p>
+                </div>
               </div>
             )}
           </div>

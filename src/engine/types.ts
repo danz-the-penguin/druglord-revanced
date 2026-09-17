@@ -347,11 +347,24 @@ export interface PlayerState {
   pendingRaidWarning?: import('./corruptionTypes').RaidWarning | null;
   activeTurfWars?: import('./turfWarTypes').ActiveTurfWar[];
   activeMacroEvents?: import('./turfWarTypes').ActiveMacroEvent[];
+  activeChallengeId?: string;
+  activeChallengeSeed?: string;
+  challengeModifiers?: ChallengeModifiers;
   stats?: PlayerStats;
   cheats: {
     godMode: boolean;
     extraCapacity: number;
   };
+}
+
+export interface ChallengeModifiers {
+  weaponsBanned?: boolean;
+  aviationOnly?: boolean;
+  syntheticsOnly?: boolean;
+  tripleAuditHeat?: boolean;
+  fleeAgilityBonus?: number;
+  syntheticMarginBonus?: number;
+  bribeDiscount?: number;
 }
 
 export interface GameLogEntry {

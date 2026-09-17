@@ -57,6 +57,28 @@ const REGION_BOUNDS: Record<RegionFilter, { x: number; y: number; zoom: number }
   'Middle East & Africa': { x: 420, y: 120, zoom: 2.5 },
 };
 
+function getLandmassGradientId(landId: string): string {
+  switch (landId) {
+    case 'north_america':
+      return 'naTerrain';
+    case 'south_america':
+      return 'saTerrain';
+    case 'europe':
+      return 'euTerrain';
+    case 'africa':
+      return 'afTerrain';
+    case 'asia':
+      return 'asTerrain';
+    case 'australia':
+      return 'auTerrain';
+    case 'greenland':
+    case 'iceland':
+      return 'arcticTerrain';
+    default:
+      return 'tropicalIslandTerrain';
+  }
+}
+
 export const SmugglingMap: React.FC = () => {
   const {
     player,
@@ -641,20 +663,102 @@ export const SmugglingMap: React.FC = () => {
               preserveAspectRatio="xMidYMid meet"
             >
               <defs>
+                {/* Deep Oceanic Bathymetry Radial Gradient */}
+                <radialGradient id="oceanRadialGradient" cx="50%" cy="50%" r="75%" fx="50%" fy="50%">
+                  <stop offset="0%" stopColor="#0b2c56" />
+                  <stop offset="40%" stopColor="#082042" />
+                  <stop offset="75%" stopColor="#041226" />
+                  <stop offset="100%" stopColor="#020914" />
+                </radialGradient>
+
+                {/* Oceanic Bathymetry Depth Wave Pattern */}
+                <pattern id="bathymetryRipples" width="36" height="36" patternUnits="userSpaceOnUse">
+                  <path d="M 0 18 Q 9 12 18 18 T 36 18" fill="none" stroke="rgba(56, 189, 248, 0.05)" strokeWidth="0.75" />
+                  <circle cx="18" cy="18" r="0.75" fill="rgba(56, 189, 248, 0.08)" />
+                </pattern>
+
+                {/* Natural Earth / Satellite Biome Gradients */}
+                {/* North America: Pacific NW evergreen -> Great Plains tan -> Sonoran desert */}
+                <linearGradient id="naTerrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1e3a24" />
+                  <stop offset="35%" stopColor="#254a2e" />
+                  <stop offset="60%" stopColor="#554728" />
+                  <stop offset="85%" stopColor="#694b29" />
+                  <stop offset="100%" stopColor="#274626" />
+                </linearGradient>
+
+                {/* South America: Colombian jungle -> Amazon deep rainforest -> Cerrado -> Pampas */}
+                <linearGradient id="saTerrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#184824" />
+                  <stop offset="30%" stopColor="#0f391b" />
+                  <stop offset="65%" stopColor="#2f4e26" />
+                  <stop offset="85%" stopColor="#484429" />
+                  <stop offset="100%" stopColor="#38362b" />
+                </linearGradient>
+
+                {/* Europe: Scandinavian taiga -> Central European green woodland -> Mediterranean olive */}
+                <linearGradient id="euTerrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1a4228" />
+                  <stop offset="40%" stopColor="#255431" />
+                  <stop offset="75%" stopColor="#3d5229" />
+                  <stop offset="100%" stopColor="#4e4628" />
+                </linearGradient>
+
+                {/* Africa: Sahara golden sands -> Sahel savannah -> Congo rainforest -> Kalahari */}
+                <linearGradient id="afTerrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#7e5d2e" />
+                  <stop offset="20%" stopColor="#a3783a" />
+                  <stop offset="40%" stopColor="#785930" />
+                  <stop offset="55%" stopColor="#12401e" />
+                  <stop offset="75%" stopColor="#385026" />
+                  <stop offset="90%" stopColor="#6e522b" />
+                  <stop offset="100%" stopColor="#2a4628" />
+                </linearGradient>
+
+                {/* Asia / Eurasia: Siberian taiga -> Urals/Altai -> Gobi sands -> Tropical SE Asia */}
+                <linearGradient id="asTerrain" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#193d28" />
+                  <stop offset="30%" stopColor="#3d4f3b" />
+                  <stop offset="50%" stopColor="#6f5634" />
+                  <stop offset="70%" stopColor="#444f3e" />
+                  <stop offset="85%" stopColor="#22542e" />
+                  <stop offset="100%" stopColor="#134723" />
+                </linearGradient>
+
+                {/* Australia: Outback red sandstone -> Simpson Desert ochre -> Coastal eucalyptus */}
+                <linearGradient id="auTerrain" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#873f1f" />
+                  <stop offset="45%" stopColor="#9e4c27" />
+                  <stop offset="80%" stopColor="#744423" />
+                  <stop offset="100%" stopColor="#2a4524" />
+                </linearGradient>
+
+                {/* Arctic / Greenland / Iceland: Frosty glacier ice sheet -> Tundra rock */}
+                <linearGradient id="arcticTerrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3e5964" />
+                  <stop offset="100%" stopColor="#293f48" />
+                </linearGradient>
+
+                {/* Tropical Islands (Caribbean, SE Asia, Japan, NZ, Madagascar): Lush canopy */}
+                <linearGradient id="tropicalIslandTerrain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#184e29" />
+                  <stop offset="100%" stopColor="#236b3b" />
+                </linearGradient>
+
                 {/* Hazard Stripe Pattern for DEA Blockades */}
                 <pattern id="hazardStripe" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                  <rect width="4" height="8" fill="rgba(244, 63, 94, 0.15)" />
+                  <rect width="4" height="8" fill="rgba(244, 63, 94, 0.2)" />
                   <rect x="4" width="4" height="8" fill="transparent" />
                 </pattern>
 
                 {/* Radar Grid Dot Pattern */}
-                <pattern id="radarGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <pattern id="radarGrid" width="24" height="24" patternUnits="userSpaceOnUse">
                   <circle cx="1" cy="1" r="0.75" fill="rgba(56, 189, 248, 0.08)" />
                 </pattern>
 
                 {/* Glow Filter for Active Route */}
-                <filter id="laserGlow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
+                <filter id="laserGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="3.5" result="blur" />
                   <feMerge>
                     <feMergeNode in="blur" />
                     <feMergeNode in="SourceGraphic" />
@@ -662,14 +766,16 @@ export const SmugglingMap: React.FC = () => {
                 </filter>
               </defs>
 
-              {/* Background Radar Grid */}
-              <rect width="1000" height="500" fill="#04070d" />
+              {/* Deep Gradient Ocean Background */}
+              <rect width="1000" height="500" fill="url(#oceanRadialGradient)" />
+              {/* Bathymetry Wave Pattern Grid */}
+              <rect width="1000" height="500" fill="url(#bathymetryRipples)" />
               <rect width="1000" height="500" fill="url(#radarGrid)" />
 
               {/* Latitude & Longitude Coordinate Lines */}
-              <g stroke="rgba(51, 65, 85, 0.25)" strokeWidth={0.75 * nodeScale} strokeDasharray="3 3">
+              <g stroke="rgba(56, 189, 248, 0.14)" strokeWidth={0.75 * nodeScale} strokeDasharray="3 3">
                 {/* Equator */}
-                <line x1="0" y1="285.7" x2="1000" y2="285.7" stroke="rgba(56, 189, 248, 0.3)" strokeDasharray="none" />
+                <line x1="0" y1="285.7" x2="1000" y2="285.7" stroke="rgba(56, 189, 248, 0.35)" strokeDasharray="none" />
                 {/* Tropics */}
                 <line x1="0" y1="202" x2="1000" y2="202" />
                 <line x1="0" y1="369" x2="1000" y2="369" />
@@ -677,11 +783,48 @@ export const SmugglingMap: React.FC = () => {
                 <line x1="0" y1="71" x2="1000" y2="71" />
                 <line x1="0" y1="500" x2="1000" y2="500" />
                 {/* Prime Meridian & 60 deg increments */}
-                <line x1="500" y1="0" x2="500" y2="500" stroke="rgba(56, 189, 248, 0.3)" strokeDasharray="none" />
+                <line x1="500" y1="0" x2="500" y2="500" stroke="rgba(56, 189, 248, 0.35)" strokeDasharray="none" />
                 <line x1="166" y1="0" x2="166" y2="500" />
                 <line x1="333" y1="0" x2="333" y2="500" />
                 <line x1="666" y1="0" x2="666" y2="500" />
                 <line x1="833" y1="0" x2="833" y2="500" />
+              </g>
+
+              {/* Continental Shelf Marine Water Halo (Natural Earth / Mapbox Turquoise Shelf) */}
+              <g id="continentalShelves" pointerEvents="none">
+                {/* Deep Outer Marine Shelf */}
+                {WORLD_LANDMASS_PATHS.map((land) => (
+                  <path
+                    key={`shelf_deep_${land.id}`}
+                    d={land.d}
+                    fill="none"
+                    stroke="rgba(8, 47, 73, 0.55)"
+                    strokeWidth={14 * nodeScale}
+                    strokeLinejoin="round"
+                  />
+                ))}
+                {/* Mid Coastal Shelf */}
+                {WORLD_LANDMASS_PATHS.map((land) => (
+                  <path
+                    key={`shelf_mid_${land.id}`}
+                    d={land.d}
+                    fill="none"
+                    stroke="rgba(14, 116, 144, 0.4)"
+                    strokeWidth={7 * nodeScale}
+                    strokeLinejoin="round"
+                  />
+                ))}
+                {/* Shallow Lagoon Shoreline Fringe */}
+                {WORLD_LANDMASS_PATHS.map((land) => (
+                  <path
+                    key={`shelf_lagoon_${land.id}`}
+                    d={land.d}
+                    fill="none"
+                    stroke="rgba(6, 182, 212, 0.32)"
+                    strokeWidth={3 * nodeScale}
+                    strokeLinejoin="round"
+                  />
+                ))}
               </g>
 
               {/* Day/Night Solar Terminator Twilight Shadow */}
@@ -689,24 +832,25 @@ export const SmugglingMap: React.FC = () => {
                 <g id="dayNightTerminator" pointerEvents="none">
                   <path
                     d={terminatorPath}
-                    fill="rgba(2, 6, 23, 0.45)"
-                    stroke="rgba(56, 189, 248, 0.25)"
+                    fill="rgba(1, 4, 14, 0.55)"
+                    stroke="rgba(56, 189, 248, 0.3)"
                     strokeWidth={1.2 * nodeScale}
                     strokeDasharray="4 2"
                   />
                 </g>
               )}
 
-              {/* World Continents High-Fidelity Vector Outlines */}
+              {/* World Continents with Textured Earth Biome Gradients */}
               <g id="worldLandmasses">
                 {WORLD_LANDMASS_PATHS.map((land) => (
                   <path
                     key={land.id}
                     d={land.d}
-                    fill="#0b1120"
-                    stroke="#1e293b"
-                    strokeWidth={1.2 * nodeScale}
-                    className="transition-colors hover:fill-[#0f172a]"
+                    fill={`url(#${getLandmassGradientId(land.id)})`}
+                    stroke="#1c3a22"
+                    strokeWidth={1.1 * nodeScale}
+                    className="transition-all duration-200 hover:brightness-110"
+                    filter="drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55))"
                   />
                 ))}
               </g>
@@ -715,14 +859,25 @@ export const SmugglingMap: React.FC = () => {
               {showTopography && (
                 <g id="topography" pointerEvents="none">
                   {WORLD_TOPOGRAPHY_CONTOURS.map((topo) => (
-                    <path
-                      key={topo.id}
-                      d={topo.pathString}
-                      fill="none"
-                      stroke="rgba(148, 163, 184, 0.25)"
-                      strokeWidth={1.5 * nodeScale}
-                      strokeDasharray="2 3"
-                    />
+                    <g key={topo.id}>
+                      {/* Shadow underlay for high contrast against terrain */}
+                      <path
+                        d={topo.pathString}
+                        fill="none"
+                        stroke="rgba(0, 0, 0, 0.7)"
+                        strokeWidth={2.6 * nodeScale}
+                        strokeLinecap="round"
+                      />
+                      {/* Glowing golden alpine ridge */}
+                      <path
+                        d={topo.pathString}
+                        fill="none"
+                        stroke="#fbbf24"
+                        strokeWidth={1.3 * nodeScale}
+                        strokeDasharray="4 2"
+                        strokeLinecap="round"
+                      />
+                    </g>
                   ))}
                 </g>
               )}
@@ -886,12 +1041,19 @@ export const SmugglingMap: React.FC = () => {
               {/* Active Selected Great-Circle Route (Laser Glow) */}
               {selectedCorridor && (
                 <g id="activeCorridor">
+                  {/* High-contrast dark backing rim */}
+                  <path
+                    d={selectedCorridor.pathString}
+                    fill="none"
+                    stroke="#020617"
+                    strokeWidth={5.5 * nodeScale}
+                  />
                   {/* Outer laser glow */}
                   <path
                     d={selectedCorridor.pathString}
                     fill="none"
-                    stroke="rgba(56, 189, 248, 0.35)"
-                    strokeWidth={4 * nodeScale}
+                    stroke="rgba(0, 240, 255, 0.45)"
+                    strokeWidth={3.8 * nodeScale}
                     filter="url(#laserGlow)"
                   />
                   {/* Core laser beam */}
@@ -902,6 +1064,13 @@ export const SmugglingMap: React.FC = () => {
                     strokeWidth={2 * nodeScale}
                     strokeDasharray="8 6"
                     className="animate-pulse"
+                  />
+                  {/* Center white hot beam */}
+                  <path
+                    d={selectedCorridor.pathString}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth={0.8 * nodeScale}
                   />
                   {/* Midpoint Distance Pill */}
                   <g transform={`translate(${selectedCorridor.midPoint.x}, ${selectedCorridor.midPoint.y})`}>
@@ -1112,24 +1281,29 @@ export const SmugglingMap: React.FC = () => {
                         </g>
                       )}
 
-                      {/* City IATA Label */}
+                      {/* City IATA Label with High-Contrast Halo */}
                       <text
                         x="0"
                         y={labelY}
                         fill={
                           warInCity
-                            ? '#f87171'
+                            ? '#fca5a5'
                             : isCurrent
                             ? '#34d399'
                             : isSelected
                             ? '#7dd3fc'
                             : isHovered
-                            ? '#f8fafc'
-                            : '#94a3b8'
+                            ? '#ffffff'
+                            : '#cbd5e1'
                         }
                         fontSize={fontSize}
-                        fontWeight={isCurrent || isSelected || warInCity ? 'bold' : 'normal'}
+                        fontWeight={isCurrent || isSelected || warInCity ? 'bold' : '600'}
                         textAnchor="middle"
+                        paintOrder="stroke"
+                        stroke="#020617"
+                        strokeWidth={2.8 * nodeScale}
+                        strokeLinejoin="round"
+                        className="select-none"
                       >
                         {airport.iata}
                       </text>

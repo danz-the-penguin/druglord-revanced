@@ -17,15 +17,15 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Vitest-163%2F163%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-184%2F184%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 <p align="center">
   A ground-up modern reimagination of Fred Bulback's legendary Windows shareware classic <b>Drug Lord 2.2 (1999–2003)</b>.<br>
-  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, corrupt officials on retainer, federal RICO grand jury wiretaps, high-fidelity interactive world smuggling map with zoom/pan and tactical overlays, syndicate turf wars, black swan macroeconomic shocks, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
+  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, corrupt officials on retainer, federal RICO grand jury wiretaps, high-fidelity interactive world smuggling map with zoom/pan and tactical overlays, syndicate turf wars, black swan macroeconomic shocks, daily synchronized PRNG challenge runs, cartel bounty boards with cryptographic proof codes, target price estimators, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
 </p>
 
-[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [⚖️ Corruption & RICO](#-corruption-informants--federal-rico-engine) • [🗺️ Smuggling Map](#-interactive-world-smuggling-map--geopolitical-radar) • [⚔️ Turf Wars & Macro Shocks](#-cartel-turf-wars--dynamic-market-shocks) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
+[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [⚖️ Corruption & RICO](#-corruption-informants--federal-rico-engine) • [🗺️ Smuggling Map](#-interactive-world-smuggling-map--geopolitical-radar) • [⚔️ Turf Wars & Macro Shocks](#-cartel-turf-wars--dynamic-market-shocks) • [🏆 Daily Bounties & PRNG](#-asynchronous-global-market--cartel-smuggling-bounty-board-phase-5) • [🎯 Price Estimator](#-target-price--time-to-peak-estimator) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
 
 ---
 
@@ -155,12 +155,38 @@ Dynamic macro-level events that disrupt regional supply lines and spark internat
     * `border_clashes` (4 days) — Cartel skirmishes shut down US-Mexico border crossings (+110% price surge on meth and heroin).
     * `precursor_embargo` (7 days) — International regulatory crackdowns freeze precursor supplies (+130% price surge on all synthetic commodities).
 
-### 🧺 8. Underworld Fintech & Money Laundering
+### 🏆 8. Asynchronous Global Market & Cartel Smuggling Bounty Board (Phase 5)
+Standardized asynchronous competition powered by 32-bit client-side deterministic Mulberry32 PRNG with cryptographic proof verification:
+* **Synchronized 30-Day Daily Seed Run**:
+  * Generated deterministically every calendar day at 00:00:00 UTC (`DAILY-YYYY-MM-DD`).
+  * Every operative worldwide experiences identical initial market spreads, shortage events, cartel turf wars, and DEA crackdowns.
+  * Real-time countdown timer to the next daily UTC cycle.
+* **Cartel Smuggling Bounty Board**:
+  * High-risk syndicate bounty contracts with unique tactical handicaps:
+    * **The Pacifist Smuggler (`zero_weapons`)** — Zero personal weapons or armor permitted. Relies strictly on silver-tongued bribes (-25% bribe cost) and evasion agility (+30% flee success).
+    * **100% Aviation Kingpin (`aviation_kingpin`)** — Commercial passenger flights outlawed. Operatives start with an unlocked Cessna 208 Grand Caravan and must smuggle exclusively via their private narco-fleet.
+    * **Pure Synthetics Mogul (`pure_synthetics`)** — Organic botanical contraband (Weed, Heroin, Cocaine, Hashish, Shrooms, Opium) banned. Starts with Border Ranch and Reflux Lab pre-installed, earning +25% profit margins on synthetic commodities.
+    * **Swiss Laundering Purist (`swiss_purist`)** — 3x FinCEN audit frequency and accelerated RICO meters. Must clean at least $5,000,000 through corporate shell companies before indictment.
+* **Custom Seed Lab**:
+  * Input arbitrary seed strings or use the Underworld Narco Seed Roller to generate deterministic simulations.
+  * Share seeds with friends for head-to-head competitive runs.
+* **Cryptographic Verification Proof Codes (`DL2-...`)**:
+  * Concluded challenge runs generate authentic signatures formatted as `DL2-[CHAL]-[DAYS]-[SCORE]-[CHECKSUM]`.
+  * Interactive Proof Inspector decodes scores, verifies checksums against 2026 cartel salt hashes, and produces shareable ASCII career dossiers.
+
+### 🎯 9. Target Price & Time-to-Peak Estimator
+Embedded inside the 14-Day Commodity Graph Modal (`DrugGraphModal.tsx`):
+* **Algorithmic Projection**: Calculates estimated trading days/ticks to reach a custom target price based on asset volatility and directional momentum drift.
+* **Momentum & Probability Meter**: Provides 0–100% likelihood ratings (High, Moderate, Low, Speculative Longshot) evaluated against historical envelope and All-Time High/Low boundaries.
+* **Visual Chart Target Overlay**: Projects a horizontal target price line across the 14D SVG canvas with dynamic Y-axis auto-scaling and legend indicators.
+* **Quick Threshold Presets**: One-click target price selectors for `+10%`, `+25%`, `+50%`, `ATH (All-Time High)`, and `2x Spot`.
+
+### 🧺 10. Underworld Fintech & Money Laundering
 Avoid FinCEN asset forfeiture by structuring and layering illicit street profits:
 * **8 Shell Business Fronts**: Coin Laundromats, Express Car Washes, VIP Nightclubs, Fine Art Galleries, Customs Brokerages, Panama Bearer Holding Trusts, ASIC Crypto Mining Pools, and Swiss Private Banking Subsidiaries.
 * **Corporate Legal Upgrades**: Retain forensic CPAs, offshore defense attorneys, and automated micro-smurfing mule networks to suppress audit risks.
 
-### 🤝 9. Cartel Syndicates & Black Market Diplomacy
+### 🤝 11. Cartel Syndicates & Black Market Diplomacy
 Manage diplomatic relations with 5 international crime syndicates:
 * **Medellín Cartel** (*Los Extraditables*) — Cocaine & Crack Cocaine
 * **Golden Triangle Triads** (*The Black Lotus Triad*) — Raw Opium & Refined Heroin
@@ -171,12 +197,12 @@ Manage diplomatic relations with 5 international crime syndicates:
 * **Peace Tributes**: Wire tribute cash to cartel bosses to call off hit squads.
 * **Supply Contracts**: Deliver required contraband parcels to target cities within strict deadlines for massive cash bonuses and syndicate standing.
 
-### ⚔️ 10. Tactical Turn-Based Combat
+### ⚔️ 12. Tactical Turn-Based Combat
 Encounter local street cops, DEA federal task forces, tactical SWAT squads, and armed loan shark enforcers.
 * **Weapons**: Combat Knives, 9mm Pistols, 12-Gauge Shotguns, SMGs, Dynamite, Hand Grenades, Flamethrowers, and Anti-SWAT Rocket Launchers.
 * **Tactical Gear**: M84 Stun Flashbangs (forces enemy miss), Tactical Smoke Screens (+50% escape probability), Military Combat Medkits (+40 HP), and No-Scent Chemical Sprays (masks cargo from airport sniffer dogs).
 
-### 👑 11. Dealer Hierarchy & Demotion Radar
+### 👑 13. Dealer Hierarchy & Demotion Radar
 * Rise through 6 underworld standing ranks: **Wannabe ➔ Small-time Operator ➔ Dealer ➔ Big-Time Dealer ➔ Distributor ➔ Drug Lord**.
 * **Live Solvency Checker**: Hover the dealer badge to track promotion requirements and 3-day hold milestones. If your net worth drops below the rank threshold, a 3-day insolvency timer warns you before stripping status.
 

@@ -30,6 +30,7 @@ import {
   Plane,
   Handshake,
   Scale,
+  Zap,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -37,6 +38,7 @@ export const Header: React.FC = () => {
   const toggleTerminal = useGameStore((s) => s.toggleTerminal);
   const toggleSaveModal = useGameStore((s) => s.toggleSaveModal);
   const openHallOfFame = useGameStore((s) => s.openHallOfFame);
+  const openDailyChallenge = useGameStore((s) => s.openDailyChallenge);
   const openGlobalAnalytics = useGameStore((s) => s.openGlobalAnalytics);
   const openFlightBoard = useGameStore((s) => s.openFlightBoard);
   const openSyndicateModal = useGameStore((s) => s.openSyndicateModal);
@@ -332,6 +334,20 @@ export const Header: React.FC = () => {
                 {player.unlockedAchievements.length}
               </span>
             )}
+          </button>
+
+          {/* Daily Seed & Cartel Bounty Board */}
+          <button
+            onClick={() => openDailyChallenge('daily')}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+              player.activeChallengeId
+                ? 'bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse shadow-amber-950/60'
+                : 'bg-amber-950/80 hover:bg-amber-900 border-amber-700/80 text-amber-300 shadow-amber-950/50'
+            }`}
+            title="Open Daily Seed Run & Cartel Smuggling Bounty Board"
+          >
+            <Zap className={`w-3.5 h-3.5 ${player.activeChallengeId ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
+            <span className="hidden sm:inline">{player.activeChallengeId ? 'BOUNTY' : 'DAILY'}</span>
           </button>
 
           {/* Global Arbitrage Radar */}

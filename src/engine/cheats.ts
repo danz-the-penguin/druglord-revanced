@@ -9,6 +9,7 @@ import { triggerTurfWar, triggerMacroEvent } from './turfWars';
 import { MacroEventType } from './turfWarTypes';
 import { SyndicateId } from './types';
 import { SYNDICATE_MAP } from './syndicates';
+import { getTodayDailySeed, verifyChallengeProofCode } from './dailyChallenge';
 
 export interface CheatExecutionResult {
   success: boolean;
@@ -440,6 +441,29 @@ export function executeCheat(
         success: true,
         message: `Triggered Black Swan Macro Shock: ${ev.title} (${ev.durationDays} days)! ${ev.headline}`,
       };
+    }
+
+    case 'seed':
+    case 'daily_seed': {
+      const { seed, timeUntilNextUtcMidnightFormatted } = getTodayDailySeed();
+      const active = state.player.activeChallengeSeed || seed;
+      return {
+        success: true,
+        message: `PRNG SEED STATUS:\n• Active Run Seed: [${active}]\n• Today's Global UTC Seed: [${seed}]\n• Next UTC Reset In: ${timeUntilNextUtcMidnightFormatted}`,
+      };
+    }
+
+    case 'verify_code':
+    case 'verify': {
+      if (!arg1) return { success: false, message: 'Usage: verify_code <DL2-XXX-...>' };
+      const res = verifyChallengeProofCode(arg1);
+      if (res.valid) {
+        return {
+          success: true,
+          message: `AUTHENTIC DOSSIER VERIFIED:\n• Challenge: ${res.challengeTitle}\n• Score: $${res.score?.toLocaleString()} PTS\n• Days: ${res.days}\n• Checksum: Valid`,
+        };
+      }
+      return { success: false, message: `VERIFICATION FAILED: ${res.error}` };
     }
 
     default:

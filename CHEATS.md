@@ -97,6 +97,13 @@ Type any of the following commands into the terminal prompt (`>`) and press **`E
 | `turf_war <attacker> <defender>` | `turf_war medellin balkan` | Ignites an armed syndicate war between two cartels (`medellin`, `sinaloa`, `yakuza`, `balkan`, `triad`, `cali`, `synthetic_chem`, `designer_ring`) over contested hub cities. Specialty drugs surge +150% to +250% (2.2x–3.5x multiplier) with +35% travel ambush crossfire hazard. |
 | `macro_event <type>` | `macro_event federal_task_force` | Triggers a multi-day global black swan macroeconomic shock (`deep_web_takedown`, `port_strike`, `federal_task_force`, `border_clashes`, `precursor_embargo`). |
 
+### 🏆 Daily Challenges & Cartel Bounty Board (Phase 5)
+
+| Command Syntax | Example | Description |
+| :--- | :--- | :--- |
+| `seed` or `daily_seed` | `daily_seed` | Prints current active PRNG seed, today's standardized UTC daily seed (`DAILY-YYYY-MM-DD`), and countdown time until 00:00 UTC cycle reset. |
+| `verify_code <code>` | `verify_code DL2-PAC-1E-0081B320-AABBCCDD` | Validates a cryptographic challenge proof code, verifies checksum authenticity against cartel salt, and displays decoded score, challenge, and days. |
+
 ### 📡 Intelligence & Audio Synthesis
 
 | Command Syntax | Example | Description |

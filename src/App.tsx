@@ -15,6 +15,7 @@ import { DrugGraphModal } from './components/DrugGraphModal';
 import { GlobalAnalyticsModal } from './components/GlobalAnalyticsModal';
 import { FlightBoardModal } from './components/FlightBoardModal';
 import { SyndicateModal } from './components/SyndicateModal';
+import { DailyChallengeModal } from './components/DailyChallengeModal';
 import { EventLog } from './components/EventLog';
 import { useKonamiCode } from './hooks/useKonamiCode';
 import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal, HardDrive, AlertTriangle, X, Sparkles, Trophy, Handshake, Map as MapIcon } from 'lucide-react';
@@ -281,6 +282,7 @@ export const App: React.FC = () => {
       <GlobalAnalyticsModal />
       <FlightBoardModal />
       <SyndicateModal />
+      <DailyChallengeModal />
 
       {/* Achievement Unlocked Toast Notification */}
       {recentlyUnlockedAchievement && (

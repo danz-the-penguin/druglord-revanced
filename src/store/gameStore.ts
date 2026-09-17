@@ -33,8 +33,17 @@ import {
   paySyndicateTributeAction,
   buyAircraft,
   selectActiveAircraft,
+  getTotalWealth,
 } from '../engine/game';
-import { CITY_MAP, CITIES, DRUGS } from '../engine/constants';
+import { CITY_MAP, CITIES, DRUGS, RANK_MAP } from '../engine/constants';
+import {
+  BOUNTY_CHALLENGES,
+  getTodayDailySeed,
+  generateRandomSeed,
+  generateChallengeProofCode,
+  saveDailyChallengeRecord,
+  applyChallengeModifiersToNewGame,
+} from '../engine/dailyChallenge';
 import { generateAllCitiesPrices, createInitialGlobalPriceHistory } from '../engine/economy';
 import { executeCheat, registerWindowCheatApi } from '../engine/cheats';
 import { GameDurationMode, DURATION_MODES, FlightSeatClass, SyndicateId, CombatDuelAction } from '../engine/types';
@@ -117,6 +126,13 @@ export interface GameStore extends GameEngineState {
   acceptContract: (contractId: string) => { success: boolean; message: string };
   deliverContract: (contractId: string) => { success: boolean; message: string };
   paySyndicateTribute: (syndicateId: SyndicateId) => { success: boolean; message: string };
+
+  // Daily Challenge & Cartel Bounty Board Modal
+  isDailyChallengeOpen: boolean;
+  dailyChallengeTab: 'daily' | 'bounties' | 'custom' | 'records';
+  openDailyChallenge: (tab?: 'daily' | 'bounties' | 'custom' | 'records') => void;
+  closeDailyChallenge: () => void;
+  startChallengeRun: (challengeId: string, customSeed?: string, durationMode?: GameDurationMode) => { success: boolean; message: string };
 
   // Airport Flights & Departures Board Modal
   isFlightBoardOpen: boolean;
@@ -412,6 +428,56 @@ export const useGameStore = create<GameStore>((set, get) => {
     closeFlightBoard: () => {
       soundEngine.play('click');
       set({ isFlightBoardOpen: false });
+    },
+
+    // Daily Challenge & Cartel Bounty Board Modal
+    isDailyChallengeOpen: false,
+    dailyChallengeTab: 'daily' as 'daily' | 'bounties' | 'custom' | 'records',
+    openDailyChallenge: (tab: 'daily' | 'bounties' | 'custom' | 'records' = 'daily') => {
+      soundEngine.play('click');
+      set({ isDailyChallengeOpen: true, dailyChallengeTab: tab });
+    },
+    closeDailyChallenge: () => {
+      soundEngine.play('click');
+      set({ isDailyChallengeOpen: false });
+    },
+    startChallengeRun: (challengeId: string, customSeed?: string, durationMode?: GameDurationMode) => {
+      const challenge = BOUNTY_CHALLENGES.find((c) => c.id === challengeId);
+      let seed = customSeed?.trim();
+      if (!seed) {
+        if (challengeId === 'daily_seed') {
+          seed = getTodayDailySeed().seed;
+        } else {
+          seed = generateRandomSeed();
+        }
+      }
+      const mode = durationMode || challenge?.durationMode || 'classic';
+      deleteLocalSaveSlot('autosave');
+      const fresh = createInitialState(mode);
+      applyChallengeModifiersToNewGame(fresh, challengeId, seed);
+      syncStateToMemory(fresh);
+      set({
+        ...fresh,
+        activeTab: 'market',
+        placesSubTab: 'bank',
+        isTerminalOpen: false,
+        isSaveModalOpen: false,
+        isHallOfFameOpen: false,
+        isDailyChallengeOpen: false,
+        recentlyUnlockedAchievement: null,
+        lastSavedAt: null,
+        priceHistory: createInitialPriceHistory(fresh.market),
+        globalPriceHistory: createInitialGlobalPriceHistory(fresh.player.currentCityId, fresh.market),
+        isDrugGraphOpen: false,
+        selectedGraphDrugId: null,
+        isGlobalAnalyticsOpen: false,
+        tradeModal: { isOpen: false, drugId: null, mode: 'buy' },
+      });
+      soundEngine.play('victory');
+      return {
+        success: true,
+        message: `Bounty run [${challenge?.title ?? challengeId}] initialized with seed [${seed}]`,
+      };
     },
 
     // Tactical Firefight Duel Combat State
@@ -1015,6 +1081,41 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       if (state.player.isGameOver) {
         soundEngine.play(state.player.health <= 0 ? 'defeat' : 'victory');
+        if (state.player.activeChallengeId) {
+          const score = getTotalWealth(state.player);
+          const outcome = state.player.health <= 0 ? 'killed' : 'completed';
+          const proofCode = generateChallengeProofCode(
+            state.player.activeChallengeId,
+            state.player.activeChallengeSeed || 'SEED',
+            score,
+            state.player.currentDay,
+            outcome
+          );
+          const challenge = BOUNTY_CHALLENGES.find((c) => c.id === state.player.activeChallengeId);
+          saveDailyChallengeRecord({
+            id: `chal_${Date.now()}`,
+            challengeId: state.player.activeChallengeId,
+            challengeTitle: challenge?.title ?? 'Challenge Run',
+            seed: state.player.activeChallengeSeed || 'SEED',
+            date: new Date().toISOString().slice(0, 10),
+            timestamp: Date.now(),
+            finalScore: score,
+            netWorth: getTotalWealth(state.player),
+            daysSurvived: state.player.currentDay,
+            maxDays: state.player.maxDays,
+            finalRank: RANK_MAP.get(state.player.currentRankId)?.name ?? state.player.currentRankId,
+            outcome,
+            proofCode,
+            verified: true,
+          });
+          state.logs.unshift({
+            day: state.player.currentDay,
+            city: 'Cartel Command',
+            type: 'system',
+            message: `🔐 BOUNTY RUN RECORDED: Score: ${score.toLocaleString()} PTS • Proof: ${proofCode}`,
+            timestamp: Date.now(),
+          });
+        }
       } else if (state.player.activeEncounter) {
         soundEngine.play('police');
       } else if (state.player.currentRankId !== prevRank) {
@@ -1243,7 +1344,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         combatLogs.unshift(`[R${roundNum}] TACTICAL COVER: Ducked behind armored barricade (-50% incoming damage this turn).`);
         soundEngine.play('click');
       } else if (action === 'flee') {
-        const fleeSuccess = isGod || Math.random() > 0.35;
+        const fleeBonus = state.player.challengeModifiers?.fleeAgilityBonus ?? 0;
+        const fleeThreshold = Math.max(0.08, 0.35 - fleeBonus);
+        const fleeSuccess = isGod || Math.random() > fleeThreshold;
         if (fleeSuccess) {
           combatLogs.unshift(`[R${roundNum}] ESCAPE: Dashed down subway steps and broke contact!`);
           state.logs.unshift({
@@ -1764,6 +1867,40 @@ export const useGameStore = create<GameStore>((set, get) => {
       };
       const result = retireEmpire(state);
       if (result.success) {
+        if (state.player.activeChallengeId) {
+          const score = getTotalWealth(state.player);
+          const proofCode = generateChallengeProofCode(
+            state.player.activeChallengeId,
+            state.player.activeChallengeSeed || 'SEED',
+            score,
+            state.player.currentDay,
+            'retirement'
+          );
+          const challenge = BOUNTY_CHALLENGES.find((c) => c.id === state.player.activeChallengeId);
+          saveDailyChallengeRecord({
+            id: `chal_${Date.now()}`,
+            challengeId: state.player.activeChallengeId,
+            challengeTitle: challenge?.title ?? 'Challenge Run',
+            seed: state.player.activeChallengeSeed || 'SEED',
+            date: new Date().toISOString().slice(0, 10),
+            timestamp: Date.now(),
+            finalScore: score,
+            netWorth: getTotalWealth(state.player),
+            daysSurvived: state.player.currentDay,
+            maxDays: state.player.maxDays,
+            finalRank: RANK_MAP.get(state.player.currentRankId)?.name ?? state.player.currentRankId,
+            outcome: 'retirement',
+            proofCode,
+            verified: true,
+          });
+          state.logs.unshift({
+            day: state.player.currentDay,
+            city: 'Cartel Command',
+            type: 'system',
+            message: `🔐 BOUNTY RUN RECORDED: Score: ${score.toLocaleString()} PTS • Proof: ${proofCode}`,
+            timestamp: Date.now(),
+          });
+        }
         syncStateToMemory(state);
         set({
           player: state.player,

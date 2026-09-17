@@ -472,6 +472,11 @@ export function processCorruptionAndRicoDaily(state: GameEngineState, _isTravel 
     ricoDelta = ricoDelta > 0 ? Math.round(ricoDelta * 0.5) : ricoDelta - 2;
   }
 
+  // Triple audit heat handicap for Swiss Purist challenge
+  if (state.player.challengeModifiers?.tripleAuditHeat && ricoDelta > 0) {
+    ricoDelta = Math.round(ricoDelta * 3);
+  }
+
   // Apply delta
   const prevRico = state.player.ricoMeter ?? 0;
   let newRico = Math.max(0, Math.min(100, prevRico + ricoDelta));

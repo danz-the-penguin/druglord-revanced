@@ -4,7 +4,7 @@ import { Drug } from '../engine/types';
 import { DrugImage } from './DrugImage';
 import { useGameStore } from '../store/gameStore';
 import { getDrugDetails } from '../engine/drugDetails';
-import { LineChart, Globe, Briefcase, AlertTriangle } from 'lucide-react';
+import { Globe, Briefcase, AlertTriangle, Crosshair } from 'lucide-react';
 
 interface CommodityPreviewCardProps {
   drug: Drug;
@@ -446,9 +446,10 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
                         openDrugGraph(drug.id);
                       }}
                       className="py-1.5 px-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                      title="Open 14D Historical Chart & Target Price Estimator"
                     >
-                      <LineChart className="w-3.5 h-3.5" />
-                      <span>Drug Graph</span>
+                      <Crosshair className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Chart & Estimator</span>
                     </button>
 
                     <button

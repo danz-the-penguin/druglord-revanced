@@ -13,6 +13,7 @@ import {
   SyndicateId,
 } from './types';
 import { memoryMirror } from './memoryBuffer';
+import { ORGANIC_DRUG_IDS } from './dailyChallenge';
 import { generateSyndicateContracts, calculatePeaceTributeCost, SYNDICATES, getSyndicateDiscount } from './syndicates';
 import { calculateSeatClassDetails } from './flightNetwork';
 import {
@@ -477,7 +478,10 @@ export function bribePolice(state: GameEngineState): ActionResult {
     return { success: false, message: `Police heat in ${cityName} is already at 0%.` };
   }
 
-  const cost = Math.max(2500, Math.round(currentHeat * 150));
+  let cost = Math.max(2500, Math.round(currentHeat * 150));
+  if (state.player.challengeModifiers?.bribeDiscount) {
+    cost = Math.max(1000, Math.round(cost * (1 - state.player.challengeModifiers.bribeDiscount)));
+  }
   if (state.player.cash < cost) {
     return {
       success: false,
@@ -530,6 +534,10 @@ export function buyProperty(state: GameEngineState, propertyId: string): ActionR
 export function buyWeapon(state: GameEngineState, weaponId: string): ActionResult {
   const item = WEAPON_MAP.get(weaponId);
   if (!item) return { success: false, message: 'Item not found in armory' };
+
+  if (state.player.challengeModifiers?.weaponsBanned && (item.type === 'weapon' || item.type === 'armor')) {
+    return { success: false, message: 'Challenge Rule: Personal weapons & armor prohibited under the Pacifist Smuggler code!' };
+  }
 
   if (item.type === 'armor' && state.player.armor?.id === item.id) {
     return { success: false, message: `You already have ${item.name} equipped` };
@@ -593,6 +601,11 @@ export function buyDrug(
 
   const marketItem = state.market[drugId];
   if (!marketItem) return { success: false, message: 'Drug not found in market' };
+
+  if (state.player.challengeModifiers?.syntheticsOnly && ORGANIC_DRUG_IDS.has(drugId)) {
+    return { success: false, message: 'Challenge Rule: Organic botanical contraband is strictly prohibited in Pure Synthetics mode!' };
+  }
+
   if (marketItem.availableUnits < units) {
     return { success: false, message: 'Not enough units available in market' };
   }
@@ -771,7 +784,11 @@ export function sellDrug(
 
   // Handle revenue for clean genuine units
   if (cleanToSell > 0) {
-    totalRevenue = marketItem.price * cleanToSell;
+    let unitSellPrice = marketItem.price;
+    if (state.player.challengeModifiers?.syntheticMarginBonus && !ORGANIC_DRUG_IDS.has(drugId)) {
+      unitSellPrice = Math.round(unitSellPrice * (1 + state.player.challengeModifiers.syntheticMarginBonus));
+    }
+    totalRevenue = unitSellPrice * cleanToSell;
     state.player.cash += totalRevenue;
 
     const costBasis = inventoryItem.avgCost * cleanToSell;
@@ -1749,7 +1766,11 @@ export function travelToCity(
   let flightDesc = '';
 
   const activeAircraftId = state.player.selectedAircraftId || (state.player.ownedAircraft && state.player.ownedAircraft[0]);
-  const activeAircraft = useOwnedAircraft && activeAircraftId ? AIRCRAFT_MAP.get(activeAircraftId) : null;
+  const activeAircraft = (useOwnedAircraft || state.player.challengeModifiers?.aviationOnly) && activeAircraftId ? AIRCRAFT_MAP.get(activeAircraftId) : null;
+
+  if (state.player.challengeModifiers?.aviationOnly && !activeAircraft) {
+    return { success: false, message: 'Challenge Rule: Commercial passenger flights prohibited! Must fly using your private aircraft.' };
+  }
 
   if (activeAircraft) {
     totalCost = calculateAircraftFlightCost(activeAircraft, state.player.ownedProperties);
