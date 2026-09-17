@@ -1,208 +1,278 @@
+<div align="center">
+
+```
+██████╗ ██████╗ ██╗   ██╗ ██████╗     ██╗      ██████╗ ██████╗ ██████╗ 
+██╔══██╗██╔══██╗██║   ██║██╔════╝     ██║     ██╔═══██╗██╔══██╗██╔══██╗
+██║  ██║██████╔╝██║   ██║██║  ███╗    ██║     ██║   ██║██████╔╝██║  ██║
+██║  ██║██╔══██╗██║   ██║██║   ██║    ██║     ██║   ██║██╔══██╗██║  ██║
+██████╔╝██║  ██║╚██████╔╝╚██████╔╝    ███████╗╚██████╔╝██║  ██║██████╔╝
+╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝ 
+                 : : :  R E V A N C E D  : : :
+```
+
 # 💊 Drug Lord: ReVanced
+### *The Ultimate Underworld Commodity Trading & Cartel Fintech Simulation*
 
-> **The Modern Retro Underworld Commodity Trading & Cartel Syndicate Simulation.**  
-> *A spiritual successor and modern fintech reimagination of Fred Bulback's classic Windows shareware masterpiece, Drug Lord 2.2 (1999–2003).*
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Tests](https://img.shields.io/badge/Vitest-88%2F88%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Tests-88%2F88%20Passing-emerald?logo=vitest)](https://vitest.dev/)
-[![License](https://img.shields.io/badge/License-MIT-amber)](#credits--acknowledgments)
+<p align="center">
+  A ground-up modern reimagination of Fred Bulback's legendary Windows shareware classic <b>Drug Lord 2.2 (1999–2003)</b>.<br>
+  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
+</p>
 
----
-
-## 📖 Overview
-
-**Drug Lord: ReVanced** brings the iconic 90s/00s drug-trading simulation into the modern world with cutting-edge underworld fintech, narco-aviation flight networks, corporate money laundering fronts, intercontinental stash vaults, and black market syndicate diplomacy.
-
-Built with **React 19**, **TypeScript**, **Zustand**, and **Tailwind CSS 4**, *Drug Lord: ReVanced* pairs deep economic simulation and high-stakes turn-based encounters with zero-dependency native Web Audio synthesizers and high-contrast retro aesthetics.
+[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
 
 ---
 
-## 🌟 Key Features
+</div>
 
-### 📈 1. Global Dynamic Economy & 25 Modern Commodities
-Trade across **21 real-world international cities** (from Medellín and Miami to Amsterdam, Tokyo, Zurich, and Hong Kong) with localized pricing algorithms, supply/demand volatility spikes, and DEA heat tracking.
-* **25 Total Commodities**: Includes classics (*Cocaine, Heroin, Opium, PCP, Hashish, LSD*) alongside modern pharmaceuticals and synthetic combat stimulants (*Carfentanil, DMT, Compound-Z, Oxycodone, Codeine Syrup, Tranq*).
-* **Chemical & Pharmacological Dossiers**: Detailed schedules, molecular formulas, street aliases, and regional price multipliers.
-* **Commodity Price History & Radar**: Built-in SVG price charts and 21-city international market arbitrage radar.
+## ⚖️ Evolution: Drug Lord 2.2 vs. ReVanced
 
-### ✈️ 2. Narco-Aviation & Airport Flight Network
-* **Private Fleet**: Acquire private aircraft from bush turboprops to sovereign intercontinental business jets:
-  - *Cessna 208 Caravan Turbo-Smuggler* (+250 Cargo, -40% Customs Risk)
-  - *Beechcraft King Air 350 Twin-Turboprop* (+600 Cargo, -55% Customs Risk)
-  - *Bombardier Learjet 75 XR Sub-Rosa* (+1,500 Cargo, -70% Customs Risk)
-  - *Gulfstream G650ER Sovereign Kingpin* (+4,000 Cargo, -85% Customs Risk)
-* **Real Flight Schedules**: Fly between domestic and international hub airports or clandestine airstrips.
-* **Complimentary Kerosene**: Owning a private aviation hangar or sovereign mountain airstrip reduces all aircraft jet fuel costs to **$0**.
+| Feature Area | Classic *Drug Lord 2.2* (1999–2003) | **Drug Lord: ReVanced** (2026) |
+| :--- | :--- | :--- |
+| **Tech Platform** | Windows 95/98/XP 16/32-bit binary (`.exe`) | Modern Web App (React 19, TypeScript, Tailwind 4, Vite 8) |
+| **Commodities** | 10 fixed legacy street drugs | **25 Commodities** (Classics + Fentanyl, Carfentanil, DMT, Compound-Z) |
+| **World Locations** | 8 basic text locations | **21 Real-World Global Metropolises** with dynamic flight routes & distance |
+| **Aviation System** | None (instant text travel) | **4 Private Aircraft Tiers** with cargo bonus, customs shielding & fuel logistics |
+| **Stash Vaults** | Single local locker | **Multi-City Distributed Vaults** + international logistics courier networks |
+| **Banking & Finance** | Basic bank interest & loan shark | **8 Corporate Shell Laundering Fronts** + forensic CPAs & Swiss banking stakes |
+| **Syndicate Diplomacy** | None | **5 Global Cartel Factions** with standing tiers, peace tributes & contracts |
+| **Audio** | PC speaker beeps | **Zero-Dependency Web Audio API Synthesizer** (retro 90s sound fx engine) |
+| **Persistence** | Single `.sav` file | Multi-slot Data Vault + **Downloadable Career Dossiers & Hall of Fame** |
+| **Debug / Cheats** | Hidden keystrokes | **Interactive Cartel Memory Hex Terminal** (Cheat Engine style memory table) |
 
-### 🏢 3. Real Estate & Multi-City Stash Vaults
-* **8 Property Tiers**: Expand permanent carrying capacity and lower city police heat from Skid Row Tenements (+50 units) to Sovereign Mountain Airfield Compounds (+500,000 units).
-* **Distributed City Vaults**: Deposit excess contraband in safehouse vaults across any unlocked world city.
-* **Underworld Logistics Couriers**: Dispatch overland or maritime couriers to ship stashed contraband across international borders with real transit days and interception risk calculations.
+---
 
-### 🧺 4. Underworld Fintech & Money Laundering Fronts
-* **8 Shell Corporation Tiers**: Layer dirty street cash into clean, audit-shielded bank deposits:
-  - *Coin Laundromats & Car Washes* (Starter cash fronts)
-  - *VIP Nightclubs & Art Galleries* (High-volume nightlife & appraisal layering)
-  - *Freight Logistics Brokerages* (Grants -30% customs risk on international flights)
-  - *Panama Nominee Holding Trusts & Crypto ASIC Mining Pools* (Offshore secrecy)
-  - *Swiss Private Banking Subsidiaries* (1% fee rate and complete immunity to federal tax audits)
-* **Corporate Legal Retainers**: Retain forensic CPAs, offshore defense counsel, and automated micro-smurfing mule rings.
+## 🌟 Key Game Systems
+
+```mermaid
+graph LR
+    subgraph Core Trading Loop
+        A[Spot Markets] -->|Buy Low / Sell High| B[Cash Balance]
+        B -->|Layer Cash| C[Shell Businesses]
+        C -->|Clean Funds| D[Swiss Vaults & Bank]
+    end
+    subgraph Logistics & Fleet
+        B -->|Purchase| E[Properties & Hangars]
+        B -->|Acquire| F[Aviation Fleet]
+        F -->|Fly Routes| A
+        E -->|Stash Contraband| G[Multi-City Vaults]
+        G -->|Dispatch| H[Logistics Couriers]
+    end
+    subgraph Underworld Politics
+        B -->|Fulfill Contracts| I[Cartel Syndicates]
+        I -->|Reputation| J[Wholesale Discounts]
+        A -->|Trade Contraband| K[DEA / Police Heat]
+        K -->|Ambush| L[Tactical Combat]
+    end
+```
+
+### 📈 1. 21-City Global Commodity Market
+* **Dynamic Regional Modifiers**: Real-world geographical economics. Producer cities (Medellín, Bogotá, Bangkok) offer extreme supply discounts; luxury consumer capitals (Zurich, Tokyo, Dubai, London) pay massive markups.
+* **Chemical Dossiers**: Inspect any drug to reveal molecular weight, chemical formula, DEA legal schedules, clinical pharmacology, and street aliases.
+* **Global Price Radar**: One-click 21-city price arbitrage matrix identifying the most lucrative international smuggling routes.
+
+### ✈️ 2. Narco-Aviation & Private Fleet
+Own and fly private smuggling aircraft between international hub airports and clandestine strips:
+* **Cessna 208 Caravan Smuggler** — Rugged bush turboprop (+250 cargo, -40% customs risk).
+* **Beechcraft King Air 350 ER** — Pressurized twin-turboprop (+600 cargo, -55% customs risk).
+* **Bombardier Learjet 75 XR** — High-mach VIP private jet (+1,500 cargo, -70% customs risk).
+* **Gulfstream G650ER Sovereign** — Intercontinental flagship (+4,000 cargo, -85% customs risk).
+* **Private Aviation Hangar**: Owning a private hangar or sovereign mountain compound provides free kerosene, dropping all jet fuel flight costs to **$0**.
+
+### 🏢 3. Real Estate & Multi-City Stash Network
+* **8 Property Tiers**: Expand storage from *Skid Row Tenements* (50 units) to *Fortified Border Ranches* (5,000 units), *Commercial Warehouses* (25,000 units), and *Sovereign Mountain Airfields* (500,000 units).
+* **City Stash Vaults**: Store drugs safely in any city to wait out market slumps.
+* **Intercontinental Couriers**: Dispatch overland or maritime smuggling couriers to transport contraband between international vaults with calculated travel times and interception risk.
+
+### 🧺 4. Underworld Fintech & Money Laundering
+Avoid FinCEN asset forfeiture by structuring and layering illicit street profits:
+* **8 Shell Business Fronts**: Coin Laundromats, Express Car Washes, VIP Nightclubs, Fine Art Galleries, Customs Brokerages, Panama Bearer Holding Trusts, ASIC Crypto Mining Pools, and Swiss Private Banking Subsidiaries.
+* **Corporate Legal Upgrades**: Retain forensic CPAs, offshore defense attorneys, and automated micro-smurfing mule networks to suppress audit risks.
 
 ### 🤝 5. Cartel Syndicates & Black Market Diplomacy
-Interact with 5 major global crime syndicates:
-* **Medellín Cartel** (*Los Extraditables*) — Cocaine & Crack
+Manage diplomatic relations with 5 international crime syndicates:
+* **Medellín Cartel** (*Los Extraditables*) — Cocaine & Crack Cocaine
 * **Golden Triangle Triads** (*The Black Lotus Triad*) — Raw Opium & Refined Heroin
 * **Synthetic Chem Guild** (*Apex Synthetics*) — Ice, Fentanyl, Tranq & Ketamine
 * **European Designer Ring** (*Euro-Nightlife*) — Pure MDMA, Liquid LSD & MDA
-* **Balkan Smugglers Consortium** (*The Iron Adriatic Network*) — Speed, Kat & Military Ordnance
-* **Diplomatic Standings**: Advance through 5 standing tiers (*Nemesis, Hostile, Neutral, Associate, Allied Don*) to unlock up to 30% wholesale discounts or pay peace tributes to call off hit squads.
-* **Smuggling Contracts**: Accept time-sensitive cross-border supply runs for massive cash bounties and reputation boosts.
+* **Balkan Smugglers Consortium** (*The Iron Adriatic*) — Speed, Kat, Hashish & Weapons
+* **Reputation Tiers**: Advance from *Nemesis* and *Hostile* up to *Associate* and *Allied Don* for up to **30% wholesale commodity discounts**.
+* **Peace Tributes**: Wire tribute cash to cartel bosses to call off hit squads.
+* **Supply Contracts**: Deliver required contraband parcels to target cities within strict deadlines for massive cash bonuses and syndicate standing.
 
-### 👑 6. Underworld Hierarchy & Insolvency Checker
-Progress from street-level **Wannabe** up to untouchable **Drug Lord**:
-* **Live Net Worth Progression**: Dynamic tracking of net worth requirements and 3-day capital hold checks.
-* **Insolvency Demotion Alert**: Automatic warning system if net worth falls below rank requirements, with a 3-day countdown before demotion.
+### ⚔️ 6. Tactical Turn-Based Combat
+Encounter local street cops, DEA federal task forces, tactical SWAT squads, and armed loan shark enforcers.
+* **Weapons**: Combat Knives, 9mm Pistols, 12-Gauge Shotguns, SMGs, Dynamite, Hand Grenades, Flamethrowers, and Anti-SWAT Rocket Launchers.
+* **Tactical Gear**: M84 Stun Flashbangs (forces enemy miss), Tactical Smoke Screens (+50% escape probability), Military Combat Medkits (+40 HP), and No-Scent Chemical Sprays (masks cargo from airport sniffer dogs).
 
-### ⚔️ 7. Tactical Combat & Armory
-Turn-based combat encounters against local beat police, DEA tactical units, SWAT squads, and loan shark enforcers.
-* **Weapons**: Combat Knives, 9mm Pistols, 12-Gauge Shotguns, SMGs, Dynamite, Fragmentation Grenades, Flamethrowers, and Rocket Launchers.
-* **Armor**: Heavy Leather Coats, Bulletproof Kevlar Vests, and experimental Energy Globes.
-* **Tactical Gear**: M84 Flashbangs (blinds enemies), Tactical Smoke Screens (+50% escape probability), Military Medkits (+40 HP), and No-Scent Sprays (masks cargo from airport sniffer dogs).
+### 👑 7. Dealer Hierarchy & Demotion Radar
+* Rise through 6 underworld standing ranks: **Wannabe ➔ Small-time Operator ➔ Dealer ➔ Big-Time Dealer ➔ Distributor ➔ Drug Lord**.
+* **Live Solvency Checker**: Hover the dealer badge to track promotion requirements and 3-day hold milestones. If your net worth drops below the rank threshold, a 3-day insolvency timer warns you before stripping status.
 
-### 💾 8. Persistence, Hall of Fame & Career Dossiers
-* **Data Vault**: Multi-slot local persistence with auto-save, manual export, and import.
-* **Hall of Fame**: Persistent leaderboard celebrating your greatest kingpin careers with downloadable dossiers.
-* **Endless Mode**: Play 30-day, 60-day, 90-day campaigns, or rule the world indefinitely.
-
-### 👾 9. Cartel Debug Terminal (Cheat Table)
-* Built-in retro Cheat Engine-style memory inspector and command terminal (toggle via the `~` key or header button).
-* Supports instant memory editing and classic codes: `hesoyam`, `god`, `teleport <city>`, `give <drug> <qty>`, `clear_heat`, `rep <syndicate> <val>`, and more.
-
-### 🔊 10. Zero-Dependency Retro Web Audio Synthesizer
-* Native Web Audio API synthesizer synthesizing authentic 90s PC sound effects (coin chimes, 8-bit gunshots, airport flight announcements, police sirens, pager alerts, cash registers).
+### 💾 8. Hall of Fame & Career Dossiers
+* **Data Vault**: Multi-slot browser local storage persistence with JSON import/export.
+* **Hall of Fame**: Persistent leaderboard archiving your greatest criminal empires with shareable career dossiers and score calculations.
+* **Endless Mode**: Play fixed 30, 60, 90-day campaigns, or rule the world indefinitely.
 
 ---
 
-## 🎨 Asset Directory & Custom Artwork
+## 📦 25-Commodity Market Catalog
 
-The game includes fully responsive SVG fallbacks for every entity. You can drop custom `.png` images into `public/assets/` to immediately customize the visuals without code changes:
-
-| Category | Target Directory | Recommended Dimensions | Format | Total Assets |
-| :--- | :--- | :--- | :--- | :--- |
-| **Drugs** | `public/assets/drugs/` | 256×256 or 512×512 | PNG (transparent) | 25 |
-| **Weapons & Armor** | `public/assets/weapons/` | 256×256 or 512×512 | PNG (transparent) | 15 |
-| **Properties** | `public/assets/properties/` | 800×450 (16:9) | PNG / JPG | 8 |
-| **Aircraft** | `public/assets/aircraft/` | 800×450 (16:9) | PNG / JPG | 4 |
-| **Shell Businesses** | `public/assets/shells/` | 256×256 or 512×512 | PNG (transparent) | 8 |
-| **Loan Sharks** | `public/assets/sharks/` | 256×256 or 512×512 | PNG (portrait) | 5 |
-| **Syndicates** | `public/assets/syndicates/` | 256×256 or 512×512 | PNG (seal/logo) | 5 |
-| **Dealer Ranks** | `public/assets/ranks/` | 256×256 or 512×512 | PNG (crest) | 6 |
+| Commodity | Scientific / Chemical Formula | Base Price | Market Volatility | Primary Smuggling Hubs |
+| :--- | :--- | :---: | :---: | :--- |
+| **Cocaine** | $C_{17}H_{21}NO_4$ (Benzoylmethylecgonine) | $22,000 | ±35% | Medellín, Bogotá ➔ Miami, New York |
+| **Compound-Z** | $C_{32}H_{48}N_6O_4$ (Synthetic Combat Stimulant) | $16,500 | ±40% | Berlin, Zurich ➔ Tokyo, London |
+| **Heroin** | $C_{21}H_{23}NO_5$ (Diacetylmorphine) | $9,000 | ±30% | Bangkok, Hong Kong ➔ Frankfurt, London |
+| **Carfentanil** | $C_{24}H_{30}N_2O_3$ (Wildnil) | $4,800 | ±45% | Tijuana, Mexico City ➔ Detroit, Chicago |
+| **Crack** | $C_{17}H_{21}NO_4$ (Freebase Cocaine) | $2,400 | ±35% | Miami, Los Angeles ➔ Atlanta, New York |
+| **Ice** | $C_{10}H_{15}N$ (d-Methamphetamine HCl) | $1,800 | ±25% | Tijuana, Phoenix ➔ Sydney, Tokyo |
+| **PCP** | $C_{17}H_{25}N$ (Phencyclidine) | $1,100 | ±25% | Los Angeles, San Francisco ➔ New York |
+| **Opium** | $C_{17}H_{19}NO_3$ (Papaver Somniferum) | $800 | ±20% | Bangkok, Istanbul ➔ Marseille, Zurich |
+| **Hashish** | $C_{21}H_{30}O_2$ (Cannabis Sativa Resin) | $750 | ±20% | Casablanca, Istanbul ➔ Amsterdam, Paris |
+| **Krokodil** | $C_{17}H_{21}NO_2$ (Desomorphine) | $650 | ±35% | Moscow, Kyiv ➔ Berlin, Warsaw |
+| **DMT** | $C_{12}H_{16}N_2$ (The Spirit Molecule) | $580 | ±35% | Rio de Janeiro, Lima ➔ San Francisco, Ibiza |
+| **Oxycodone** | $C_{18}H_{21}NO_4$ (Diverted Oxy 80) | $380 | ±32% | Miami, Detroit ➔ Boston, Philadelphia |
+| **LSD** | $C_{20}H_{25}N_3O$ (Lysergic Acid Diethylamide) | $320 | ±30% | Amsterdam, San Francisco ➔ London, Berlin |
+| **Morphine** | $C_{17}H_{19}NO_3$ (Morphine Sulfate M 15) | $260 | ±25% | London, Frankfurt ➔ Vienna, Prague |
+| **Peyote** | $C_{11}H_{17}NO_3$ (Mescaline Buttons) | $220 | ±20% | Mexico City, Phoenix ➔ Denver, Austin |
+| **Fentanyl** | $C_{22}H_{28}N_2O$ (Synthetic Cut) | $180 | ±38% | Tijuana, Vancouver ➔ Philadelphia, Baltimore |
+| **Codeine** | $C_{18}H_{21}NO_3$ (Promethazine Cough Syrup) | $160 | ±28% | Houston, Atlanta ➔ Los Angeles, Miami |
+| **Speed** | $C_9H_{13}N$ (dl-Amphetamine Sulfate) | $150 | ±25% | Frankfurt, Warsaw ➔ London, Amsterdam |
+| **Tranq** | $C_{12}H_{16}N_2S$ (Xylazine Hydrochloride) | $140 | ±30% | Philadelphia, Baltimore ➔ Newark, Boston |
+| **MDA** | $C_{10}H_{13}NO_2$ (Tenamfetamine) | $110 | ±25% | Ibiza, Amsterdam ➔ Berlin, Miami |
+| **Mushrooms** | $C_{12}H_{17}N_2O_4P$ (Psilocybin) | $90 | ±20% | Seattle, Vancouver ➔ Denver, Portland |
+| **Pot** | $C_{21}H_{30}O_2$ (Cannabis Sativa Flower) | $60 | ±20% | Los Angeles, Denver ➔ Worldwide |
+| **Special K** | $C_{13}H_{16}ClNO$ (Ketamine HCl) | $55 | ±25% | London, Manchester ➔ Ibiza, Berlin |
+| **Ecstasy** | $C_{11}H_{15}NO_2$ (MDMA Party Tablets) | $45 | ±30% | Amsterdam, Brussels ➔ London, Ibiza |
+| **Kat** | $C_9H_{11}NO$ (S-Cathinone Leaves) | $12 | ±20% | Nairobi, Addis Ababa ➔ London, Dubai |
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 👾 Cartel Debug Terminal & Cheat Table
 
-```mermaid
-graph TD
-    A[Vite 8 + React 19] --> B[Zustand Game State Engine]
-    B --> C[Economy & Market Simulation]
-    B --> D[Narco-Aviation & Flight Network]
-    B --> E[Multi-City Safehouse Vaults & Freight]
-    B --> F[Shell Businesses & Money Laundering]
-    B --> G[Syndicates & Underworld Diplomacy]
-    B --> H[Tactical Turn-Based Combat]
-    B --> I[Native Web Audio Synthesizer Engine]
-    B --> J[Data Vault & Hall of Fame Persistence]
+Press **`~`** (tilde) or click the **Terminal** button in the header to open the Cheat Engine-inspired memory inspector.
+
+### Memory Offset Table
+```
+[Address]      [Type]    [Description]                          [Value]
+0x00401000     DWORD     Player Liquid Cash                     $450,000
+0x00401004     DWORD     Swiss Bank Account Balance             $1,250,000
+0x00401008     DWORD     Loan Shark Principal Debt              $0
+0x0040100C     BYTE      Player Health (0-100 HP)               100
+0x00401010     WORD      Current Game Day                       14
+0x00401014     BYTE      Current City Police Heat (0-100%)      15%
+0x00401018     STRING    Current Location City ID               "medellin"
+0x0040101C     WORD      Bonus Stash Capacity Units             +500
 ```
 
-* **Frontend**: React 19, TypeScript, Tailwind CSS 4, Lucide React Icons
-* **State Management**: Zustand 5 with immutable state transitions
-* **Audio Engine**: 100% dependency-free HTML5 Web Audio API synth
-* **Testing**: Vitest (88/88 unit tests across 10 engine test suites)
-* **Build System**: Vite 8 + Rolldown/esbuild
+### Console Commands
+* `hesoyam` — Classic refill: Grants +$250,000 cash, 100 HP, and repairs active armor.
+* `god` — Toggles invincibility and maximum combat damage.
+* `teleport <city_id>` — Instant transit to any world city with zero travel days consumed.
+* `give <drug_id> <quantity>` — Spawn specified contraband units directly into your pocket.
+* `clear_heat` — Wipes all police and DEA attention in the current city back to 0%.
+* `clear_debt` — Liquidates all outstanding loan shark debt immediately.
+* `rep <syndicate_id> <value>` — Sets syndicate standing (-100 to +100).
+* `day <day_number>` — Skips or rewinds the calendar day.
+
+---
+
+## 🎨 Custom Asset Directory
+
+The engine features responsive SVG fallbacks for every commodity, weapon, property, plane, shell company, and syndicate. Drop square `.png` files into `public/assets/` to instantly replace the artwork:
+
+```
+public/assets/
+├── drugs/         # 25 files: cocaine.png, carfentanil.png, dmt.png, etc.
+├── weapons/       # 15 files: pistol.png, shotgun.png, bullet_proof_vest.png, etc.
+├── properties/    # 8 files:  skid_row_shack.png, private_hangar.png, etc.
+├── aircraft/      # 4 files:  cessna_smuggler.png, gulfstream_g650.png, etc.
+├── shells/        # 8 files:  laundromat.png, nightclub.png, crypto_farm.png, etc.
+├── sharks/        # 5 files:  buddles.png, laughing_max.png, etc.
+├── syndicates/    # 5 files:  medellin.png, golden_triangle.png, etc.
+└── ranks/         # 6 files:  wannabe.png, dealer.png, drug_lord.png, etc.
+```
+
+---
+
+## 🕹️ Keyboard Shortcuts
+
+| Key | Action |
+| :---: | :--- |
+| **`~`** / **``` ` ```** | Toggle Cartel Debug Terminal (Cheat Console) |
+| **`Esc`** | Close active inspection popover, modal, or market dossier |
+| **`B`** | Quick Buy modal for selected commodity |
+| **`S`** | Quick Sell modal for selected commodity |
+| **`T`** | Open Aviation & Travel Flight Network |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-* [Node.js](https://nodejs.org/) (v18.0 or newer)
-* [npm](https://www.npmjs.com/) (v9.0 or newer)
+* **Node.js** v18.0 or newer
+* **npm** v9.0 or newer
 
 ### Installation
+```bash
+# 1. Clone the repository
+git clone https://github.com/danz-the-penguin/druglord-revanced.git
+cd druglord-revanced
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/danz-the-penguin/druglord-revanced.git
-   cd druglord-revanced
-   ```
+# 2. Install dependencies
+npm install
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+# 3. Start local development server
+npm run dev
+```
+Open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
-3. **Start the local development server**:
-   ```bash
-   npm run dev
-   ```
-   *Open [http://localhost:5173](http://localhost:5173) in your browser.*
+### Test Suites
+Run the comprehensive 88-test engine test suite:
+```bash
+npm test
+```
 
-4. **Run test suites**:
-   ```bash
-   npm test
-   ```
-
-5. **Build for production**:
-   ```bash
-   npm run build
-   ```
+### Production Build
+```bash
+npm run build
+npm run preview
+```
 
 ---
 
-## 🌐 Deployment
+## 🌐 Deployment to Vercel
 
-### Deploy to Vercel (Recommended)
+The project includes pre-configured SPA routing via [`vercel.json`](vercel.json).
 
-This repository includes a preconfigured `vercel.json` with SPA routing rules.
-
-#### Method 1: Using the Vercel CLI
+### Option 1: Vercel CLI (Instant)
 ```bash
-npm i -g vercel   # If not already installed
+npm i -g vercel
 vercel --prod
 ```
 
-#### Method 2: Git Integration via Vercel Dashboard
-1. Go to [vercel.com/new](https://vercel.com/new).
-2. Import the `danz-the-penguin/druglord-revanced` repository.
-3. Framework preset will automatically detect **Vite**.
-4. Click **Deploy**. Vercel will build and deploy automatically on every `git push`.
-
----
-
-## 🕹️ Keyboard Shortcuts
-
-| Shortcut | Action |
-| :--- | :--- |
-| `~` / `` ` `` | Toggle Cartel Debug Terminal (Cheat Console) |
-| `Esc` | Close open modal or dossier |
-| `B` | Quick Buy modal for selected commodity |
-| `S` | Quick Sell modal for selected commodity |
-| `T` | Open Flight & Travel Network |
+### Option 2: Continuous Deployment via GitHub
+1. Navigate to **[vercel.com/new](https://vercel.com/new)**.
+2. Select and import **`danz-the-penguin/druglord-revanced`**.
+3. Vercel automatically detects the **Vite** preset (`npm run build` ➔ `dist`).
+4. Click **Deploy**. Every subsequent `git push` to `master` will trigger a live production build.
 
 ---
 
 ## 📜 Credits & Acknowledgments
 
-* **Original Game Concept & Design**: **Fred Bulback** (1999–2003) — creator of the classic Windows shareware game *Drug Lord 2.2*.
-* **ReVanced Edition Design & Engineering**: Modernized, expanded, and maintained by **danz-the-penguin**.
-* Dedicated to all classic BBS, DOS, and Windows simulation gamers.
+* **Original Game Concept & Design**: **Fred Bulback** (1999–2003), creator of the original Windows shareware game *Drug Lord 2.2*.
+* **ReVanced Edition Engineering**: Modernized, redesigned, and maintained by **[danz-the-penguin](https://github.com/danz-the-penguin)**.
+* Dedicated to the vibrant history of classic BBS, MS-DOS, and early Windows simulation gaming.
 
 ---
 
 <div align="center">
-  <sub>Drug Lord: ReVanced is a fictional satire and economic simulation game. It does not endorse or promote illegal activities.</sub>
+  <sub><b>Disclaimer:</b> <i>Drug Lord: ReVanced</i> is a satirical economic simulation and strategic work of fiction. It is intended solely for entertainment purposes and does not advocate, endorse, or promote illegal drug trade or illicit activities.</sub>
 </div>
