@@ -13,19 +13,6 @@
     "description": "High-purity crystalline alkaloid. Massive margins, heavy DEA focus."
   },
   {
-    "id": "fentanyl",
-    "name": "Fentanyl",
-    "scientificName": "N-(1-Phenethyl-4-piperidinyl)propionanilide",
-    "chemicalFormula": "C22H28N2O",
-    "molecularWeight": "336.47 g/mol",
-    "image": "/assets/drugs/fentanyl.png",
-    "minPrice": 11000,
-    "maxPrice": 26000,
-    "basePrice": 17500,
-    "volatility": 0.38,
-    "description": "Ultra-potent synthetic piperidine opioid. Microgram dosing creates astronomical profit margins, but draws lethal federal scrutiny."
-  },
-  {
     "id": "heroin",
     "name": "Heroin",
     "scientificName": "Diacetylmorphine",
@@ -154,6 +141,19 @@
     "basePrice": 220,
     "volatility": 0.2,
     "description": "Dried spineless cactus buttons rich in mescaline alkaloid."
+  },
+  {
+    "id": "fentanyl",
+    "name": "Fentanyl",
+    "scientificName": "Doctored Morphine (Synthetic Cut)",
+    "chemicalFormula": "C22H28N2O",
+    "molecularWeight": "336.47 g/mol",
+    "image": "/assets/drugs/fentanyl.png",
+    "minPrice": 80,
+    "maxPrice": 320,
+    "basePrice": 180,
+    "volatility": 0.38,
+    "description": "Doctored morphine pressed into cheap street counterfeit doses. Significantly cheaper to produce than hospital ampoules, but carries high overdose volatility."
   },
   {
     "id": "speed",
