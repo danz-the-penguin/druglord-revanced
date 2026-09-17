@@ -40,6 +40,12 @@ import {
   SOVEREIGN_SANCTUARIES,
   SANCTUARY_MAP,
 } from './corruption';
+import {
+  processTurfWarsAndMacroEventsDaily,
+  getMacroCustomsMultiplier,
+  triggerTurfWar,
+  triggerMacroEvent,
+} from './turfWars';
 
 export {
   hasActiveOfficial,
@@ -54,6 +60,10 @@ export {
   CORRUPT_MAP,
   SOVEREIGN_SANCTUARIES,
   SANCTUARY_MAP,
+  processTurfWarsAndMacroEventsDaily,
+  getMacroCustomsMultiplier,
+  triggerTurfWar,
+  triggerMacroEvent,
 };
 
 export interface GameEngineState {
@@ -206,6 +216,8 @@ export function createInitialState(durationMode: GameDurationMode = 'classic'): 
     ricoMeter: 0,
     isBankFrozen: false,
     pendingRaidWarning: null,
+    activeTurfWars: [],
+    activeMacroEvents: [],
     stats: {
       combatWins: 0,
       bribesCount: 0,
@@ -1575,6 +1587,9 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
   // 5f. Process corruption payroll retainers & Grand Jury RICO Indictment Meter
   processCorruptionAndRicoDaily(state, isTravel);
 
+  // 5g. Process Syndicate Turf Wars and Black Swan Macro Shocks
+  processTurfWarsAndMacroEventsDaily(state);
+
   // Check game over by calendar (only in timed modes, not Endless)
   if (!state.player.isEndless && state.player.currentDay > state.player.maxDays) {
     state.player.isGameOver = true;
@@ -1589,11 +1604,13 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
     return;
   }
 
-  // 6. Regenerate market for current city with inside intelligence forecasting
+  // 6. Regenerate market for current city with inside intelligence forecasting, turf wars, and macro events
   const { market, events } = generateCityMarket(
     state.player.currentCityId,
     state.player.currentDay,
-    state.player.activeIntel
+    state.player.activeIntel,
+    state.player.activeTurfWars,
+    state.player.activeMacroEvents
   );
   state.market = market;
 
@@ -1786,7 +1803,8 @@ export function travelToCity(
         const heatPenalty = (originHeat / 100) * 0.35; // up to +35% risk
         const corporateBonus = calculateCustomsBonusFromBusinesses(state.player.ownedBusinesses);
         const riskReduction = customsReduction + corporateBonus;
-        const effectiveCustomsRisk = Math.max(0.02, Math.min(0.85, (targetCity.dogRisk + heatPenalty) * (1 - riskReduction)));
+        const macroCustomsMult = getMacroCustomsMultiplier(targetCityId, state.player.activeMacroEvents);
+        const effectiveCustomsRisk = Math.max(0.02, Math.min(0.95, (targetCity.dogRisk + heatPenalty) * (1 - riskReduction) * macroCustomsMult));
 
         const dogRoll = Math.random();
       if (dogRoll < effectiveCustomsRisk) {
@@ -1848,6 +1866,31 @@ export function travelToCity(
         });
         break;
       }
+    }
+  }
+
+  // Check Active Cartel Turf War Crossfire Ambush
+  if (!state.player.activeEncounter && state.player.activeTurfWars && state.player.activeTurfWars.length > 0) {
+    const activeWarInCity = state.player.activeTurfWars.find((w) => w.contestedCityIds.includes(targetCityId));
+    if (activeWarInCity && Math.random() < (activeWarInCity.travelDangerBonus || 0.35)) {
+      state.player.activeEncounter = {
+        id: `turf_war_${Date.now()}`,
+        enemyId: 'cartel_gunmen',
+        enemyName: `${activeWarInCity.attackerName} vs. ${activeWarInCity.defenderName} Crossfire`,
+        count: 4,
+        danger: 7,
+        bribeCost: Math.max(2500, Math.round(state.player.cash * 0.35)),
+        canFlee: true,
+        canBribe: true,
+        status: 'active',
+      };
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: targetCity.name,
+        type: 'combat',
+        message: `⚔️ TURF WAR CROSSFIRE: Landing in contested ${targetCity.name}, you are ambushed by armed fighters from ${activeWarInCity.attackerName} and ${activeWarInCity.defenderName}!`,
+        timestamp: Date.now(),
+      });
     }
   }
 

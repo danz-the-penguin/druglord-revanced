@@ -90,6 +90,13 @@ Type any of the following commands into the terminal prompt (`>`) and press **`E
 | `hotspots` | `hotspots` | Lists all dynamic geopolitical smuggling hotspots (port strikes, cartel turf wars, border crackdowns, canine units, and sovereign havens). |
 | `blockade <city_id>` | `blockade miami` | Triggers a tactical DEA / SWAT blockade cordon on a target city (sets local heat to 85% and schedules an immediate raid alert). |
 
+### ⚔️ Syndicate Turf Wars & Black Swan Macro Shocks (Phase 4)
+
+| Command Syntax | Example | Description |
+| :--- | :--- | :--- |
+| `turf_war <attacker> <defender>` | `turf_war medellin balkan` | Ignites an armed syndicate war between two cartels (`medellin`, `sinaloa`, `yakuza`, `balkan`, `triad`, `cali`, `synthetic_chem`, `designer_ring`) over contested hub cities. Specialty drugs surge +150% to +250% (2.2x–3.5x multiplier) with +35% travel ambush crossfire hazard. |
+| `macro_event <type>` | `macro_event federal_task_force` | Triggers a multi-day global black swan macroeconomic shock (`deep_web_takedown`, `port_strike`, `federal_task_force`, `border_clashes`, `precursor_embargo`). |
+
 ### 📡 Intelligence & Audio Synthesis
 
 | Command Syntax | Example | Description |

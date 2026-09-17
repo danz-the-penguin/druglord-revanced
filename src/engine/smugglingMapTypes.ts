@@ -86,3 +86,31 @@ export interface FlightAnimationState {
   isCustomsBypassed: boolean;
   unmaskedContraband: number;
 }
+
+export interface CartelPatrolVector {
+  id: string;
+  name: string;
+  syndicateName: string;
+  type: 'speedboat' | 'container_corridor' | 'overland_pipeline' | 'jungle_river';
+  pathString: string;
+  description: string;
+  color: string;
+}
+
+export interface StormHazardZone {
+  id: string;
+  name: string;
+  code: string;
+  center: MapPoint;
+  radius: number;
+  description: string;
+  severity: 'warning' | 'severe';
+  spiralPath: string;
+}
+
+export interface TopographyContour {
+  id: string;
+  name: string;
+  pathString: string;
+}
+

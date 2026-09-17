@@ -923,7 +923,9 @@ export const useGameStore = create<GameStore>((set, get) => {
           targetCityId,
           state.market,
           state.player.currentDay,
-          state.player.activeIntel
+          state.player.activeIntel,
+          state.player.activeTurfWars,
+          state.player.activeMacroEvents
         );
         const updatedGlobal = { ...get().globalPriceHistory };
         for (const drug of DRUGS) {
@@ -985,7 +987,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         state.player.currentCityId,
         state.market,
         state.player.currentDay,
-        state.player.activeIntel
+        state.player.activeIntel,
+        state.player.activeTurfWars,
+        state.player.activeMacroEvents
       );
       const updatedGlobal = { ...get().globalPriceHistory };
       for (const drug of DRUGS) {

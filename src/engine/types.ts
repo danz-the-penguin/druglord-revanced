@@ -345,6 +345,8 @@ export interface PlayerState {
   ricoMeter?: number;
   isBankFrozen?: boolean;
   pendingRaidWarning?: import('./corruptionTypes').RaidWarning | null;
+  activeTurfWars?: import('./turfWarTypes').ActiveTurfWar[];
+  activeMacroEvents?: import('./turfWarTypes').ActiveMacroEvent[];
   stats?: PlayerStats;
   cheats: {
     godMode: boolean;

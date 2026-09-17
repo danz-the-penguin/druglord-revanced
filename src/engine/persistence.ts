@@ -262,6 +262,8 @@ export function parseAndValidateSave(rawInput: string): { success: true; data: D
   p.ricoMeter = typeof p.ricoMeter === 'number' ? p.ricoMeter : 0;
   p.isBankFrozen = typeof p.isBankFrozen === 'boolean' ? p.isBankFrozen : false;
   p.pendingRaidWarning = p.pendingRaidWarning || null;
+  p.activeTurfWars = Array.isArray(p.activeTurfWars) ? p.activeTurfWars : [];
+  p.activeMacroEvents = Array.isArray(p.activeMacroEvents) ? p.activeMacroEvents : [];
   p.stats = p.stats || {
     combatWins: 0,
     bribesCount: 0,

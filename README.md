@@ -17,15 +17,15 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Vitest-153%2F153%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-163%2F163%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 <p align="center">
   A ground-up modern reimagination of Fred Bulback's legendary Windows shareware classic <b>Drug Lord 2.2 (1999–2003)</b>.<br>
-  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, corrupt officials on retainer, federal RICO grand jury wiretaps, an interactive 2D vector world smuggling map with real-time DEA blockade zones, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
+  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, corrupt officials on retainer, federal RICO grand jury wiretaps, high-fidelity interactive world smuggling map with zoom/pan and tactical overlays, syndicate turf wars, black swan macroeconomic shocks, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
 </p>
 
-[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [⚖️ Corruption & RICO](#-corruption-informants--federal-rico-engine) • [🗺️ Smuggling Map](#-interactive-world-smuggling-map--geopolitical-radar) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
+[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [⚖️ Corruption & RICO](#-corruption-informants--federal-rico-engine) • [🗺️ Smuggling Map](#-interactive-world-smuggling-map--geopolitical-radar) • [⚔️ Turf Wars & Macro Shocks](#-cartel-turf-wars--dynamic-market-shocks) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
 
 ---
 
@@ -119,27 +119,48 @@ Infiltrate law enforcement, subvert federal surveillance, and evade sealed indic
   * Asylum quashes the federal warrant, resets RICO meter to 10%, unfreezes bank accounts (levying a 15% DOJ forfeiture penalty), and logs an extradition escape.
 
 ### 🗺️ 6. Interactive World Smuggling Map & Geopolitical Radar
-Replaces text-based location menus with an interactive command center:
-* **2D Vector World Map Engine**:
-  * Equirectangular projection mapping 30 global metropolises onto real-world latitude/longitude coordinates.
-  * High-fidelity SVG continent vectors, equator/tropics/meridian grid lines, and retro CRT radar sweeps.
+Replaces text-based location menus with a high-fidelity interactive command center:
+* **High-Fidelity 2D Vector Coastlines & Island Chains**:
+  * Equirectangular projection mapping 30 global metropolises onto precise latitude/longitude coordinates.
+  * Replaced simplified blocky landmasses with smooth SVG vector continent coastlines.
+  * Enhanced with major archipelagoes and island chains: Caribbean, British Isles, Mediterranean isles, Japanese archipelago, Maritime Southeast Asia, New Zealand, Iceland, and Madagascar.
+* **Tactical Topography Contours**:
+  * Elevation vectors tracing the planet's major cordilleras and smuggling choke ridges: the Rocky Mountains, the Andean Highlands, the European Alps, the Himalayan Spine, and the Great Rift Valley.
+* **Smooth Zoom & Pan Navigation Controls**:
+  * Interactive canvas navigation with mouse drag-to-pan, scroll-wheel zoom, and floating HUD controls (`+`, `-`, `Reset`, zoom level indicator).
+  * Regional viewport presets (`Americas`, `Europe`, `Asia-Pacific`, `Middle East & Africa`) with dynamic node and label scaling (`nodeScale`) to prevent overlap in dense continental clusters (e.g. Western Europe or Central America).
+* **Multi-Layered Tactical Radar Overlays**:
+  * Toggleable HUD layers: Topography, Day/Night solar shadow terminator, Cyclonic Storm hazards (*North Atlantic Winter Gale*, *Caribbean Tropical Hurricane*, *Western Pacific Super Typhoon*), Active Cartel Patrol Vectors (*Fast Speedboats*, *Semi-Submersible Narco-Subs*, *Balkan Highway Couriers*, *Mekong River Barges*), and Active Turf War Combat Zones.
 * **Great-Circle Geodesic Flight Corridors**:
   * Dynamically renders curved SVG laser paths with calculated nautical mile distances (`NM`) and direct airline connection lanes.
-* **Real-Time DEA Naval & Aerial Blockade Zones**:
+* **Real-Time DEA Naval & Aerial Blockade Cordons**:
   * Visual hazard cordons with striped radar fills: *Operation Caribbean Shield (JIATF-S)*, *Eastern Pacific Narco-Sub Vector*, *Frontex Mediterranean Gateway*, and *ASEAN Airborne Grid*.
 * **Live In-Transit Courier Fleet Blips**:
   * Active safehouse vault shipments (`player.shipments`) travel visibly across maritime and overland corridors with real-time cargo tooltips.
 * **Animated Flight Traversal & Cockpit HUD**:
   * Jet traversal animation along the great-circle curve with real-time Mach, groundspeed, altitude, and customs security telemetry before landing.
-* **Dynamic Geopolitical Hotspots**:
-  * Automated radar alerts for dockworker port strikes, cartel syndicate turf disputes, high-heat border crackdowns, and K-9 interdiction units.
 
-### 🧺 7. Underworld Fintech & Money Laundering
+### ⚔️ 7. Cartel Turf Wars & Dynamic Market Shocks (Phase 4)
+Dynamic macro-level events that disrupt regional supply lines and spark international trading opportunities:
+* **Syndicate Turf Wars**:
+  * Armed territorial clashes between two syndicates over contested hub cities (e.g. Medellín vs. Triads, Sinaloa vs. Cali).
+  * Specialty commodities in affected cities surge by **+150% to +250% (2.2x–3.5x multiplier)** during the conflict.
+  * Contested cities carry a **+35% travel ambush crossfire hazard** on entry.
+  * Evaluated as high-severity danger hotspots on the Smuggling World Map.
+* **Black Swan Macro Shocks**:
+  * Multi-day macroeconomic black swan events that impact global supply chains:
+    * `deep_web_takedown` (4 days) — Global synthetic drug crash (-50% price, 0.5x divisor).
+    * `port_strike` (5 days) — Major seaport strikes (Amsterdam, Rotterdam, Hamburg, Antwerp) causing +85% contraband shortages.
+    * `federal_task_force` (6 days) — DEA/FBI special task force doubles airport customs risk across all US hubs (2.0x customs multiplier).
+    * `border_clashes` (4 days) — Cartel skirmishes shut down US-Mexico border crossings (+110% price surge on meth and heroin).
+    * `precursor_embargo` (7 days) — International regulatory crackdowns freeze precursor supplies (+130% price surge on all synthetic commodities).
+
+### 🧺 8. Underworld Fintech & Money Laundering
 Avoid FinCEN asset forfeiture by structuring and layering illicit street profits:
 * **8 Shell Business Fronts**: Coin Laundromats, Express Car Washes, VIP Nightclubs, Fine Art Galleries, Customs Brokerages, Panama Bearer Holding Trusts, ASIC Crypto Mining Pools, and Swiss Private Banking Subsidiaries.
 * **Corporate Legal Upgrades**: Retain forensic CPAs, offshore defense attorneys, and automated micro-smurfing mule networks to suppress audit risks.
 
-### 🤝 8. Cartel Syndicates & Black Market Diplomacy
+### 🤝 9. Cartel Syndicates & Black Market Diplomacy
 Manage diplomatic relations with 5 international crime syndicates:
 * **Medellín Cartel** (*Los Extraditables*) — Cocaine & Crack Cocaine
 * **Golden Triangle Triads** (*The Black Lotus Triad*) — Raw Opium & Refined Heroin
@@ -150,16 +171,16 @@ Manage diplomatic relations with 5 international crime syndicates:
 * **Peace Tributes**: Wire tribute cash to cartel bosses to call off hit squads.
 * **Supply Contracts**: Deliver required contraband parcels to target cities within strict deadlines for massive cash bonuses and syndicate standing.
 
-### ⚔️ 9. Tactical Turn-Based Combat
+### ⚔️ 10. Tactical Turn-Based Combat
 Encounter local street cops, DEA federal task forces, tactical SWAT squads, and armed loan shark enforcers.
 * **Weapons**: Combat Knives, 9mm Pistols, 12-Gauge Shotguns, SMGs, Dynamite, Hand Grenades, Flamethrowers, and Anti-SWAT Rocket Launchers.
 * **Tactical Gear**: M84 Stun Flashbangs (forces enemy miss), Tactical Smoke Screens (+50% escape probability), Military Combat Medkits (+40 HP), and No-Scent Chemical Sprays (masks cargo from airport sniffer dogs).
 
-### 👑 10. Dealer Hierarchy & Demotion Radar
+### 👑 11. Dealer Hierarchy & Demotion Radar
 * Rise through 6 underworld standing ranks: **Wannabe ➔ Small-time Operator ➔ Dealer ➔ Big-Time Dealer ➔ Distributor ➔ Drug Lord**.
 * **Live Solvency Checker**: Hover the dealer badge to track promotion requirements and 3-day hold milestones. If your net worth drops below the rank threshold, a 3-day insolvency timer warns you before stripping status.
 
-### 💾 11. Hall of Fame & Career Dossiers
+### 💾 12. Hall of Fame & Career Dossiers
 * **Data Vault**: Multi-slot browser local storage persistence with JSON import/export.
 * **Hall of Fame**: Persistent leaderboard archiving your greatest criminal empires with shareable career dossiers and score calculations.
 * **Endless Mode**: Play fixed 30, 60, 90-day campaigns, or rule the world indefinitely.

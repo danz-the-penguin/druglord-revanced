@@ -1,5 +1,7 @@
 import { DRUGS, CITIES, CITY_MAP, EVENTS } from './constants';
 import { MarketItem, MarketIntelTip } from './types';
+import { ActiveTurfWar, ActiveMacroEvent } from './turfWarTypes';
+import { getTurfWarMultiplier, getMacroEventPriceMultiplier } from './turfWars';
 
 export interface MarketGenerationResult {
   market: Record<string, MarketItem>;
@@ -8,12 +10,14 @@ export interface MarketGenerationResult {
 
 /**
  * Generates market prices and supply for a given city on a new day,
- * applying any scheduled inside informant tips and market shocks.
+ * applying any scheduled inside informant tips, cartel turf wars, and black swan macro events.
  */
 export function generateCityMarket(
   cityId: string,
   currentDay?: number,
-  activeIntel?: MarketIntelTip[]
+  activeIntel?: MarketIntelTip[],
+  activeTurfWars?: ActiveTurfWar[],
+  activeMacroEvents?: ActiveMacroEvent[]
 ): MarketGenerationResult {
   const city = CITY_MAP.get(cityId);
   const cityModifierDefault = 1.0;
@@ -41,6 +45,12 @@ export function generateCityMarket(
       ? activeIntel.find((tip) => tip.cityId === cityId && tip.drugId === drug.id && tip.targetDay === currentDay)
       : undefined;
 
+    // Check active Turf War for this city and drug
+    const { multiplier: turfMult, war } = getTurfWarMultiplier(cityId, drug.id, activeTurfWars);
+
+    // Check active Macro Event for this city and drug
+    const { multiplier: macroMult, event: macroEv } = getMacroEventPriceMultiplier(cityId, drug.id, activeMacroEvents);
+
     if (matchingIntel) {
       if (matchingIntel.eventType === 'surge_spike' || matchingIntel.eventType === 'police_crackdown') {
         price = Math.round(price * matchingIntel.multiplier);
@@ -53,6 +63,16 @@ export function generateCityMarket(
         surgeReason = `[WIRE INTEL CONFIRMED] ${matchingIntel.headline}`;
         events.push(`${surgeReason} Street flooded with ${drug.name}!`);
       }
+    } else if (turfMult > 1.0 && war) {
+      price = Math.round(price * turfMult);
+      surge = 'high';
+      surgeReason = `[TURF WAR: ${war.attackerName} vs. ${war.defenderName}] Supply lines shattered by cartel warfare!`;
+      events.push(`${surgeReason} ${drug.name} street price skyrocketed!`);
+    } else if (macroMult > 1.0 && macroEv) {
+      price = Math.round(price * macroMult);
+      surge = 'high';
+      surgeReason = `[GLOBAL SHOCK: ${macroEv.title}] ${macroEv.headline}`;
+      events.push(`${surgeReason} ${drug.name} price surged to $${price.toLocaleString()}!`);
     } else {
       // Roll for random market shocks (~8% chance)
       const shockRoll = Math.random();
@@ -121,7 +141,9 @@ export function generateAllCitiesPrices(
   currentCityId: string,
   currentMarket: Record<string, MarketItem>,
   currentDay?: number,
-  activeIntel?: MarketIntelTip[]
+  activeIntel?: MarketIntelTip[],
+  activeTurfWars?: ActiveTurfWar[],
+  activeMacroEvents?: ActiveMacroEvent[]
 ): Record<string, Record<string, number>> {
   const result: Record<string, Record<string, number>> = {};
   for (const drug of DRUGS) {
@@ -134,7 +156,7 @@ export function generateAllCitiesPrices(
         result[drug.id][city.id] = currentMarket[drug.id]?.price ?? drug.basePrice;
       }
     } else {
-      const cityMarket = generateCityMarket(city.id, currentDay, activeIntel).market;
+      const cityMarket = generateCityMarket(city.id, currentDay, activeIntel, activeTurfWars, activeMacroEvents).market;
       for (const drug of DRUGS) {
         result[drug.id][city.id] = cityMarket[drug.id]?.price ?? drug.basePrice;
       }

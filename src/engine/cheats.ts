@@ -5,6 +5,10 @@ import { soundEngine, SoundEffect } from '../utils/audio';
 import { PRECURSORS } from './production';
 import { CORRUPT_MAP, CorruptOfficialId, emergencyExtraditionEscape } from './corruption';
 import { evaluateCityHotspots } from './smugglingMapData';
+import { triggerTurfWar, triggerMacroEvent } from './turfWars';
+import { MacroEventType } from './turfWarTypes';
+import { SyndicateId } from './types';
+import { SYNDICATE_MAP } from './syndicates';
 
 export interface CheatExecutionResult {
   success: boolean;
@@ -62,6 +66,8 @@ export function executeCheat(
           '• blockade <city_id>       : Trigger tactical DEA / SWAT blockade & raid alert\n' +
           '• vault                    : Inspect multi-city safehouse vaults\n' +
           '• shipments                : Inspect in-transit courier shipments\n' +
+          '• turf_war <a> <d>         : Trigger syndicate turf war\n' +
+          '• macro_event <type>       : Trigger black swan global macro shock\n' +
           '• vault_give <city> <d> <n>: Stash contraband directly in vault\n' +
           '• sfx <effect>             : Synthesize Web Audio sound effect',
       };
@@ -394,6 +400,45 @@ export function executeCheat(
       return {
         success: true,
         message: `Enforced tactical DEA / SWAT blockade cordon on ${city.name} (Heat set to 85%, raid alert triggered).`,
+      };
+    }
+
+    case 'turf_war': {
+      const attackerId = (arg1 || 'medellin').toLowerCase() as SyndicateId;
+      const defenderId = (arg2 || 'synthetic_chem').toLowerCase() as SyndicateId;
+      if (!SYNDICATE_MAP.has(attackerId)) {
+        return { success: false, message: `Unknown syndicate "${arg1}". Valid: medellin, golden_triangle, synthetic_chem, designer_ring, balkan` };
+      }
+      if (!SYNDICATE_MAP.has(defenderId)) {
+        return { success: false, message: `Unknown syndicate "${arg2}". Valid: medellin, golden_triangle, synthetic_chem, designer_ring, balkan` };
+      }
+      const war = triggerTurfWar(attackerId, defenderId, state.player.currentDay);
+      if (!state.player.activeTurfWars) state.player.activeTurfWars = [];
+      state.player.activeTurfWars.push(war);
+      return {
+        success: true,
+        message: `Ignited Turf War! ${war.headline} Contested: ${war.contestedCityIds.join(', ')} (${war.durationDays} days).`,
+      };
+    }
+
+    case 'macro_event': {
+      const type = (arg1 || 'deep_web_takedown').toLowerCase() as MacroEventType;
+      const validTypes: MacroEventType[] = [
+        'deep_web_takedown',
+        'port_strike',
+        'federal_task_force',
+        'border_clashes',
+        'precursor_embargo',
+      ];
+      if (!validTypes.includes(type)) {
+        return { success: false, message: `Unknown macro shock "${arg1}". Valid: ${validTypes.join(', ')}` };
+      }
+      const ev = triggerMacroEvent(type, state.player.currentDay);
+      if (!state.player.activeMacroEvents) state.player.activeMacroEvents = [];
+      state.player.activeMacroEvents.push(ev);
+      return {
+        success: true,
+        message: `Triggered Black Swan Macro Shock: ${ev.title} (${ev.durationDays} days)! ${ev.headline}`,
       };
     }
 
