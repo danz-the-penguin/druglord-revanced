@@ -7,6 +7,7 @@ interface SparklineProps {
   color?: string;
   strokeWidth?: number;
   animated?: boolean;
+  repeat?: boolean;
   showArea?: boolean;
 }
 
@@ -17,6 +18,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
   color,
   strokeWidth = 1.75,
   animated = true,
+  repeat = true,
   showArea = true,
 }) => {
   const rawId = React.useId();
@@ -101,16 +103,28 @@ export const Sparkline: React.FC<SparklineProps> = ({
           className="transition-opacity duration-300 opacity-70 group-hover/sparkline:opacity-100"
         >
           {animated && (
-            <animate
-              attributeName="opacity"
-              from="0"
-              to="0.7"
-              dur="1.2s"
-              fill="freeze"
-              calcMode="spline"
-              keyTimes="0; 1"
-              keySplines="0.25 0.1 0.25 1"
-            />
+            repeat ? (
+              <animate
+                attributeName="opacity"
+                values="0; 0.7; 0.7; 0; 0"
+                keyTimes="0; 0.45; 0.82; 0.94; 1"
+                dur="3.4s"
+                repeatCount="indefinite"
+                calcMode="spline"
+                keySplines="0.25 0.1 0.25 1; 0 0 1 1; 0.25 0.1 0.25 1; 0 0 1 1"
+              />
+            ) : (
+              <animate
+                attributeName="opacity"
+                from="0"
+                to="0.7"
+                dur="1.2s"
+                fill="freeze"
+                calcMode="spline"
+                keyTimes="0; 1"
+                keySplines="0.25 0.1 0.25 1"
+              />
+            )
           )}
         </path>
       )}
@@ -129,30 +143,61 @@ export const Sparkline: React.FC<SparklineProps> = ({
         className="opacity-95"
       >
         {animated && (
-          <animate
-            attributeName="stroke-dashoffset"
-            from={approxPathLength}
-            to="0"
-            dur="1.2s"
-            fill="freeze"
-            calcMode="spline"
-            keyTimes="0; 1"
-            keySplines="0.25 0.1 0.25 1"
-          />
+          repeat ? (
+            <>
+              <animate
+                attributeName="stroke-dashoffset"
+                values={`${approxPathLength}; 0; 0; ${approxPathLength}`}
+                keyTimes="0; 0.45; 0.82; 1"
+                dur="3.4s"
+                repeatCount="indefinite"
+                calcMode="spline"
+                keySplines="0.25 0.1 0.25 1; 0 0 1 1; 0.25 0.1 0.25 1"
+              />
+              <animate
+                attributeName="opacity"
+                values="1; 1; 0; 0; 1"
+                keyTimes="0; 0.82; 0.94; 0.98; 1"
+                dur="3.4s"
+                repeatCount="indefinite"
+              />
+            </>
+          ) : (
+            <animate
+              attributeName="stroke-dashoffset"
+              from={approxPathLength}
+              to="0"
+              dur="1.2s"
+              fill="freeze"
+              calcMode="spline"
+              keyTimes="0; 1"
+              keySplines="0.25 0.1 0.25 1"
+            />
+          )
         )}
       </path>
 
       {/* Current day endpoint beacon (pops in as drawing reaches the finish) */}
       <g key={`dot-${dataKey}`} opacity={animated ? 0 : 1}>
         {animated && (
-          <animate
-            attributeName="opacity"
-            from="0"
-            to="1"
-            begin="0.9s"
-            dur="0.3s"
-            fill="freeze"
-          />
+          repeat ? (
+            <animate
+              attributeName="opacity"
+              values="0; 0; 1; 1; 0; 0"
+              keyTimes="0; 0.4; 0.45; 0.82; 0.94; 1"
+              dur="3.4s"
+              repeatCount="indefinite"
+            />
+          ) : (
+            <animate
+              attributeName="opacity"
+              from="0"
+              to="1"
+              begin="0.9s"
+              dur="0.3s"
+              fill="freeze"
+            />
+          )
         )}
         <circle
           cx={lastPt.x}
