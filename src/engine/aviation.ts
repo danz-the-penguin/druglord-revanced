@@ -62,10 +62,12 @@ export const AIRCRAFT_MAP = new Map<string, Aircraft>(
 /**
  * Calculates fuel cost to operate an owned aircraft for a flight.
  * If the player owns a private hangar or sovereign airfield, fuel is complimentary ($0).
+ * If the aircraft is equipped with auxiliary drop tanks, fuel cost is reduced by 50%.
  */
 export function calculateAircraftFlightCost(
   aircraft: Aircraft,
-  ownedProperties: string[] = []
+  ownedProperties: string[] = [],
+  aircraftState?: import('./types').AircraftState
 ): number {
   if (
     ownedProperties.includes('private_hangar') ||
@@ -73,7 +75,11 @@ export function calculateAircraftFlightCost(
   ) {
     return 0; // Free fuel from owned hangar storage
   }
-  return aircraft.fuelCost;
+  let cost = aircraft.fuelCost;
+  if (aircraftState?.hasAuxFuelTanks) {
+    cost = Math.round(cost * 0.5);
+  }
+  return cost;
 }
 
 /**
@@ -85,4 +91,101 @@ export function getAircraftCustomsReduction(
   if (!aircraftId) return 0;
   const aircraft = AIRCRAFT_MAP.get(aircraftId);
   return aircraft ? aircraft.customsReduction : 0;
+}
+
+export function getAircraftState(
+  player: import('./types').PlayerState,
+  aircraftId: string
+): import('./types').AircraftState {
+  if (!player.aircraftFleetState) {
+    player.aircraftFleetState = {};
+  }
+  if (!player.aircraftFleetState[aircraftId]) {
+    player.aircraftFleetState[aircraftId] = {
+      wearPercent: 0,
+      hasAuxFuelTanks: false,
+      hasHiddenCompartment: false,
+      hasTransponderSpoofer: false,
+      transponderSpoofsRemaining: 0,
+    };
+  }
+  return player.aircraftFleetState[aircraftId];
+}
+
+export function applyFlightWear(
+  player: import('./types').PlayerState,
+  aircraftId: string
+): { wearAdded: number; newWear: number } {
+  const state = getAircraftState(player, aircraftId);
+  const wearAdded = Math.floor(Math.random() * 4) + 3; // 3% to 6% wear per flight
+  state.wearPercent = Math.min(100, state.wearPercent + wearAdded);
+  return { wearAdded, newWear: state.wearPercent };
+}
+
+export function calculateOverhaulCost(wearPercent: number): number {
+  if (wearPercent <= 0) return 0;
+  return Math.round(wearPercent * 350);
+}
+
+export function overhaulAircraft(
+  player: import('./types').PlayerState,
+  aircraftId: string
+): { success: boolean; message: string } {
+  const state = getAircraftState(player, aircraftId);
+  if (state.wearPercent <= 0) {
+    return { success: false, message: 'Airframe is already in mint condition (0% wear).' };
+  }
+
+  const cost = calculateOverhaulCost(state.wearPercent);
+  if (player.cash < cost) {
+    return {
+      success: false,
+      message: `Insufficient cash for maintenance overhaul ($${cost.toLocaleString()} required).`,
+    };
+  }
+
+  player.cash -= cost;
+  state.wearPercent = 0;
+
+  return {
+    success: true,
+    message: `Aviation hangar performed full FAA/EASA airframe overhaul! Restored to 100% factory condition ($${cost.toLocaleString()}).`,
+  };
+}
+
+export function buyAvionicsUpgrade(
+  player: import('./types').PlayerState,
+  aircraftId: string,
+  upgradeType: 'aux_tanks' | 'hidden_compartment' | 'transponder_spoofer'
+): { success: boolean; message: string } {
+  const state = getAircraftState(player, aircraftId);
+  const aircraft = AIRCRAFT_MAP.get(aircraftId);
+  if (!aircraft) return { success: false, message: 'Aircraft not found.' };
+
+  switch (upgradeType) {
+    case 'aux_tanks': {
+      const cost = 45000;
+      if (state.hasAuxFuelTanks) return { success: false, message: 'Auxiliary drop tanks already installed.' };
+      if (player.cash < cost) return { success: false, message: `Insufficient cash ($${cost.toLocaleString()} required).` };
+      player.cash -= cost;
+      state.hasAuxFuelTanks = true;
+      return { success: true, message: 'Installed Auxiliary Drop Tanks (-50% fuel consumption)!' };
+    }
+    case 'hidden_compartment': {
+      const cost = 65000;
+      if (state.hasHiddenCompartment) return { success: false, message: 'Hidden contraband bay already installed.' };
+      if (player.cash < cost) return { success: false, message: `Insufficient cash ($${cost.toLocaleString()} required).` };
+      player.cash -= cost;
+      state.hasHiddenCompartment = true;
+      return { success: true, message: 'Fabricated Lead-Lined Contraband Smuggle Bay (masks 100 units from drug dogs)!' };
+    }
+    case 'transponder_spoofer': {
+      const cost = 35000;
+      if (player.cash < cost) return { success: false, message: `Insufficient cash ($${cost.toLocaleString()} required).` };
+      player.cash -= cost;
+      state.hasTransponderSpoofer = true;
+      state.transponderSpoofsRemaining = (state.transponderSpoofsRemaining || 0) + 3;
+      return { success: true, message: 'Calibrated ICAO Transponder Spoofer (+3 ghost radar disguise flights)!' };
+    }
+  }
 }

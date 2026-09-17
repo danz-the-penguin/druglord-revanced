@@ -300,9 +300,77 @@ export const CARTEL_PATROL_VECTORS: CartelPatrolVector[] = [
     name: 'Mekong River Golden Triangle River Transit',
     syndicateName: 'Golden Triangle Cartel',
     type: 'jungle_river',
-    pathString: 'M 780 205 Q 795 215 805 230 Q 815 240 817 206',
-    description: 'Armed longtail river barges traversing the Mekong River gorges into secret transshipment ports.',
+    pathString: 'M 775 218 Q 785 221 792 235 Q 795 242 796 247',
+    description: 'Armed longtail river barges traversing the Mekong River gorges from Chiang Mai through Vientiane and Phnom Penh into the Mekong delta.',
     color: '#a855f7',
+  },
+  {
+    id: 'malacca_strait_lane',
+    name: 'Strait of Malacca Super-Container Channel',
+    syndicateName: 'Maritime Syndicate Consortium',
+    type: 'container_corridor',
+    pathString: 'M 778 266 Q 782 276 788 280',
+    description: 'The world\'s busiest shipping choke point connecting Penang, Kuala Lumpur, and Singapore. Thousands of uninspected intermodal containers transit daily.',
+    color: '#06b6d4',
+  },
+  {
+    id: 'andaman_speedboat',
+    name: 'Andaman Sea Offshore Interceptor Corridor',
+    syndicateName: 'Siam Gulf Runners',
+    type: 'speedboat',
+    pathString: 'M 779 236 Q 770 250 778 266 Q 785 285 796 307',
+    description: 'Kevlar-reinforced high-speed stealth boats skimming the Andaman Sea and Sunda Strait between Bangkok, Penang, and Jakarta.',
+    color: '#ec4899',
+  },
+];
+
+export interface WaterwayRoute {
+  id: string;
+  name: string;
+  syndicate: string;
+  color: string;
+  coordinates: [number, number][]; // [lat, lng]
+  description: string;
+}
+
+export const ASEAN_WATERWAYS: WaterwayRoute[] = [
+  {
+    id: 'mekong_barge_route',
+    name: 'Mekong River Opium Flotilla',
+    syndicate: 'Golden Triangle Triads',
+    color: '#a855f7',
+    coordinates: [
+      [18.7668, 98.9626],  // Chiang Mai
+      [17.9883, 102.5633], // Vientiane
+      [11.5466, 104.8441], // Phnom Penh
+      [10.8188, 106.6519], // Ho Chi Minh City
+    ],
+    description: 'Inland river barges transporting raw Golden Triangle opium and precursor barrels across porous international riverbanks.',
+  },
+  {
+    id: 'malacca_container_channel',
+    name: 'Strait of Malacca Container Expressway',
+    syndicate: 'Asian Port Logistics Consortium',
+    color: '#06b6d4',
+    coordinates: [
+      [5.2971, 100.2768],  // Penang
+      [2.7456, 101.7099],  // Kuala Lumpur
+      [1.3644, 103.9915],  // Singapore
+    ],
+    description: 'Mega-freighter corridor connecting Malaysian free ports to Singapore. Industrial-scale MDMA and precursor container transshipment.',
+  },
+  {
+    id: 'andaman_sea_speedboat_corridor',
+    name: 'Andaman Sea High-Velocity Narco-Run',
+    syndicate: 'Apex Maritime Runners',
+    color: '#ec4899',
+    coordinates: [
+      [13.69, 100.7501],   // Bangkok
+      [5.2971, 100.2768],   // Penang
+      [-6.1256, 106.6559], // Jakarta
+      [-7.3798, 112.7874], // Surabaya
+    ],
+    description: 'Nighttime high-speed boat route bypassing naval coastal radar across the Andaman Sea and Sunda Strait into Java.',
   },
 ];
 

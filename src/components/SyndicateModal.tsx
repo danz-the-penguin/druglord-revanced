@@ -9,11 +9,20 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  Crosshair,
+  Globe,
+  Coins,
+  Skull,
 } from 'lucide-react';
 import { SYNDICATES, getStandingTier, calculatePeaceTributeCost } from '../engine/syndicates';
 import { CITY_MAP, DRUG_MAP } from '../engine/constants';
 import { SyndicateId } from '../engine/types';
 import { SyndicateImage } from './SyndicateImage';
+import {
+  calculateTerritoryInfluences,
+  calculateProtectionRacketRevenue,
+  getStrikeContracts,
+} from '../engine/syndicateWarRoom';
 
 export const SyndicateModal: React.FC = () => {
   const isSyndicateModalOpen = useGameStore((s) => s.isSyndicateModalOpen);
@@ -22,8 +31,10 @@ export const SyndicateModal: React.FC = () => {
   const acceptContract = useGameStore((s) => s.acceptContract);
   const deliverContract = useGameStore((s) => s.deliverContract);
   const paySyndicateTribute = useGameStore((s) => s.paySyndicateTribute);
+  const collectProtectionRacketAction = useGameStore((s) => s.collectProtectionRacketAction);
+  const executeStrikeContractAction = useGameStore((s) => s.executeStrikeContractAction);
 
-  const [activeTab, setActiveTab] = useState<'factions' | 'contracts'>('factions');
+  const [activeTab, setActiveTab] = useState<'war_room' | 'factions' | 'strikes' | 'contracts'>('war_room');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
   if (!isSyndicateModalOpen) return null;
@@ -32,6 +43,12 @@ export const SyndicateModal: React.FC = () => {
   const allContracts = player.syndicateContracts || [];
   const activeContracts = allContracts.filter((c) => c.status === 'active');
   const availableContracts = allContracts.filter((c) => c.status === 'available');
+
+  const strikeContracts = getStrikeContracts(player);
+  const availableStrikes = strikeContracts.filter((s) => s.status !== 'completed');
+  const racketRevenue = calculateProtectionRacketRevenue(player);
+  const isRacketCollectedToday = player.lastRacketCollectedDay === player.currentDay;
+  const territories = calculateTerritoryInfluences(player);
 
   const handleAccept = (contractId: string) => {
     const res = acceptContract(contractId);
@@ -51,26 +68,38 @@ export const SyndicateModal: React.FC = () => {
     setTimeout(() => setFeedbackMsg(null), 3000);
   };
 
+  const handleCollectRacket = () => {
+    const res = collectProtectionRacketAction();
+    setFeedbackMsg({ text: res.message, error: !res.success });
+    setTimeout(() => setFeedbackMsg(null), 4000);
+  };
+
+  const handleExecuteStrike = (contractId: string) => {
+    const res = executeStrikeContractAction(contractId);
+    setFeedbackMsg({ text: res.message, error: !res.success });
+    setTimeout(() => setFeedbackMsg(null), 4000);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 font-mono">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95">
         {/* Header */}
         <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl">
-              🤝
+              ⚔️
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black text-slate-100 tracking-wider">
-                  Global Syndicate Factions & Cartel Diplomacy
+                  Syndicate War Room & Global Dominance
                 </h3>
                 <span className="px-2 py-0.5 rounded bg-amber-950/60 border border-amber-600/40 text-amber-300 text-[10px] font-bold">
-                  UNDERWORLD COUNCIL
+                  TACTICAL CARTEL COUNCIL
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Manage diplomatic relations, fulfill bulk cartel contracts, and unlock wholesale black-market discounts.
+                Command global territory influence, collect daily protection racket kickbacks, launch black-ops strikes, and forge syndicate pacts.
               </p>
             </div>
           </div>
@@ -84,34 +113,58 @@ export const SyndicateModal: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-6 py-2.5 bg-slate-950/50 border-b border-slate-800 flex items-center justify-between text-xs">
+        <div className="px-6 py-2.5 bg-slate-950/50 border-b border-slate-800 flex items-center justify-between text-xs overflow-x-auto gap-2">
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setActiveTab('war_room')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'war_room'
+                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>War Room & Influence</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('strikes')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'strikes'
+                  ? 'bg-red-500 text-slate-950 shadow-md'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <Crosshair className="w-3.5 h-3.5" />
+              <span>Hitman Strikes ({availableStrikes.length})</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('factions')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'factions'
                   ? 'bg-amber-500 text-slate-950 shadow-md'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
-              <span>5 Crime Syndicates</span>
+              <span>5 Cartel Factions</span>
             </button>
 
             <button
               onClick={() => setActiveTab('contracts')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'contracts'
                   ? 'bg-amber-500 text-slate-950 shadow-md'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
               <Award className="w-3.5 h-3.5" />
-              <span>Smuggling Contracts ({activeContracts.length} Active / {availableContracts.length} Available)</span>
+              <span>Cargo Contracts ({activeContracts.length} Active / {availableContracts.length} Board)</span>
             </button>
           </div>
 
-          <div className="text-[11px] text-slate-400 font-mono">
+          <div className="text-[11px] text-slate-400 font-mono whitespace-nowrap">
             Cash: <strong className="text-emerald-400">${player.cash.toLocaleString()}</strong>
           </div>
         </div>
@@ -130,8 +183,264 @@ export const SyndicateModal: React.FC = () => {
         )}
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-4">
-          {activeTab === 'factions' ? (
+        <div className="p-6 overflow-y-auto space-y-6">
+          {/* TAB 1: WAR ROOM & INFLUENCE */}
+          {activeTab === 'war_room' && (
+            <div className="space-y-6">
+              {/* Daily Protection Racket Collection Banner */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-950 to-slate-900 border border-amber-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-amber-400" />
+                    <h4 className="font-black text-amber-300 text-sm tracking-wide uppercase">
+                      Underworld Protection Racket Treasury
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-xl leading-relaxed font-sans">
+                    Syndicates with <strong>Associate (+15)</strong> or <strong>Allied Don (+50)</strong> standing pay daily protection tribute into your war chest. Claim dividends once per day.
+                  </p>
+                  {racketRevenue.breakdown.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                      <span className="text-slate-400">Paying Syndicates:</span>
+                      {racketRevenue.breakdown.map((b) => (
+                        <span
+                          key={b.syndicateId}
+                          className="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-600/40 text-amber-300 font-bold"
+                        >
+                          {b.syndicateName}: +${b.amount.toLocaleString()}/day ({b.tier})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="shrink-0 w-full md:w-auto text-right space-y-2">
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase text-slate-400 font-mono block">Daily Dividends</span>
+                    <span className="text-2xl font-black text-amber-400 font-mono">
+                      ${racketRevenue.totalRevenue.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {isRacketCollectedToday ? (
+                    <button
+                      disabled
+                      className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs cursor-default"
+                    >
+                      Dividends Collected (Day {player.currentDay})
+                    </button>
+                  ) : racketRevenue.totalRevenue > 0 ? (
+                    <button
+                      onClick={handleCollectRacket}
+                      className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Coins className="w-4 h-4" />
+                      <span>Collect Treasury (${racketRevenue.totalRevenue.toLocaleString()})</span>
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-500 font-bold text-xs cursor-default"
+                    >
+                      No Active Tribute
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Global Territory Dominance Meters */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    <Globe className="w-4 h-4 text-sky-400" />
+                    <span>Global Underworld Territory Dominance (4 Theaters)</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Influence scales with syndicate reputation & owned real estate
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {territories.map((t) => {
+                    const domSyn = SYNDICATES.find((s) => s.id === t.dominatingSyndicateId);
+
+                    return (
+                      <div
+                        key={t.region}
+                        className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h5 className="font-bold text-slate-100 text-sm">{t.region}</h5>
+                            <span className="text-[11px] text-slate-400 font-sans block mt-0.5">
+                              Dominant Syndicate: <strong className="text-amber-300">{domSyn?.name}</strong>
+                            </span>
+                          </div>
+                          <span className="text-xs font-black text-emerald-400 font-mono">
+                            {t.playerInfluence}% Player Control
+                          </span>
+                        </div>
+
+                        {/* Dominance Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden flex border border-slate-800">
+                            <div
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+                              style={{ width: `${t.playerInfluence}%` }}
+                            />
+                            <div
+                              className="h-full bg-slate-800"
+                              style={{ width: `${100 - t.playerInfluence}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                            <span>0% Underworld Margin</span>
+                            <span>100% Hegemony</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                          <span>
+                            Safehouse Network Boost:{' '}
+                            <strong className="text-slate-200">
+                              +{(player.ownedProperties || []).length * 8}%
+                            </strong>
+                          </span>
+                          <span
+                            className={
+                              t.playerInfluence >= 50
+                                ? 'text-emerald-400 font-bold'
+                                : t.playerInfluence >= 25
+                                ? 'text-amber-400 font-bold'
+                                : 'text-slate-500'
+                            }
+                          >
+                            {t.playerInfluence >= 50
+                              ? '🏆 Contested Hegemony'
+                              : t.playerInfluence >= 25
+                              ? '⚡ Strong Foothold'
+                              : 'Minor Infiltration'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: HITMAN BLACK-OPS STRIKE CONTRACTS */}
+          {activeTab === 'strikes' && (
+            <div className="space-y-4">
+              <div className="bg-red-950/20 border border-red-800/40 p-4 rounded-xl flex items-start gap-3 text-xs text-red-200">
+                <Skull className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-sm text-red-300">Underworld Black-Ops Wetwork Contracts</div>
+                  <p className="mt-0.5 text-slate-300 leading-relaxed font-sans">
+                    Execute high-risk elimination contracts commissioned by cartel leadership. You must be present in the designated city to launch the strike. Combat causes tactical damage based on threat level.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {strikeContracts.map((strike) => {
+                  const syn = SYNDICATES.find((s) => s.id === strike.syndicateId);
+                  const city = CITY_MAP.get(strike.locationCityId);
+                  const isHere = player.currentCityId === strike.locationCityId;
+                  const isCompleted = strike.status === 'completed';
+                  const isHealthLow = player.health < 30;
+
+                  const dangerBadge =
+                    strike.dangerLevel === 'extreme'
+                      ? 'bg-red-950/80 border-red-600 text-red-300'
+                      : strike.dangerLevel === 'high'
+                      ? 'bg-amber-950/80 border-amber-600 text-amber-300'
+                      : 'bg-sky-950/80 border-sky-600 text-sky-300';
+
+                  const expectedDamage =
+                    strike.dangerLevel === 'extreme' ? 30 : strike.dangerLevel === 'high' ? 20 : 12;
+
+                  return (
+                    <div
+                      key={strike.id}
+                      className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                        isCompleted
+                          ? 'bg-slate-950/40 border-slate-800 opacity-60'
+                          : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h5 className="font-bold text-slate-100 text-sm">{strike.targetName}</h5>
+                          <span className={`px-2 py-0.5 rounded border text-[10px] font-black uppercase ${dangerBadge}`}>
+                            {strike.dangerLevel} Hazard (~{expectedDamage} HP)
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 text-[10px]">
+                            {syn?.name}
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                          <span>Target: <strong className="text-slate-200">{strike.targetTitle}</strong></span>
+                          <span>•</span>
+                          <span>Theater: <strong className={isHere ? 'text-emerald-400' : 'text-amber-300'}>{city?.name}</strong></span>
+                        </div>
+
+                        <p className="text-xs text-slate-400 leading-relaxed font-sans pt-1">
+                          {strike.intelBrief}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 flex md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-800">
+                        <div className="text-left md:text-right font-mono">
+                          <div className="text-emerald-400 font-bold text-sm">
+                            +${strike.rewardCash.toLocaleString()}
+                          </div>
+                          <div className="text-[11px] text-sky-400">
+                            +{strike.repReward} {syn?.name.split(' ')[0]} Standing
+                          </div>
+                        </div>
+
+                        {isCompleted ? (
+                          <span className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 font-bold text-xs flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Eliminated</span>
+                          </span>
+                        ) : !isHere ? (
+                          <button
+                            disabled
+                            className="px-3.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs cursor-default"
+                            title={`You must travel to ${city?.name} to execute this hit`}
+                          >
+                            Travel to {city?.name}
+                          </button>
+                        ) : isHealthLow ? (
+                          <button
+                            disabled
+                            className="px-3.5 py-1.5 rounded-lg bg-rose-950/60 border border-rose-700 text-rose-300 font-bold text-xs cursor-default"
+                          >
+                            Health Too Low (&lt;30 HP)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleExecuteStrike(strike.id)}
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                          >
+                            <Crosshair className="w-3.5 h-3.5" />
+                            <span>Execute Strike</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: 5 CARTEL FACTIONS DIPLOMACY */}
+          {activeTab === 'factions' && (
             <div className="space-y-4">
               {SYNDICATES.map((syndicate) => {
                 const rep = reputations[syndicate.id] ?? 0;
@@ -181,7 +490,7 @@ export const SyndicateModal: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-slate-400 leading-relaxed font-sans">
                       {syndicate.description}
                     </p>
 
@@ -254,7 +563,10 @@ export const SyndicateModal: React.FC = () => {
                 );
               })}
             </div>
-          ) : (
+          )}
+
+          {/* TAB 4: BULK SMUGGLING CARGO CONTRACTS */}
+          {activeTab === 'contracts' && (
             <div className="space-y-6">
               {/* Active Contracts */}
               <div className="space-y-3">

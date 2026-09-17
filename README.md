@@ -17,12 +17,12 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Vitest-184%2F184%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-196%2F196%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 <p align="center">
   A ground-up modern reimagination of Fred Bulback's legendary Windows shareware classic <b>Drug Lord 2.2 (1999–2003)</b>.<br>
-  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, corrupt officials on retainer, federal RICO grand jury wiretaps, high-fidelity interactive world smuggling map with zoom/pan and tactical overlays, syndicate turf wars, black swan macroeconomic shocks, daily synchronized PRNG challenge runs, cartel bounty boards with cryptographic proof codes, target price estimators, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
+  Elevated with Leaflet tactical raster smuggling maps (CartoDB Dark / Esri Satellite / Carto Voyager), 39 global metropolises with ASEAN expansion, Banque Privée de Genève (4 Swiss security tiers, Alpine bearer bonds, consular immunity), modular safehouse fortifications, narco-aviation fleet with airframe wear & avionics modules, and a Syndicate War Room with territory dominance, protection rackets, and black-ops hitman strikes.
 </p>
 
 [🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [⚖️ Corruption & RICO](#-corruption-informants--federal-rico-engine) • [🗺️ Smuggling Map](#-interactive-world-smuggling-map--geopolitical-radar) • [⚔️ Turf Wars & Macro Shocks](#-cartel-turf-wars--dynamic-market-shocks) • [🏆 Daily Bounties & PRNG](#-asynchronous-global-market--cartel-smuggling-bounty-board-phase-5) • [🎯 Price Estimator](#-target-price--time-to-peak-estimator) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
@@ -37,14 +37,14 @@
 | :--- | :--- | :--- |
 | **Tech Platform** | Windows 95/98/XP 16/32-bit binary (`.exe`) | Modern Web App (React 19, TypeScript, Tailwind 4, Vite 8) |
 | **Commodities** | 10 fixed legacy street drugs | **25 Commodities** (Classics + Fentanyl, Carfentanil, DMT, Compound-Z) |
-| **World Locations** | 8 basic text locations | **30 Real-World Global Metropolises** with dynamic flight routes & distance |
-| **Navigation & Map** | Static text dropdown list | **Interactive 2D Vector Smuggling Map** with Great-Circle Corridors, DEA Blockades & Animated Blips |
+| **World Locations** | 8 basic text locations | **39 Real-World Global Metropolises** (expanded ASEAN trading network & waterways) |
+| **Navigation & Map** | Static text dropdown list | **Interactive Leaflet.js Tactical Raster Map** (CartoDB Dark / Esri Satellite / Voyager, DEA Blockades & Flight HUD) |
 | **Manufacturing** | None (pure broker trading) | **4 Modular Clandestine Labs** + 6 chemical precursors & 30% seaport discounts |
 | **Corruption & Law** | Basic cop bribe prompt | **Corrupt Officials on Retainer** + Federal RICO Grand Jury & Extradition Asylum |
-| **Aviation System** | None (instant text travel) | **4 Private Aircraft Tiers** with cargo bonus, customs shielding & fuel logistics |
-| **Stash Vaults** | Single local locker | **Multi-City Distributed Vaults** + international logistics courier networks |
-| **Banking & Finance** | Basic bank interest & loan shark | **8 Corporate Shell Laundering Fronts** + forensic CPAs & Swiss banking stakes |
-| **Syndicate Diplomacy** | None | **5 Global Cartel Factions** with standing tiers, peace tributes & contracts |
+| **Aviation System** | None (instant text travel) | **4 Private Aircraft Tiers** with airframe wear, maintenance overhaul & avionics modules |
+| **Stash Vaults** | Single local locker | **Multi-City Distributed Vaults** + international logistics courier networks & safehouse fortifications |
+| **Banking & Finance** | Basic bank interest & loan shark | **Banque Privée de Genève** (4 Security Tiers, Alpine Bearer Bonds, Consular Immunity) + 8 Shell Laundering Fronts |
+| **Syndicate Diplomacy** | None | **Syndicate War Room** with 4-theater territory influence, protection racket treasury & hitman strike contracts |
 | **Audio** | PC speaker beeps | **Zero-Dependency Web Audio API Synthesizer** (retro 90s sound fx engine) |
 | **Persistence** | Single `.sav` file | Multi-slot Data Vault + **Downloadable Career Dossiers & Hall of Fame** |
 | **Debug / Cheats** | Hidden keystrokes | **Interactive Cartel Memory Hex Terminal** (Cheat Engine style memory table) |

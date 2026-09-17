@@ -53,8 +53,9 @@ describe('Economy Simulation', () => {
     }
   });
 
-  it('provides a worldwide network of 30 destinations across all global regions', () => {
-    expect(CITIES.length).toBe(30);
+  it('provides a worldwide network of destinations across all global regions', () => {
+    expect(CITIES.length).toBeGreaterThanOrEqual(30);
+    expect(CITIES.length).toBe(39);
 
     const regions = new Set(CITIES.map((c) => c.region));
     expect(regions.has('Americas')).toBe(true);

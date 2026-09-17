@@ -8,8 +8,8 @@ import {
 import { CITIES } from '../constants';
 
 describe('Flight Network & Real-Time Airport Departures', () => {
-  it('contains airport registry for all 30 world destinations', () => {
-    expect(CITIES.length).toBe(30);
+  it('contains airport registry for all world destinations', () => {
+    expect(CITIES.length).toBe(39);
     for (const city of CITIES) {
       const airport = AIRPORT_REGISTRY[city.id];
       expect(airport).toBeDefined();
@@ -23,7 +23,7 @@ describe('Flight Network & Real-Time Airport Departures', () => {
 
   it('generates real-world departure schedules for current airport', () => {
     const schedules = generateAirportFlightBoard('new_york', 1);
-    expect(schedules.length).toBe(29); // 30 cities minus origin
+    expect(schedules.length).toBe(CITIES.length - 1); // all destinations minus origin
 
     const directFlight = schedules.find((s) => s.isDirect);
     expect(directFlight).toBeDefined();

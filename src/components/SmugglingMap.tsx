@@ -1,28 +1,20 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import L from 'leaflet';
 import { useGameStore } from '../store/gameStore';
 import { CITIES } from '../engine/constants';
 import { AIRPORT_REGISTRY } from '../engine/flightNetwork';
 import { AIRCRAFT_MAP, calculateAircraftFlightCost } from '../engine/aviation';
 import { getCityHeat, getInventoryTotalUnits } from '../engine/game';
 import {
-  projectCoordinates,
-  calculateGreatCirclePath,
-  interpolateQuadraticBezier,
-  WORLD_LANDMASS_PATHS,
-  WORLD_TOPOGRAPHY_CONTOURS,
+  calculateHaversineDistanceNm,
   DEA_BLOCKADE_ZONES,
-  CARTEL_PATROL_VECTORS,
-  STORM_HAZARD_ZONES,
-  calculateDayNightTerminatorPath,
   evaluateCityHotspots,
   calculateCourierBlips,
+  ASEAN_WATERWAYS,
 } from '../engine/smugglingMapData';
 import {
   GeopoliticalHotspot,
-  ActiveCourierBlip,
   FlightAnimationState,
-  CartelPatrolVector,
-  StormHazardZone,
 } from '../engine/smugglingMapTypes';
 import { soundEngine } from '../utils/audio';
 import {
@@ -31,52 +23,88 @@ import {
   AlertTriangle,
   Flame,
   Radio,
-  Anchor,
-  Check,
   Building,
   Beaker,
-  Package,
   FastForward,
   ZoomIn,
   ZoomOut,
   RotateCcw,
   Swords,
-  Crosshair,
-  Wind,
+  Compass,
+  Sparkles,
 } from 'lucide-react';
 
 const REGIONS = ['All', 'Americas', 'Europe', 'Asia-Pacific', 'Middle East & Africa'] as const;
 type RegionFilter = (typeof REGIONS)[number];
 
-// Viewport focus presets for regions
-const REGION_BOUNDS: Record<RegionFilter, { x: number; y: number; zoom: number }> = {
-  All: { x: 0, y: 0, zoom: 1 },
-  Americas: { x: 100, y: 40, zoom: 2.2 },
-  Europe: { x: 420, y: 20, zoom: 3.5 },
-  'Asia-Pacific': { x: 650, y: 30, zoom: 2.2 },
-  'Middle East & Africa': { x: 420, y: 120, zoom: 2.5 },
+type MapTileStyle = 'dark' | 'satellite' | 'voyager';
+
+const REGION_CENTERS: Record<RegionFilter, { lat: number; lng: number; zoom: number }> = {
+  All: { lat: 20, lng: 10, zoom: 2 },
+  Americas: { lat: 15, lng: -75, zoom: 3 },
+  Europe: { lat: 50, lng: 10, zoom: 4 },
+  'Asia-Pacific': { lat: 10, lng: 110, zoom: 4 },
+  'Middle East & Africa': { lat: 15, lng: 35, zoom: 3 },
 };
 
-function getLandmassGradientId(landId: string): string {
-  switch (landId) {
-    case 'north_america':
-      return 'naTerrain';
-    case 'south_america':
-      return 'saTerrain';
-    case 'europe':
-      return 'euTerrain';
-    case 'africa':
-      return 'afTerrain';
-    case 'asia':
-      return 'asTerrain';
-    case 'australia':
-      return 'auTerrain';
-    case 'greenland':
-    case 'iceland':
-      return 'arcticTerrain';
-    default:
-      return 'tropicalIslandTerrain';
+const TILE_CONFIGS: Record<MapTileStyle, { name: string; url: string; attribution: string }> = {
+  dark: {
+    name: 'Tactical Dark',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  },
+  satellite: {
+    name: 'Orbital Recon',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri &copy; Earthstar Geographics',
+  },
+  voyager: {
+    name: 'Topographical',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  },
+};
+
+/**
+ * Generates an array of [lat, lng] points forming a curved geodesic great-circle route.
+ */
+function generateGeodesicArcPoints(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+  numPoints = 40
+): [number, number][] {
+  const points: [number, number][] = [];
+  const p1Lat = (lat1 * Math.PI) / 180;
+  const p1Lng = (lng1 * Math.PI) / 180;
+  const p2Lat = (lat2 * Math.PI) / 180;
+  const p2Lng = (lng2 * Math.PI) / 180;
+
+  const d =
+    2 *
+    Math.asin(
+      Math.sqrt(
+        Math.pow(Math.sin((p1Lat - p2Lat) / 2), 2) +
+          Math.cos(p1Lat) * Math.cos(p2Lat) * Math.pow(Math.sin((p1Lng - p2Lng) / 2), 2)
+      )
+    );
+
+  if (d === 0) return [[lat1, lng1]];
+
+  for (let i = 0; i <= numPoints; i++) {
+    const f = i / numPoints;
+    const A = Math.sin((1 - f) * d) / Math.sin(d);
+    const B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(p1Lat) * Math.cos(p1Lng) + B * Math.cos(p2Lat) * Math.cos(p2Lng);
+    const y = A * Math.cos(p1Lat) * Math.sin(p1Lng) + B * Math.cos(p2Lat) * Math.sin(p2Lng);
+    const z = A * Math.sin(p1Lat) + B * Math.sin(p2Lat);
+    const lat = Math.atan2(z, Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)));
+    const lng = Math.atan2(y, x);
+    points.push([(lat * 180) / Math.PI, (lng * 180) / Math.PI]);
   }
+
+  return points;
 }
 
 export const SmugglingMap: React.FC = () => {
@@ -84,53 +112,40 @@ export const SmugglingMap: React.FC = () => {
     player,
     travel,
     openFlightBoard,
-    setActiveTab,
-    setPlacesSubTab,
   } = useGameStore();
 
   const [selectedCityId, setSelectedCityId] = useState<string>(
     player.currentCityId === 'miami' ? 'bogota' : 'miami'
   );
   const [selectedRegion, setSelectedRegion] = useState<RegionFilter>('All');
-  const [hoveredCityId, setHoveredCityId] = useState<string | null>(null);
-  const [hoveredCourier, setHoveredCourier] = useState<ActiveCourierBlip | null>(null);
-  const [hoveredPatrol, setHoveredPatrol] = useState<CartelPatrolVector | null>(null);
-  const [hoveredStorm, setHoveredStorm] = useState<StormHazardZone | null>(null);
-
-  // Interactive Zoom & Pan State
-  const [zoom, setZoom] = useState<number>(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [tileStyle, setTileStyle] = useState<MapTileStyle>('dark');
 
   // Layer Toggles
   const [showDirectCorridors, setShowDirectCorridors] = useState(true);
+  const [showWaterways, setShowWaterways] = useState(true);
   const [showBlockades, setShowBlockades] = useState(true);
   const [showHotspots, setShowHotspots] = useState(true);
   const [showCouriers, setShowCouriers] = useState(true);
-  const [showInfrastructure, setShowInfrastructure] = useState(true);
-  const [showTopography, setShowTopography] = useState(true);
-  const [showTerminator, setShowTerminator] = useState(true);
-  const [showStorms, setShowStorms] = useState(true);
-  const [showCartelPatrols, setShowCartelPatrols] = useState(true);
-  const [showTurfWars, setShowTurfWars] = useState(true);
 
   // Flight Animation State
   const [flightAnim, setFlightAnim] = useState<FlightAnimationState | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
+  // Leaflet references
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const cityMarkersGroupRef = useRef<L.LayerGroup | null>(null);
+  const routesGroupRef = useRef<L.LayerGroup | null>(null);
+  const waterwaysGroupRef = useRef<L.LayerGroup | null>(null);
+  const blockadesGroupRef = useRef<L.LayerGroup | null>(null);
+  const couriersGroupRef = useRef<L.LayerGroup | null>(null);
+  const animatedFlightMarkerRef = useRef<L.Marker | null>(null);
+
   const currentCity = CITIES.find((c) => c.id === player.currentCityId);
   const targetCity = CITIES.find((c) => c.id === selectedCityId) || currentCity;
   const originAirport = AIRPORT_REGISTRY[player.currentCityId];
   const targetAirport = AIRPORT_REGISTRY[selectedCityId];
-
-  const currentPos = originAirport
-    ? projectCoordinates(originAirport.coordinates.lat, originAirport.coordinates.lng)
-    : { x: 500, y: 250 };
-  const targetPos = targetAirport
-    ? projectCoordinates(targetAirport.coordinates.lat, targetAirport.coordinates.lng)
-    : { x: 500, y: 250 };
 
   const activeAircraft = player.selectedAircraftId ? AIRCRAFT_MAP.get(player.selectedAircraftId) : null;
   const aircraftFuelCost = activeAircraft
@@ -144,7 +159,6 @@ export const SmugglingMap: React.FC = () => {
   const unmaskedDrugs = Math.max(0, totalDrugs - maskedUnits);
   const hasBaggageHandler = !!player.corruptOfficials?.airport_baggage_handler?.active;
 
-  // Dynamic Hotspots & In-Transit Couriers
   const hotspots = useMemo(() => evaluateCityHotspots(player, player.currentDay), [player]);
   const hotspotMap = useMemo(() => {
     const map = new Map<string, GeopoliticalHotspot>();
@@ -156,102 +170,338 @@ export const SmugglingMap: React.FC = () => {
 
   const activeCouriers = useMemo(() => calculateCourierBlips(player), [player]);
 
-  // Day/Night Solar Terminator Shadow Curve
-  const terminatorPath = useMemo(() => {
-    return calculateDayNightTerminatorPath(player.currentDay, 14);
-  }, [player.currentDay]);
+  // Initialize Leaflet Map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-  // Selected route curve
-  const selectedCorridor = useMemo(() => {
-    if (!selectedCityId || selectedCityId === player.currentCityId) return null;
-    return calculateGreatCirclePath(player.currentCityId, selectedCityId);
-  }, [player.currentCityId, selectedCityId]);
+    const map = L.map(mapContainerRef.current, {
+      center: [20, 10],
+      zoom: 2,
+      minZoom: 2,
+      maxZoom: 7,
+      zoomControl: false,
+      attributionControl: false,
+      worldCopyJump: true,
+    });
 
-  // Dynamic SVG ViewBox calculation based on zoom & pan
-  const visibleW = 1000 / zoom;
-  const visibleH = 500 / zoom;
-  const clampedPanX = Math.max(0, Math.min(1000 - visibleW, pan.x));
-  const clampedPanY = Math.max(0, Math.min(500 - visibleH, pan.y));
-  const currentViewBox = `${clampedPanX} ${clampedPanY} ${visibleW} ${visibleH}`;
+    const tile = L.tileLayer(TILE_CONFIGS[tileStyle].url, {
+      maxZoom: 7,
+      subdomains: 'abcd',
+    }).addTo(map);
 
-  // Node scale factor to eliminate collisions when zoomed in or out
-  const nodeScale = Math.max(0.45, 1 / Math.sqrt(zoom));
+    tileLayerRef.current = tile;
+    cityMarkersGroupRef.current = L.layerGroup().addTo(map);
+    routesGroupRef.current = L.layerGroup().addTo(map);
+    waterwaysGroupRef.current = L.layerGroup().addTo(map);
+    blockadesGroupRef.current = L.layerGroup().addTo(map);
+    couriersGroupRef.current = L.layerGroup().addTo(map);
 
-  // Zoom & Pan Handlers
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // Update Tile Style
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    mapInstanceRef.current.removeLayer(tileLayerRef.current);
+    const newTile = L.tileLayer(TILE_CONFIGS[tileStyle].url, {
+      maxZoom: 7,
+      subdomains: 'abcd',
+    }).addTo(mapInstanceRef.current);
+    tileLayerRef.current = newTile;
+  }, [tileStyle]);
+
+  // Update Region Center / Pan
   const handleSelectRegion = (region: RegionFilter) => {
     setSelectedRegion(region);
-    const b = REGION_BOUNDS[region];
-    setZoom(b.zoom);
-    setPan({ x: b.x, y: b.y });
+    soundEngine.play('click');
+    const center = REGION_CENTERS[region];
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([center.lat, center.lng], center.zoom, {
+        duration: 1.2,
+      });
+    }
   };
 
   const handleZoomIn = () => {
-    setZoom((prev) => Math.min(5, Math.round((prev + 0.4) * 10) / 10));
+    mapInstanceRef.current?.zoomIn();
   };
 
   const handleZoomOut = () => {
-    setZoom((prev) => {
-      const next = Math.max(1, Math.round((prev - 0.4) * 10) / 10);
-      if (next === 1) setPan({ x: 0, y: 0 });
-      return next;
-    });
+    mapInstanceRef.current?.zoomOut();
   };
 
   const handleResetView = () => {
-    setSelectedRegion('All');
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    handleSelectRegion('All');
   };
 
-  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (e.button !== 0) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
+  // Render City Markers
+  useEffect(() => {
+    if (!cityMarkersGroupRef.current || !mapInstanceRef.current) return;
+    cityMarkersGroupRef.current.clearLayers();
 
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!isDragging || !svgRef.current) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    setDragStart({ x: e.clientX, y: e.clientY });
+    for (const city of CITIES) {
+      const airport = AIRPORT_REGISTRY[city.id];
+      if (!airport) continue;
 
-    const rect = svgRef.current.getBoundingClientRect();
-    const scaleX = visibleW / rect.width;
-    const scaleY = visibleH / rect.height;
+      const isCurrent = city.id === player.currentCityId;
+      const isSelected = city.id === selectedCityId;
+      const cityHeat = getCityHeat(player, city.id);
+      const hotspot = hotspotMap.get(city.id);
 
-    setPan((prev) => ({
-      x: Math.max(0, Math.min(1000 - visibleW, prev.x - dx * scaleX)),
-      y: Math.max(0, Math.min(500 - visibleH, prev.y - dy * scaleY)),
-    }));
-  };
+      // Create Custom DivIcon
+      let markerHtml = '';
+      if (isCurrent) {
+        markerHtml = `
+          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+            <span class="absolute w-8 h-8 rounded-full bg-emerald-500/30 animate-ping"></span>
+            <span class="absolute w-5 h-5 rounded-full bg-emerald-500/50 border border-emerald-400"></span>
+            <span class="relative w-2.5 h-2.5 rounded-full bg-emerald-300 shadow-md"></span>
+            <span class="absolute top-4 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-slate-950/90 text-emerald-300 border border-emerald-500 font-mono text-[10px] font-black whitespace-nowrap shadow-lg">
+              BASE: ${city.name}
+            </span>
+          </div>
+        `;
+      } else if (isSelected) {
+        markerHtml = `
+          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+            <span class="absolute w-8 h-8 rounded-full bg-cyan-500/30 animate-pulse"></span>
+            <span class="absolute w-4 h-4 rounded-full border-2 border-cyan-400 border-dashed animate-spin"></span>
+            <span class="relative w-2.5 h-2.5 rounded-full bg-cyan-300 shadow-md"></span>
+            <span class="absolute top-4 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-cyan-950/95 text-cyan-300 border border-cyan-400 font-mono text-[10px] font-black whitespace-nowrap shadow-lg">
+              TARGET: ${city.name}
+            </span>
+          </div>
+        `;
+      } else {
+        const dotColor =
+          hotspot?.severity === 'danger'
+            ? 'bg-rose-500 ring-rose-400'
+            : cityHeat >= 50
+            ? 'bg-amber-500 ring-amber-400'
+            : 'bg-sky-400 ring-sky-300';
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+        markerHtml = `
+          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group hover:scale-125 transition-transform">
+            <span class="w-2.5 h-2.5 rounded-full ${dotColor} ring-2 ring-slate-950 shadow-md"></span>
+            <span class="hidden group-hover:block absolute top-3 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-slate-950/90 text-slate-200 border border-slate-700 font-mono text-[9px] font-bold whitespace-nowrap shadow-lg z-50">
+              ${city.name} (${airport.iata})
+            </span>
+          </div>
+        `;
+      }
 
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.85 : 1.18;
-    setZoom((prev) => {
-      const next = Math.max(1, Math.min(5, Math.round(prev * factor * 100) / 100));
-      if (next === 1) setPan({ x: 0, y: 0 });
-      return next;
-    });
-  };
+      const icon = L.divIcon({
+        className: 'tactical-city-icon',
+        html: markerHtml,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
 
-  // Direct corridors from current airport
-  const directCorridors = useMemo(() => {
-    if (!originAirport?.directDestinations) return [];
-    return originAirport.directDestinations
-      .map((destId) => {
-        if (!AIRPORT_REGISTRY[destId]) return null;
-        return {
-          targetId: destId,
-          ...calculateGreatCirclePath(player.currentCityId, destId),
-        };
-      })
-      .filter(Boolean);
-  }, [originAirport, player.currentCityId]);
+      const marker = L.marker([airport.coordinates.lat, airport.coordinates.lng], { icon });
+
+      marker.on('click', () => {
+        soundEngine.play('click');
+        setSelectedCityId(city.id);
+      });
+
+      cityMarkersGroupRef.current.addLayer(marker);
+    }
+  }, [player.currentCityId, selectedCityId, hotspotMap, player.cityHeat]);
+
+  // Render Flight Corridors & Active Route
+  useEffect(() => {
+    if (!routesGroupRef.current || !originAirport || !mapInstanceRef.current) return;
+    routesGroupRef.current.clearLayers();
+
+    // 1. Direct connections from current base
+    if (showDirectCorridors && originAirport.directDestinations) {
+      for (const destId of originAirport.directDestinations) {
+        const destAirport = AIRPORT_REGISTRY[destId];
+        if (!destAirport || destId === selectedCityId) continue;
+
+        const arcPoints = generateGeodesicArcPoints(
+          originAirport.coordinates.lat,
+          originAirport.coordinates.lng,
+          destAirport.coordinates.lat,
+          destAirport.coordinates.lng,
+          25
+        );
+
+        const poly = L.polyline(arcPoints, {
+          color: '#0284c7',
+          weight: 1.5,
+          opacity: 0.35,
+          dashArray: '4, 6',
+        });
+
+        routesGroupRef.current.addLayer(poly);
+      }
+    }
+
+    // 2. High-priority selected corridor
+    if (selectedCityId && selectedCityId !== player.currentCityId && targetAirport) {
+      const selectedArc = generateGeodesicArcPoints(
+        originAirport.coordinates.lat,
+        originAirport.coordinates.lng,
+        targetAirport.coordinates.lat,
+        targetAirport.coordinates.lng,
+        40
+      );
+
+      // Glow layer
+      const glowPoly = L.polyline(selectedArc, {
+        color: '#06b6d4',
+        weight: 6,
+        opacity: 0.3,
+      });
+
+      // Sharp central route line
+      const routePoly = L.polyline(selectedArc, {
+        color: '#22d3ee',
+        weight: 2.5,
+        opacity: 0.95,
+        dashArray: '8, 4',
+      });
+
+      routesGroupRef.current.addLayer(glowPoly);
+      routesGroupRef.current.addLayer(routePoly);
+    }
+  }, [originAirport, targetAirport, selectedCityId, showDirectCorridors, player.currentCityId]);
+
+  // Render ASEAN Waterways & Maritime Smuggling Corridors
+  useEffect(() => {
+    if (!waterwaysGroupRef.current || !mapInstanceRef.current) return;
+    waterwaysGroupRef.current.clearLayers();
+
+    if (!showWaterways) return;
+
+    for (const waterway of ASEAN_WATERWAYS) {
+      const poly = L.polyline(waterway.coordinates, {
+        color: waterway.color,
+        weight: 3.5,
+        opacity: 0.85,
+        dashArray: '6, 5',
+      });
+
+      poly.bindTooltip(
+        `<div class="font-mono text-xs text-slate-100">
+          <strong class="text-cyan-400 block">${waterway.name}</strong>
+          <span class="text-slate-400 text-[10px] block mt-0.5">${waterway.description}</span>
+        </div>`,
+        { sticky: true, className: 'waterway-tooltip' }
+      );
+
+      waterwaysGroupRef.current.addLayer(poly);
+    }
+  }, [showWaterways]);
+
+  // Render DEA Blockade Zones
+  useEffect(() => {
+    if (!blockadesGroupRef.current || !mapInstanceRef.current) return;
+    blockadesGroupRef.current.clearLayers();
+
+    if (!showBlockades) return;
+
+    // Approximate real-world geographic bounding polygons for DEA naval cordons
+    const BLOCKADE_COORDS: Record<string, [number, number][]> = {
+      caribbean_basin: [
+        [24.5, -84.0],
+        [22.0, -74.0],
+        [12.0, -68.0],
+        [10.0, -82.0],
+        [18.0, -88.0],
+      ],
+      eastern_pacific: [
+        [20.0, -110.0],
+        [28.0, -118.0],
+        [10.0, -100.0],
+        [4.0, -85.0],
+        [12.0, -92.0],
+      ],
+      strait_of_gibraltar: [
+        [37.5, -9.0],
+        [37.5, 0.0],
+        [34.5, 0.0],
+        [34.5, -9.0],
+      ],
+      malacca_strait: [
+        [6.5, 98.0],
+        [6.5, 102.5],
+        [0.5, 105.0],
+        [0.5, 101.0],
+      ],
+    };
+
+    for (const zone of DEA_BLOCKADE_ZONES) {
+      const coords = BLOCKADE_COORDS[zone.id];
+      if (!coords) continue;
+
+      const polygon = L.polygon(coords, {
+        color: '#f43f5e',
+        fillColor: '#f43f5e',
+        fillOpacity: 0.15,
+        weight: 1.5,
+        dashArray: '5, 5',
+      });
+
+      polygon.bindTooltip(
+        `<div class="font-mono text-xs text-rose-300">
+          <strong>${zone.name}</strong>
+          <span class="block text-[10px] text-slate-400 mt-0.5">${zone.description}</span>
+        </div>`,
+        { sticky: true }
+      );
+
+      blockadesGroupRef.current.addLayer(polygon);
+    }
+  }, [showBlockades]);
+
+  // Render Active Courier Blips
+  useEffect(() => {
+    if (!couriersGroupRef.current || !mapInstanceRef.current) return;
+    couriersGroupRef.current.clearLayers();
+
+    if (!showCouriers) return;
+
+    for (const courier of activeCouriers) {
+      const orig = AIRPORT_REGISTRY[courier.originCityId];
+      const dest = AIRPORT_REGISTRY[courier.targetCityId];
+      if (!orig || !dest) continue;
+
+      const arc = generateGeodesicArcPoints(
+        orig.coordinates.lat,
+        orig.coordinates.lng,
+        dest.coordinates.lat,
+        dest.coordinates.lng,
+        30
+      );
+
+      const idx = Math.min(arc.length - 1, Math.floor(arc.length * (courier.progressPercent / 100)));
+      const pos = arc[idx];
+
+      const courierIcon = L.divIcon({
+        className: 'courier-blip',
+        html: `
+          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer">
+            <span class="absolute w-4 h-4 rounded-full bg-amber-400/40 animate-ping"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-400 border border-slate-900 shadow"></span>
+            <span class="absolute -top-4 left-1/2 -translate-x-1/2 px-1 py-0.5 rounded bg-slate-950 text-amber-300 text-[9px] font-mono font-bold whitespace-nowrap border border-amber-500/50">
+              📦 ${courier.drugName} (${courier.units}u)
+            </span>
+          </div>
+        `,
+        iconSize: [20, 20],
+      });
+
+      const marker = L.marker(pos, { icon: courierIcon });
+      couriersGroupRef.current.addLayer(marker);
+    }
+  }, [activeCouriers, showCouriers]);
 
   // Handle Flight Execution with Animation
   const startFlight = (useJet: boolean) => {
@@ -261,9 +511,11 @@ export const SmugglingMap: React.FC = () => {
 
     soundEngine.play('travel');
 
-    const totalDurationMs = 1500;
+    const totalDurationMs = 2000;
     const startTime = performance.now();
-    const distanceNm = selectedCorridor?.distanceNm || 1500;
+    const distanceNm = targetAirport && originAirport
+      ? calculateHaversineDistanceNm(originAirport.coordinates, targetAirport.coordinates)
+      : 1500;
 
     const aircraftName = useJet
       ? activeAircraft?.name || 'Private Jet'
@@ -281,7 +533,7 @@ export const SmugglingMap: React.FC = () => {
       aircraftName,
       callsign,
       progress: 0,
-      currentPosition: currentPos,
+      currentPosition: { x: 0, y: 0 },
       headingDegrees: 90,
       speedKts: useJet ? 590 : 490,
       mach: useJet ? 0.88 : 0.82,
@@ -295,42 +547,72 @@ export const SmugglingMap: React.FC = () => {
 
     setFlightAnim(initialAnim);
 
+    // Generate path points for flight
+    const flightArc = originAirport && targetAirport
+      ? generateGeodesicArcPoints(
+          originAirport.coordinates.lat,
+          originAirport.coordinates.lng,
+          targetAirport.coordinates.lat,
+          targetAirport.coordinates.lng,
+          60
+        )
+      : [];
+
+    const planeIcon = L.divIcon({
+      className: 'flight-anim-plane',
+      html: `
+        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
+          <span class="absolute w-8 h-8 rounded-full bg-cyan-400/40 animate-ping"></span>
+          <div class="w-7 h-7 rounded-full bg-cyan-500 border border-slate-900 shadow-xl flex items-center justify-center text-slate-950 font-black text-sm">
+            ✈️
+          </div>
+        </div>
+      `,
+      iconSize: [28, 28],
+    });
+
+    if (mapInstanceRef.current && flightArc.length > 0) {
+      if (animatedFlightMarkerRef.current) {
+        mapInstanceRef.current.removeLayer(animatedFlightMarkerRef.current);
+      }
+      animatedFlightMarkerRef.current = L.marker(flightArc[0], { icon: planeIcon }).addTo(mapInstanceRef.current);
+    }
+
     const animate = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / totalDurationMs);
 
-      if (selectedCorridor) {
-        const { point, headingDeg } = interpolateQuadraticBezier(
-          currentPos,
-          selectedCorridor.midPoint,
-          targetPos,
-          progress
-        );
-
-        setFlightAnim((prev) =>
-          prev
-            ? {
-                ...prev,
-                progress,
-                elapsedMs: elapsed,
-                currentPosition: point,
-                headingDegrees: headingDeg,
-                altitudeFt: Math.round(
-                  progress < 0.2
-                    ? 5000 + progress * 5 * 36000
-                    : progress > 0.8
-                    ? 41000 - (progress - 0.8) * 5 * 38000
-                    : 41000
-                ),
-              }
-            : null
-        );
+      if (flightArc.length > 0 && animatedFlightMarkerRef.current) {
+        const pointIdx = Math.min(flightArc.length - 1, Math.floor(progress * (flightArc.length - 1)));
+        const currentCoord = flightArc[pointIdx];
+        animatedFlightMarkerRef.current.setLatLng(currentCoord);
       }
+
+      setFlightAnim((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress,
+              elapsedMs: elapsed,
+              altitudeFt: Math.round(
+                progress < 0.2
+                  ? 5000 + progress * 5 * 36000
+                  : progress > 0.8
+                  ? 41000 - (progress - 0.8) * 5 * 38000
+                  : 41000
+              ),
+            }
+          : null
+      );
 
       if (progress < 1) {
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
-        // Flight completed!
+        // Landed!
+        if (animatedFlightMarkerRef.current && mapInstanceRef.current) {
+          mapInstanceRef.current.removeLayer(animatedFlightMarkerRef.current);
+          animatedFlightMarkerRef.current = null;
+        }
         animFrameRef.current = null;
         setFlightAnim(null);
         travel(selectedCityId, 'economy', undefined, useJet);
@@ -345,6 +627,10 @@ export const SmugglingMap: React.FC = () => {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (animatedFlightMarkerRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(animatedFlightMarkerRef.current);
+      animatedFlightMarkerRef.current = null;
+    }
     if (flightAnim) {
       const { targetCityId, useOwnedAircraft } = flightAnim;
       setFlightAnim(null);
@@ -357,24 +643,19 @@ export const SmugglingMap: React.FC = () => {
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }
+      if (animatedFlightMarkerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(animatedFlightMarkerRef.current);
+      }
     };
   }, []);
 
   const activeHotspot = targetCity ? hotspotMap.get(targetCity.id) : null;
   const isTargetDirect = originAirport?.directDestinations?.includes(selectedCityId);
 
-  // Active turf war & macro shocks targeting selected city
   const cityTurfWar = targetCity
     ? player.activeTurfWars?.find((w) => w.contestedCityIds.includes(targetCity.id))
     : null;
-  const cityMacroEvents = targetCity
-    ? player.activeMacroEvents?.filter((ev) => !ev.affectedCityIds || ev.affectedCityIds.includes(targetCity.id)) || []
-    : [];
 
-  // Check if player has infrastructure in selected city
-  const cityVaultUnits = player.vaults?.[selectedCityId]
-    ? Object.values(player.vaults[selectedCityId]).reduce((a, b) => a + b, 0)
-    : 0;
   const cityOwnedProperties = player.ownedProperties?.filter((p) => {
     return p.includes(selectedCityId) || p === 'island_paradise' || p === 'mountain_compound';
   }) || [];
@@ -392,10 +673,10 @@ export const SmugglingMap: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-black uppercase tracking-wider text-slate-100 flex items-center gap-2">
-                Cartel Geopolitical Smuggling Radar & World Flight Network
+                Cartel Geopolitical Smuggling Radar & Open-Source Global Grid
               </h2>
               <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                LIVE VECTOR GRID
+                LEAFLET TACTICAL ENGINE
               </span>
             </div>
             <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
@@ -405,13 +686,33 @@ export const SmugglingMap: React.FC = () => {
               <span>•</span>
               <span>HEAT: <strong className={originHeat >= 70 ? 'text-red-400' : originHeat >= 30 ? 'text-amber-400' : 'text-emerald-400'}>{originHeat}%</strong></span>
               <span>•</span>
-              <span>TIMEZONE: <strong className="text-slate-300">UTC {originAirport?.coordinates.lng ? Math.round(originAirport.coordinates.lng / 15) : 0 >= 0 ? `+${Math.round((originAirport?.coordinates.lng || 0) / 15)}` : Math.round((originAirport?.coordinates.lng || 0) / 15)}</strong></span>
+              <span>TOTAL WORLD HUBS: <strong className="text-cyan-400">{CITIES.length} Cities</strong></span>
             </p>
           </div>
         </div>
 
-        {/* Global Controls */}
+        {/* Global Controls & Raster Layer Selector */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Tile Style Picker */}
+          <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 text-xs">
+            {(['dark', 'satellite', 'voyager'] as MapTileStyle[]).map((style) => (
+              <button
+                key={style}
+                onClick={() => {
+                  setTileStyle(style);
+                  soundEngine.play('click');
+                }}
+                className={`px-2.5 py-1 rounded font-bold transition-all text-[11px] ${
+                  tileStyle === style
+                    ? 'bg-cyan-500 text-slate-950 shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {TILE_CONFIGS[style].name}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={openFlightBoard}
             className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-sky-950/50 transition-all cursor-pointer active:scale-95"
@@ -480,7 +781,16 @@ export const SmugglingMap: React.FC = () => {
               onChange={(e) => setShowDirectCorridors(e.target.checked)}
               className="rounded accent-sky-500 cursor-pointer"
             />
-            <span>Corridors</span>
+            <span>Routes</span>
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
+            <input
+              type="checkbox"
+              checked={showWaterways}
+              onChange={(e) => setShowWaterways(e.target.checked)}
+              className="rounded accent-cyan-500 cursor-pointer"
+            />
+            <span>ASEAN Waterways</span>
           </label>
           <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
             <input
@@ -489,7 +799,7 @@ export const SmugglingMap: React.FC = () => {
               onChange={(e) => setShowBlockades(e.target.checked)}
               className="rounded accent-rose-500 cursor-pointer"
             />
-            <span>DEA</span>
+            <span>DEA Cordon</span>
           </label>
           <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
             <input
@@ -505,1206 +815,294 @@ export const SmugglingMap: React.FC = () => {
               type="checkbox"
               checked={showCouriers}
               onChange={(e) => setShowCouriers(e.target.checked)}
-              className="rounded accent-cyan-500 cursor-pointer"
+              className="rounded accent-amber-500 cursor-pointer"
             />
-            <span>Couriers ({activeCouriers.length})</span>
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={showInfrastructure}
-              onChange={(e) => setShowInfrastructure(e.target.checked)}
-              className="rounded accent-purple-500 cursor-pointer"
-            />
-            <span>Vaults</span>
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={showTopography}
-              onChange={(e) => setShowTopography(e.target.checked)}
-              className="rounded accent-slate-400 cursor-pointer"
-            />
-            <span>Topography</span>
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={showTerminator}
-              onChange={(e) => setShowTerminator(e.target.checked)}
-              className="rounded accent-indigo-400 cursor-pointer"
-            />
-            <span>Day/Night</span>
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={showStorms}
-              onChange={(e) => setShowStorms(e.target.checked)}
-              className="rounded accent-sky-400 cursor-pointer"
-            />
-            <span>Storms</span>
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={showCartelPatrols}
-              onChange={(e) => setShowCartelPatrols(e.target.checked)}
-              className="rounded accent-emerald-400 cursor-pointer"
-            />
-            <span>Patrols</span>
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={showTurfWars}
-              onChange={(e) => setShowTurfWars(e.target.checked)}
-              className="rounded accent-red-500 cursor-pointer"
-            />
-            <span className="text-red-400 font-bold">Turf Wars</span>
+            <span>Couriers</span>
           </label>
         </div>
       </div>
 
-      {/* Main Vector Map & Tactical Dossier Deck */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 relative min-h-[500px]">
-        {/* Vector SVG World Map Canvas */}
-        <div className="lg:col-span-8 xl:col-span-9 bg-[#04070d] relative overflow-hidden p-2 flex flex-col justify-center select-none">
-          {/* Active Flight Telemetry HUD Banner (When Flight Animating) */}
-          {flightAnim && (
-            <div className="absolute top-4 left-4 right-4 z-40 bg-slate-900/95 border border-sky-500/80 rounded-xl p-3 shadow-2xl backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in zoom-in-95">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-400">
-                  <Plane className="w-5 h-5 animate-bounce" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase text-sky-400">FLIGHT IN PROGRESS:</span>
-                    <strong className="text-slate-100 font-mono text-sm">{flightAnim.callsign}</strong>
-                    <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">
-                      {flightAnim.aircraftName}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-300 font-mono flex items-center gap-3 mt-0.5">
-                    <span>
-                      ROUTE: <strong className="text-emerald-400">{AIRPORT_REGISTRY[flightAnim.originCityId]?.iata} ➔ {AIRPORT_REGISTRY[flightAnim.targetCityId]?.iata}</strong>
-                    </span>
-                    <span>•</span>
-                    <span>ALT: <strong className="text-sky-300">{flightAnim.altitudeFt.toLocaleString()} FT</strong></span>
-                    <span>•</span>
-                    <span>SPEED: <strong className="text-amber-300">Mach {flightAnim.mach} ({flightAnim.speedKts} kts)</strong></span>
-                  </div>
-                </div>
-              </div>
+      {/* Main Grid: Interactive Leaflet Map + Briefing Dossier */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+        {/* Leaflet Map Stage */}
+        <div className="lg:col-span-8 relative h-[540px] bg-slate-950 overflow-hidden select-none border-b lg:border-b-0 lg:border-r border-slate-800">
+          {/* Leaflet Container */}
+          <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-              {/* Progress Bar & Skip */}
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="w-36 bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700">
-                  <div
-                    className="bg-gradient-to-r from-sky-500 to-emerald-400 h-full transition-all duration-75"
-                    style={{ width: `${Math.round(flightAnim.progress * 100)}%` }}
-                  />
+          {/* Interactive Zoom & Reset HUD Controls */}
+          <div className="absolute top-4 left-4 z-20 flex flex-col gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-700/80 backdrop-blur-md shadow-2xl">
+            <button
+              onClick={handleZoomIn}
+              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-cyan-400 transition-colors"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-cyan-400 transition-colors"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleResetView}
+              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-cyan-400 transition-colors"
+              title="Reset View"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Flight Animation HUD Overlay */}
+          {flightAnim && (
+            <div className="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex flex-col justify-between p-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-cyan-500/30 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/50 flex items-center justify-center text-xl animate-pulse">
+                    ✈️
+                  </div>
+                  <div>
+                    <div className="text-xs text-cyan-400 font-bold uppercase tracking-wider">
+                      IN FLIGHT TELEMETRY • {flightAnim.callsign}
+                    </div>
+                    <div className="text-lg font-black text-slate-100">
+                      {flightAnim.aircraftName}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-black text-sky-400 w-10">
-                  {Math.round(flightAnim.progress * 100)}%
-                </span>
+
                 <button
                   onClick={skipFlightAnimation}
-                  className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                  title="Fast-forward and land immediately"
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-600 transition-colors"
                 >
-                  <FastForward className="w-3 h-3" />
-                  <span>Skip</span>
+                  <FastForward className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Skip Telemetry</span>
                 </button>
+              </div>
+
+              {/* Progress Bar & Mid-Flight Stats */}
+              <div className="space-y-4 max-w-xl mx-auto w-full text-center">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-400">
+                  <span className="text-emerald-400">{currentCity?.name} ({originAirport?.iata})</span>
+                  <span className="text-cyan-400 font-black">{Math.round(flightAnim.progress * 100)}% EN ROUTE</span>
+                  <span className="text-cyan-400">{targetCity?.name} ({targetAirport?.iata})</span>
+                </div>
+
+                <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-sky-400 rounded-full transition-all duration-75 shadow-lg shadow-cyan-500/50"
+                    style={{ width: `${flightAnim.progress * 100}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 pt-2 text-xs">
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Altitude</span>
+                    <strong className="text-slate-100 text-sm">{flightAnim.altitudeFt.toLocaleString()} FT</strong>
+                  </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Speed</span>
+                    <strong className="text-slate-100 text-sm">{flightAnim.speedKts} KTS</strong>
+                  </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Mach</span>
+                    <strong className="text-cyan-400 text-sm">M {flightAnim.mach}</strong>
+                  </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Distance</span>
+                    <strong className="text-slate-100 text-sm">{flightAnim.distanceNm.toLocaleString()} NM</strong>
+                  </div>
+                </div>
+
+                {flightAnim.isCustomsBypassed && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-600/50 text-emerald-300 text-xs font-bold">
+                    <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Airport Tarmac Baggage Handler Bypass Active</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-center text-[11px] text-slate-500">
+                Approaching terminal airspace at {targetCity?.name} • Preparing final landing approach
               </div>
             </div>
           )}
-
-          {/* SVG Map Container */}
-          <div className="relative w-full aspect-[2/1] max-h-[580px] overflow-hidden rounded-xl">
-            {/* Floating Zoom & Pan Tactical HUD Controls */}
-            <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1.5 shadow-xl backdrop-blur-md">
-              <button
-                onClick={handleZoomIn}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-white transition-colors cursor-pointer"
-                title="Zoom In (or scroll wheel up)"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-[11px] font-mono font-bold text-slate-300 px-1 min-w-[36px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                onClick={handleZoomOut}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-white transition-colors cursor-pointer"
-                title="Zoom Out (or scroll wheel down)"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <div className="h-4 w-px bg-slate-700 mx-0.5" />
-              <button
-                onClick={handleResetView}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Reset View to 100%"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <svg
-              ref={svgRef}
-              viewBox={currentViewBox}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onWheel={handleWheel}
-              className={`w-full h-full select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-              preserveAspectRatio="xMidYMid meet"
-            >
-              <defs>
-                {/* Deep Oceanic Bathymetry Radial Gradient */}
-                <radialGradient id="oceanRadialGradient" cx="50%" cy="50%" r="75%" fx="50%" fy="50%">
-                  <stop offset="0%" stopColor="#0b2c56" />
-                  <stop offset="40%" stopColor="#082042" />
-                  <stop offset="75%" stopColor="#041226" />
-                  <stop offset="100%" stopColor="#020914" />
-                </radialGradient>
-
-                {/* Oceanic Bathymetry Depth Wave Pattern */}
-                <pattern id="bathymetryRipples" width="36" height="36" patternUnits="userSpaceOnUse">
-                  <path d="M 0 18 Q 9 12 18 18 T 36 18" fill="none" stroke="rgba(56, 189, 248, 0.05)" strokeWidth="0.75" />
-                  <circle cx="18" cy="18" r="0.75" fill="rgba(56, 189, 248, 0.08)" />
-                </pattern>
-
-                {/* Natural Earth / Satellite Biome Gradients */}
-                {/* North America: Pacific NW evergreen -> Great Plains tan -> Sonoran desert */}
-                <linearGradient id="naTerrain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1e3a24" />
-                  <stop offset="35%" stopColor="#254a2e" />
-                  <stop offset="60%" stopColor="#554728" />
-                  <stop offset="85%" stopColor="#694b29" />
-                  <stop offset="100%" stopColor="#274626" />
-                </linearGradient>
-
-                {/* South America: Colombian jungle -> Amazon deep rainforest -> Cerrado -> Pampas */}
-                <linearGradient id="saTerrain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#184824" />
-                  <stop offset="30%" stopColor="#0f391b" />
-                  <stop offset="65%" stopColor="#2f4e26" />
-                  <stop offset="85%" stopColor="#484429" />
-                  <stop offset="100%" stopColor="#38362b" />
-                </linearGradient>
-
-                {/* Europe: Scandinavian taiga -> Central European green woodland -> Mediterranean olive */}
-                <linearGradient id="euTerrain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1a4228" />
-                  <stop offset="40%" stopColor="#255431" />
-                  <stop offset="75%" stopColor="#3d5229" />
-                  <stop offset="100%" stopColor="#4e4628" />
-                </linearGradient>
-
-                {/* Africa: Sahara golden sands -> Sahel savannah -> Congo rainforest -> Kalahari */}
-                <linearGradient id="afTerrain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7e5d2e" />
-                  <stop offset="20%" stopColor="#a3783a" />
-                  <stop offset="40%" stopColor="#785930" />
-                  <stop offset="55%" stopColor="#12401e" />
-                  <stop offset="75%" stopColor="#385026" />
-                  <stop offset="90%" stopColor="#6e522b" />
-                  <stop offset="100%" stopColor="#2a4628" />
-                </linearGradient>
-
-                {/* Asia / Eurasia: Siberian taiga -> Urals/Altai -> Gobi sands -> Tropical SE Asia */}
-                <linearGradient id="asTerrain" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#193d28" />
-                  <stop offset="30%" stopColor="#3d4f3b" />
-                  <stop offset="50%" stopColor="#6f5634" />
-                  <stop offset="70%" stopColor="#444f3e" />
-                  <stop offset="85%" stopColor="#22542e" />
-                  <stop offset="100%" stopColor="#134723" />
-                </linearGradient>
-
-                {/* Australia: Outback red sandstone -> Simpson Desert ochre -> Coastal eucalyptus */}
-                <linearGradient id="auTerrain" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#873f1f" />
-                  <stop offset="45%" stopColor="#9e4c27" />
-                  <stop offset="80%" stopColor="#744423" />
-                  <stop offset="100%" stopColor="#2a4524" />
-                </linearGradient>
-
-                {/* Arctic / Greenland / Iceland: Frosty glacier ice sheet -> Tundra rock */}
-                <linearGradient id="arcticTerrain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3e5964" />
-                  <stop offset="100%" stopColor="#293f48" />
-                </linearGradient>
-
-                {/* Tropical Islands (Caribbean, SE Asia, Japan, NZ, Madagascar): Lush canopy */}
-                <linearGradient id="tropicalIslandTerrain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#184e29" />
-                  <stop offset="100%" stopColor="#236b3b" />
-                </linearGradient>
-
-                {/* Hazard Stripe Pattern for DEA Blockades */}
-                <pattern id="hazardStripe" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                  <rect width="4" height="8" fill="rgba(244, 63, 94, 0.2)" />
-                  <rect x="4" width="4" height="8" fill="transparent" />
-                </pattern>
-
-                {/* Radar Grid Dot Pattern */}
-                <pattern id="radarGrid" width="24" height="24" patternUnits="userSpaceOnUse">
-                  <circle cx="1" cy="1" r="0.75" fill="rgba(56, 189, 248, 0.08)" />
-                </pattern>
-
-                {/* Glow Filter for Active Route */}
-                <filter id="laserGlow" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="3.5" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-
-              {/* Deep Gradient Ocean Background */}
-              <rect width="1000" height="500" fill="url(#oceanRadialGradient)" />
-              {/* Bathymetry Wave Pattern Grid */}
-              <rect width="1000" height="500" fill="url(#bathymetryRipples)" />
-              <rect width="1000" height="500" fill="url(#radarGrid)" />
-
-              {/* Latitude & Longitude Coordinate Lines */}
-              <g stroke="rgba(56, 189, 248, 0.14)" strokeWidth={0.75 * nodeScale} strokeDasharray="3 3">
-                {/* Equator */}
-                <line x1="0" y1="285.7" x2="1000" y2="285.7" stroke="rgba(56, 189, 248, 0.35)" strokeDasharray="none" />
-                {/* Tropics */}
-                <line x1="0" y1="202" x2="1000" y2="202" />
-                <line x1="0" y1="369" x2="1000" y2="369" />
-                {/* 60 deg N & S */}
-                <line x1="0" y1="71" x2="1000" y2="71" />
-                <line x1="0" y1="500" x2="1000" y2="500" />
-                {/* Prime Meridian & 60 deg increments */}
-                <line x1="500" y1="0" x2="500" y2="500" stroke="rgba(56, 189, 248, 0.35)" strokeDasharray="none" />
-                <line x1="166" y1="0" x2="166" y2="500" />
-                <line x1="333" y1="0" x2="333" y2="500" />
-                <line x1="666" y1="0" x2="666" y2="500" />
-                <line x1="833" y1="0" x2="833" y2="500" />
-              </g>
-
-              {/* Continental Shelf Marine Water Halo (Natural Earth / Mapbox Turquoise Shelf) */}
-              <g id="continentalShelves" pointerEvents="none">
-                {/* Deep Outer Marine Shelf */}
-                {WORLD_LANDMASS_PATHS.map((land) => (
-                  <path
-                    key={`shelf_deep_${land.id}`}
-                    d={land.d}
-                    fill="none"
-                    stroke="rgba(8, 47, 73, 0.55)"
-                    strokeWidth={14 * nodeScale}
-                    strokeLinejoin="round"
-                  />
-                ))}
-                {/* Mid Coastal Shelf */}
-                {WORLD_LANDMASS_PATHS.map((land) => (
-                  <path
-                    key={`shelf_mid_${land.id}`}
-                    d={land.d}
-                    fill="none"
-                    stroke="rgba(14, 116, 144, 0.4)"
-                    strokeWidth={7 * nodeScale}
-                    strokeLinejoin="round"
-                  />
-                ))}
-                {/* Shallow Lagoon Shoreline Fringe */}
-                {WORLD_LANDMASS_PATHS.map((land) => (
-                  <path
-                    key={`shelf_lagoon_${land.id}`}
-                    d={land.d}
-                    fill="none"
-                    stroke="rgba(6, 182, 212, 0.32)"
-                    strokeWidth={3 * nodeScale}
-                    strokeLinejoin="round"
-                  />
-                ))}
-              </g>
-
-              {/* Day/Night Solar Terminator Twilight Shadow */}
-              {showTerminator && (
-                <g id="dayNightTerminator" pointerEvents="none">
-                  <path
-                    d={terminatorPath}
-                    fill="rgba(1, 4, 14, 0.55)"
-                    stroke="rgba(56, 189, 248, 0.3)"
-                    strokeWidth={1.2 * nodeScale}
-                    strokeDasharray="4 2"
-                  />
-                </g>
-              )}
-
-              {/* World Continents with Textured Earth Biome Gradients */}
-              <g id="worldLandmasses">
-                {WORLD_LANDMASS_PATHS.map((land) => (
-                  <path
-                    key={land.id}
-                    d={land.d}
-                    fill={`url(#${getLandmassGradientId(land.id)})`}
-                    stroke="#1c3a22"
-                    strokeWidth={1.1 * nodeScale}
-                    className="transition-all duration-200 hover:brightness-110"
-                    filter="drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55))"
-                  />
-                ))}
-              </g>
-
-              {/* Topographic Elevation Contours & Mountain Walls */}
-              {showTopography && (
-                <g id="topography" pointerEvents="none">
-                  {WORLD_TOPOGRAPHY_CONTOURS.map((topo) => (
-                    <g key={topo.id}>
-                      {/* Shadow underlay for high contrast against terrain */}
-                      <path
-                        d={topo.pathString}
-                        fill="none"
-                        stroke="rgba(0, 0, 0, 0.7)"
-                        strokeWidth={2.6 * nodeScale}
-                        strokeLinecap="round"
-                      />
-                      {/* Glowing golden alpine ridge */}
-                      <path
-                        d={topo.pathString}
-                        fill="none"
-                        stroke="#fbbf24"
-                        strokeWidth={1.3 * nodeScale}
-                        strokeDasharray="4 2"
-                        strokeLinecap="round"
-                      />
-                    </g>
-                  ))}
-                </g>
-              )}
-
-              {/* DEA Naval and Air Blockade Zones */}
-              {showBlockades && (
-                <g id="deaBlockades">
-                  {DEA_BLOCKADE_ZONES.map((zone) => {
-                    const pointsStr = zone.polygonPoints.map((p) => `${p.x},${p.y}`).join(' ');
-                    return (
-                      <g key={zone.id} className="cursor-pointer">
-                        <polygon
-                          points={pointsStr}
-                          fill="url(#hazardStripe)"
-                          stroke={zone.threatLevel === 'severe' ? '#f43f5e' : '#f59e0b'}
-                          strokeWidth={1 * nodeScale}
-                          strokeDasharray="4 2"
-                          opacity="0.8"
-                        />
-                        <rect
-                          x={zone.labelPosition.x - 28 * nodeScale}
-                          y={zone.labelPosition.y - 7 * nodeScale}
-                          width={56 * nodeScale}
-                          height={14 * nodeScale}
-                          rx={3 * nodeScale}
-                          fill="rgba(15, 23, 42, 0.85)"
-                          stroke={zone.threatLevel === 'severe' ? '#f43f5e' : '#f59e0b'}
-                          strokeWidth={0.75 * nodeScale}
-                        />
-                        <text
-                          x={zone.labelPosition.x}
-                          y={zone.labelPosition.y + 2.5 * nodeScale}
-                          fill={zone.threatLevel === 'severe' ? '#fca5a5' : '#fde68a'}
-                          fontSize={7 * nodeScale}
-                          fontWeight="bold"
-                          textAnchor="middle"
-                        >
-                          {zone.code}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </g>
-              )}
-
-              {/* Severe Storm & Cyclone Weather Hazards */}
-              {showStorms && (
-                <g id="stormHazards">
-                  {STORM_HAZARD_ZONES.map((storm) => (
-                    <g
-                      key={storm.id}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setHoveredStorm(storm)}
-                      onMouseLeave={() => setHoveredStorm(null)}
-                    >
-                      <circle
-                        cx={storm.center.x}
-                        cy={storm.center.y}
-                        r={storm.radius}
-                        fill="rgba(56, 189, 248, 0.06)"
-                        stroke={storm.severity === 'severe' ? '#f43f5e' : '#38bdf8'}
-                        strokeWidth={0.8 * nodeScale}
-                        strokeDasharray="3 3"
-                      />
-                      <path
-                        d={storm.spiralPath}
-                        fill="none"
-                        stroke={storm.severity === 'severe' ? '#f43f5e' : '#38bdf8'}
-                        strokeWidth={1.2 * nodeScale}
-                        opacity="0.8"
-                      />
-                      <text
-                        x={storm.center.x}
-                        y={storm.center.y + storm.radius + 9 * nodeScale}
-                        fill={storm.severity === 'severe' ? '#fca5a5' : '#7dd3fc'}
-                        fontSize={6.5 * nodeScale}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {storm.code}
-                      </text>
-                    </g>
-                  ))}
-                </g>
-              )}
-
-              {/* Active Cartel Patrol & Speedboat Infiltration Vectors */}
-              {showCartelPatrols && (
-                <g id="cartelPatrols">
-                  {CARTEL_PATROL_VECTORS.map((patrol) => (
-                    <g
-                      key={patrol.id}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setHoveredPatrol(patrol)}
-                      onMouseLeave={() => setHoveredPatrol(null)}
-                    >
-                      <path
-                        d={patrol.pathString}
-                        fill="none"
-                        stroke={patrol.color}
-                        strokeWidth={2 * nodeScale}
-                        strokeDasharray="6 4"
-                        strokeOpacity="0.85"
-                      />
-                    </g>
-                  ))}
-                </g>
-              )}
-
-              {/* Active Syndicate Turf War Battlegrounds */}
-              {showTurfWars && player.activeTurfWars && player.activeTurfWars.map((war) => {
-                const pairs: Array<[string, string]> = [];
-                for (let i = 0; i < war.contestedCityIds.length; i++) {
-                  for (let j = i + 1; j < war.contestedCityIds.length; j++) {
-                    pairs.push([war.contestedCityIds[i], war.contestedCityIds[j]]);
-                  }
-                }
-                return (
-                  <g key={war.id} id={`war_${war.id}`}>
-                    {pairs.map(([c1, c2], idx) => {
-                      const pathData = calculateGreatCirclePath(c1, c2);
-                      if (!pathData.pathString) return null;
-                      return (
-                        <path
-                          key={`war_line_${idx}`}
-                          d={pathData.pathString}
-                          fill="none"
-                          stroke="#ef4444"
-                          strokeWidth={1.8 * nodeScale}
-                          strokeDasharray="4 3"
-                          opacity="0.8"
-                          className="animate-pulse"
-                        />
-                      );
-                    })}
-                  </g>
-                );
-              })}
-
-              {/* Direct Corridors from Current City */}
-              {showDirectCorridors && (
-                <g id="directCorridors">
-                  {directCorridors.map((c) => {
-                    if (!c) return null;
-                    const isSelected = c.targetId === selectedCityId;
-                    if (isSelected) return null; // Drawn separately with glow
-                    return (
-                      <path
-                        key={`direct_${c.targetId}`}
-                        d={c.pathString}
-                        fill="none"
-                        stroke="rgba(56, 189, 248, 0.2)"
-                        strokeWidth={1 * nodeScale}
-                        strokeDasharray="2 4"
-                      />
-                    );
-                  })}
-                </g>
-              )}
-
-              {/* Active Selected Great-Circle Route (Laser Glow) */}
-              {selectedCorridor && (
-                <g id="activeCorridor">
-                  {/* High-contrast dark backing rim */}
-                  <path
-                    d={selectedCorridor.pathString}
-                    fill="none"
-                    stroke="#020617"
-                    strokeWidth={5.5 * nodeScale}
-                  />
-                  {/* Outer laser glow */}
-                  <path
-                    d={selectedCorridor.pathString}
-                    fill="none"
-                    stroke="rgba(0, 240, 255, 0.45)"
-                    strokeWidth={3.8 * nodeScale}
-                    filter="url(#laserGlow)"
-                  />
-                  {/* Core laser beam */}
-                  <path
-                    d={selectedCorridor.pathString}
-                    fill="none"
-                    stroke="#38bdf8"
-                    strokeWidth={2 * nodeScale}
-                    strokeDasharray="8 6"
-                    className="animate-pulse"
-                  />
-                  {/* Center white hot beam */}
-                  <path
-                    d={selectedCorridor.pathString}
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth={0.8 * nodeScale}
-                  />
-                  {/* Midpoint Distance Pill */}
-                  <g transform={`translate(${selectedCorridor.midPoint.x}, ${selectedCorridor.midPoint.y})`}>
-                    <rect
-                      x={-32 * nodeScale}
-                      y={-9 * nodeScale}
-                      width={64 * nodeScale}
-                      height={16 * nodeScale}
-                      rx={4 * nodeScale}
-                      fill="#0f172a"
-                      stroke="#38bdf8"
-                      strokeWidth={1 * nodeScale}
-                    />
-                    <text
-                      x="0"
-                      y={2.5 * nodeScale}
-                      fill="#bae6fd"
-                      fontSize={8 * nodeScale}
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      {selectedCorridor.distanceNm.toLocaleString()} NM
-                    </text>
-                  </g>
-                </g>
-              )}
-
-              {/* In-Transit Couriers on Map */}
-              {showCouriers && (
-                <g id="courierBlips">
-                  {activeCouriers.map((courier) => (
-                    <g
-                      key={courier.id}
-                      transform={`translate(${courier.currentPosition.x}, ${courier.currentPosition.y})`}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setHoveredCourier(courier)}
-                      onMouseLeave={() => setHoveredCourier(null)}
-                    >
-                      <circle r={6 * nodeScale} fill="#06b6d4" fillOpacity="0.3" className="animate-ping" />
-                      <circle r={4 * nodeScale} fill="#06b6d4" stroke="#ffffff" strokeWidth={1 * nodeScale} />
-                      <text x={6 * nodeScale} y={3 * nodeScale} fill="#67e8f9" fontSize={7 * nodeScale} fontWeight="bold">
-                        {courier.shipperName.split(' ')[0]} ({courier.units}u)
-                      </text>
-                    </g>
-                  ))}
-                </g>
-              )}
-
-              {/* 30 City Nodes with Dynamic Scaling */}
-              <g id="cityNodes">
-                {CITIES.map((city) => {
-                  const airport = AIRPORT_REGISTRY[city.id];
-                  if (!airport) return null;
-                  const pos = projectCoordinates(airport.coordinates.lat, airport.coordinates.lng);
-                  const isCurrent = city.id === player.currentCityId;
-                  const isSelected = city.id === selectedCityId;
-                  const isHovered = city.id === hoveredCityId;
-                  const heat = getCityHeat(player, city.id);
-                  const hotspot = hotspotMap.get(city.id);
-                  const warInCity = player.activeTurfWars?.find((w) => w.contestedCityIds.includes(city.id));
-
-                  // Heat color ring
-                  const heatColor =
-                    warInCity
-                      ? '#ef4444'
-                      : heat >= 70
-                      ? '#f43f5e'
-                      : heat >= 30
-                      ? '#f59e0b'
-                      : '#10b981';
-
-                  // Stash presence
-                  const hasStash =
-                    player.vaults?.[city.id] &&
-                    Object.values(player.vaults[city.id]).some((v) => v > 0);
-
-                  const rOuter = (isCurrent ? 6 : isSelected ? 5.5 : 4) * nodeScale;
-                  const rInner = (isCurrent ? 3 : 1.8) * nodeScale;
-                  const fontSize = (isCurrent || isSelected ? 8 : 6.5) * nodeScale;
-                  const labelY = (isCurrent ? 13 : 11) * nodeScale;
-
-                  return (
-                    <g
-                      key={city.id}
-                      transform={`translate(${pos.x}, ${pos.y})`}
-                      className="cursor-pointer transition-transform duration-150"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCityId(city.id);
-                      }}
-                      onMouseEnter={() => setHoveredCityId(city.id)}
-                      onMouseLeave={() => setHoveredCityId(null)}
-                    >
-                      {/* Active Turf War Crossfire Combat Ring */}
-                      {showTurfWars && warInCity && (
-                        <circle
-                          r={14 * nodeScale}
-                          fill="none"
-                          stroke="#ef4444"
-                          strokeWidth={1.5 * nodeScale}
-                          strokeDasharray="2 2"
-                          className="animate-spin"
-                          style={{ animationDuration: '6s' }}
-                        />
-                      )}
-
-                      {/* Current City Pulsing Beacon */}
-                      {isCurrent && (
-                        <circle
-                          r={12 * nodeScale}
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth={1.5 * nodeScale}
-                          className="animate-ping"
-                        />
-                      )}
-
-                      {/* Selected Reticle */}
-                      {isSelected && (
-                        <g>
-                          <circle
-                            r={10 * nodeScale}
-                            fill="none"
-                            stroke="#38bdf8"
-                            strokeWidth={1.2 * nodeScale}
-                            strokeDasharray="2 2"
-                          />
-                          <line
-                            x1={-13 * nodeScale}
-                            y1={0}
-                            x2={-7 * nodeScale}
-                            y2={0}
-                            stroke="#38bdf8"
-                            strokeWidth={1.2 * nodeScale}
-                          />
-                          <line
-                            x1={7 * nodeScale}
-                            y1={0}
-                            x2={13 * nodeScale}
-                            y2={0}
-                            stroke="#38bdf8"
-                            strokeWidth={1.2 * nodeScale}
-                          />
-                          <line
-                            x1={0}
-                            y1={-13 * nodeScale}
-                            x2={0}
-                            y2={-7 * nodeScale}
-                            stroke="#38bdf8"
-                            strokeWidth={1.2 * nodeScale}
-                          />
-                          <line
-                            x1={0}
-                            y1={7 * nodeScale}
-                            x2={0}
-                            y2={13 * nodeScale}
-                            stroke="#38bdf8"
-                            strokeWidth={1.2 * nodeScale}
-                          />
-                        </g>
-                      )}
-
-                      {/* Node Outer Heat Ring */}
-                      <circle
-                        r={rOuter}
-                        fill={isCurrent ? '#10b981' : isSelected ? '#38bdf8' : '#0f172a'}
-                        stroke={heatColor}
-                        strokeWidth={(heat >= 70 || warInCity ? 2 : 1) * nodeScale}
-                      />
-
-                      {/* Inner Dot */}
-                      <circle
-                        r={rInner}
-                        fill={isCurrent ? '#ffffff' : isSelected ? '#ffffff' : heatColor}
-                      />
-
-                      {/* Hotspot Icon Pip */}
-                      {showHotspots && hotspot && (
-                        <g transform={`translate(${5 * nodeScale}, ${-7 * nodeScale})`}>
-                          <circle
-                            r={3.5 * nodeScale}
-                            fill={
-                              hotspot.severity === 'danger'
-                                ? '#e11d48'
-                                : hotspot.severity === 'sanctuary'
-                                ? '#eab308'
-                                : '#38bdf8'
-                            }
-                            stroke="#0f172a"
-                            strokeWidth={0.6 * nodeScale}
-                          />
-                        </g>
-                      )}
-
-                      {/* Vault Stash Pip */}
-                      {showInfrastructure && hasStash && (
-                        <g transform={`translate(${-7 * nodeScale}, ${-7 * nodeScale})`}>
-                          <rect
-                            x={-2.5 * nodeScale}
-                            y={-2.5 * nodeScale}
-                            width={5 * nodeScale}
-                            height={5 * nodeScale}
-                            rx={0.8 * nodeScale}
-                            fill="#8b5cf6"
-                            stroke="#0f172a"
-                            strokeWidth={0.6 * nodeScale}
-                          />
-                        </g>
-                      )}
-
-                      {/* City IATA Label with High-Contrast Halo */}
-                      <text
-                        x="0"
-                        y={labelY}
-                        fill={
-                          warInCity
-                            ? '#fca5a5'
-                            : isCurrent
-                            ? '#34d399'
-                            : isSelected
-                            ? '#7dd3fc'
-                            : isHovered
-                            ? '#ffffff'
-                            : '#cbd5e1'
-                        }
-                        fontSize={fontSize}
-                        fontWeight={isCurrent || isSelected || warInCity ? 'bold' : '600'}
-                        textAnchor="middle"
-                        paintOrder="stroke"
-                        stroke="#020617"
-                        strokeWidth={2.8 * nodeScale}
-                        strokeLinejoin="round"
-                        className="select-none"
-                      >
-                        {airport.iata}
-                      </text>
-                    </g>
-                  );
-                })}
-              </g>
-
-              {/* Traversal Blip (Aircraft during Flight Animation) */}
-              {flightAnim && (
-                <g
-                  transform={`translate(${flightAnim.currentPosition.x}, ${flightAnim.currentPosition.y}) rotate(${flightAnim.headingDegrees})`}
-                  className="z-50"
-                >
-                  {/* Jet Exhaust Trail */}
-                  <line x1="-12" y1="0" x2="-2" y2="0" stroke="#38bdf8" strokeWidth={2.5 * nodeScale} opacity="0.8" />
-                  <circle cx="-12" cy="0" r={3 * nodeScale} fill="#38bdf8" opacity="0.4" className="animate-ping" />
-                  {/* Plane Silhouette */}
-                  <path
-                    d="M 6 0 L -3 -5 L -1 -1 L -6 -1 L -8 -3 L -8 3 L -6 1 L -1 1 L -3 5 Z"
-                    fill="#38bdf8"
-                    stroke="#ffffff"
-                    strokeWidth={0.75 * nodeScale}
-                  />
-                </g>
-              )}
-            </svg>
-
-            {/* Hovered Storm Tooltip Card */}
-            {hoveredStorm && (
-              <div
-                className="absolute z-50 bg-slate-900/95 border border-sky-500 rounded-lg p-2.5 text-xs shadow-xl pointer-events-none font-mono"
-                style={{
-                  left: `${((hoveredStorm.center.x - clampedPanX) / visibleW) * 100}%`,
-                  top: `${((hoveredStorm.center.y - clampedPanY) / visibleH) * 100}%`,
-                  transform: 'translate(-50%, -120%)',
-                }}
-              >
-                <div className="font-bold text-sky-300 flex items-center gap-1.5">
-                  <Wind className="w-3.5 h-3.5 text-sky-400" />
-                  <span>{hoveredStorm.name} ({hoveredStorm.code})</span>
-                </div>
-                <div className="text-slate-300 text-[11px] mt-1 leading-tight">
-                  {hoveredStorm.description}
-                </div>
-                <div className="text-[10px] text-amber-400 mt-0.5 uppercase font-bold">
-                  Severity: {hoveredStorm.severity}
-                </div>
-              </div>
-            )}
-
-            {/* Hovered Cartel Patrol Vector Tooltip Card */}
-            {hoveredPatrol && (
-              <div className="absolute top-4 left-4 z-50 bg-slate-900/95 border border-emerald-500 rounded-lg p-2.5 text-xs shadow-xl pointer-events-none font-mono max-w-xs">
-                <div className="font-bold text-emerald-300 flex items-center gap-1.5">
-                  <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{hoveredPatrol.name}</span>
-                </div>
-                <div className="text-slate-400 text-[10px] mt-0.5">
-                  Cartel: <strong className="text-slate-200">{hoveredPatrol.syndicateName}</strong> • Type: {hoveredPatrol.type}
-                </div>
-                <div className="text-slate-300 text-[11px] mt-1 leading-tight">
-                  {hoveredPatrol.description}
-                </div>
-              </div>
-            )}
-
-            {/* Hovered Courier Tooltip Card */}
-            {hoveredCourier && (
-              <div
-                className="absolute z-50 bg-slate-900/95 border border-cyan-500 rounded-lg p-2.5 text-xs shadow-xl pointer-events-none font-mono"
-                style={{
-                  left: `${((hoveredCourier.currentPosition.x - clampedPanX) / visibleW) * 100}%`,
-                  top: `${((hoveredCourier.currentPosition.y - clampedPanY) / visibleH) * 100}%`,
-                  transform: 'translate(-50%, -120%)',
-                }}
-              >
-                <div className="font-bold text-cyan-300 flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{hoveredCourier.shipperName}</span>
-                </div>
-                <div className="text-slate-300 mt-1">
-                  Cargo: <strong>{hoveredCourier.units.toLocaleString()}x {hoveredCourier.drugName}</strong>
-                </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
-                  Route: {hoveredCourier.originCityId.toUpperCase()} ➔ {hoveredCourier.targetCityId.toUpperCase()}
-                </div>
-                <div className="text-[10px] text-amber-400 mt-0.5">
-                  ETA: {hoveredCourier.daysRemaining}d • Interception Risk: {hoveredCourier.interceptionRisk}%
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Map Legend */}
-          <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400 px-2">
-            <div className="flex items-center gap-4 flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-950" />
-                <span>Base (Present)</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full border border-sky-400 bg-sky-950" />
-                <span>Selected Destination</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span>High Heat ({'>'}70%)</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-purple-500" />
-                <span>Safehouse Stash</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                <span>Hotspot Warning</span>
-              </span>
-            </div>
-
-            <span className="text-[10px] text-slate-500">
-              Click any city node to target • Press <strong>M</strong> to toggle map
-            </span>
-          </div>
         </div>
 
-        {/* Right Tactical Destination Dossier Deck */}
-        <div className="lg:col-span-4 xl:col-span-3 bg-slate-900/90 border-t lg:border-t-0 lg:border-l border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4">
+        {/* Right Side: Tactical Target Briefing & Actions */}
+        <div className="lg:col-span-4 p-5 flex flex-col justify-between space-y-4 bg-slate-900/50 overflow-y-auto max-h-[540px]">
           {targetCity ? (
             <div className="space-y-4">
-              {/* City Header */}
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-black text-slate-100 flex items-center gap-2">
-                      {targetCity.name}
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 font-bold">
-                        {targetAirport?.iata || 'AIR'}
-                      </span>
-                    </h3>
-                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-                      <span>{targetCity.country}</span>
-                      <span>•</span>
-                      <span>{targetCity.region}</span>
-                    </div>
+              {/* Target City Header */}
+              <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-100">{targetCity.name}</h3>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-bold">
+                      {targetAirport?.iata}
+                    </span>
                   </div>
-
-                  {targetCity.id === player.currentCityId ? (
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">
-                      CURRENT BASE
-                    </span>
-                  ) : (
-                    <span
-                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
-                        isTargetDirect
-                          ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                          : 'bg-amber-950 text-amber-300 border-amber-800'
-                      }`}
-                    >
-                      {isTargetDirect ? 'Direct Flight' : 'Connecting Route'}
-                    </span>
-                  )}
+                  <div className="text-xs text-slate-400 mt-0.5">{targetCity.country} • {targetCity.region}</div>
                 </div>
 
-                {/* Specialty Tag */}
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-400 uppercase">Commercial Fare</div>
+                  <div className="text-base font-black text-emerald-400">
+                    ${targetCity.flightCost.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Specialty & Description */}
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1.5">
                 {targetCity.specialty && (
-                  <div className="mt-2 text-xs font-bold text-amber-300 bg-amber-950/40 border border-amber-800/60 px-2.5 py-1 rounded-lg">
-                    ★ {targetCity.specialty}
+                  <div className="text-amber-400 font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{targetCity.specialty}</span>
                   </div>
                 )}
-
-                <p className="text-xs text-slate-300 mt-2 leading-relaxed font-sans">
+                <p className="text-slate-400 text-[11px] leading-relaxed">
                   {targetCity.description}
                 </p>
               </div>
 
-              {/* Active Cartel Turf War Briefing */}
-              {cityTurfWar && (
-                <div className="p-3 rounded-xl bg-red-950/70 border border-red-600/80 text-xs space-y-1.5 animate-pulse">
-                  <div className="font-black text-red-300 flex items-center gap-2 uppercase tracking-wide">
-                    <Swords className="w-4 h-4 text-red-400" />
-                    <span>{cityTurfWar.headline}</span>
+              {/* Tactical Status Badges */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block uppercase">Police Heat</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Flame className="w-3.5 h-3.5 text-red-400" />
+                    <strong className={targetHeat >= 70 ? 'text-red-400' : targetHeat >= 30 ? 'text-amber-400' : 'text-emerald-400'}>
+                      {targetHeat}% Heat
+                    </strong>
                   </div>
-                  <p className="text-slate-200 text-[11px] leading-relaxed">
-                    {cityTurfWar.description}
-                  </p>
-                  <div className="flex items-center gap-2.5 pt-1 text-[10px] font-mono font-bold flex-wrap">
-                    <span className="text-red-300">
-                      PRICE SURGE: +{Math.round((cityTurfWar.priceSurgeMultiplier - 1) * 100)}%
-                    </span>
-                    <span>•</span>
-                    <span className="text-amber-300">
-                      CROSSFIRE RISK: +{Math.round(cityTurfWar.travelDangerBonus * 100)}%
-                    </span>
-                    <span>•</span>
-                    <span className="text-slate-400">{cityTurfWar.daysRemaining}d remaining</span>
+                </div>
+
+                <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block uppercase">Route Status</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                    <strong className={isTargetDirect ? 'text-cyan-400' : 'text-amber-400'}>
+                      {isTargetDirect ? 'Direct Flight' : 'Connecting Hub'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Geopolitical Hotspot Alert */}
+              {activeHotspot && (
+                <div className="bg-slate-950/90 p-2.5 rounded-xl border border-amber-500/40 flex items-start gap-2 text-xs text-amber-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                      <span>{activeHotspot.title}</span>
+                      <span className="px-1 py-0.2 rounded bg-amber-950 text-amber-300 text-[9px] font-black border border-amber-700">
+                        {activeHotspot.badgeLabel}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                      {activeHotspot.description}
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Active Global Macro Shocks */}
-              {cityMacroEvents.map((shock) => (
-                <div
-                  key={shock.id}
-                  className={`p-3 rounded-xl border text-xs space-y-1 ${
-                    shock.severity === 'danger'
-                      ? 'bg-rose-950/60 border-rose-700 text-rose-200'
-                      : 'bg-amber-950/60 border-amber-700 text-amber-200'
-                  }`}
-                >
-                  <div className="font-bold flex items-center gap-1.5 uppercase text-[11px]">
-                    <span className="text-sm">{shock.icon}</span>
-                    <span>{shock.title}</span>
+              {/* Active Turf War Warning */}
+              {cityTurfWar && (
+                <div className="bg-rose-950/30 p-2.5 rounded-xl border border-rose-600/50 flex items-start gap-2 text-xs text-rose-200">
+                  <Swords className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-rose-300">
+                      {cityTurfWar.headline}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                      {cityTurfWar.description}
+                    </p>
                   </div>
-                  <p className="text-[11px] leading-relaxed opacity-90">{shock.headline}</p>
-                  <div className="text-[10px] font-bold pt-1 opacity-80 flex items-center justify-between">
-                    <span>Duration: {shock.daysRemaining}d remaining</span>
-                    {shock.priceMultiplier && (
-                      <span className="text-amber-300 font-mono">
-                        Price Mod: {shock.priceMultiplier}x
+                </div>
+              )}
+
+              {/* Local Drug Price Modifiers */}
+              {targetCity.drugModifiers && Object.keys(targetCity.drugModifiers).length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Regional Market Modifiers:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(targetCity.drugModifiers).map(([drug, mod]) => {
+                      const percent = Math.round((mod - 1) * 100);
+                      const isHigh = percent > 0;
+                      return (
+                        <span
+                          key={drug}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            isHigh
+                              ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
+                              : 'bg-rose-950/80 text-rose-300 border-rose-700'
+                          }`}
+                        >
+                          {drug.toUpperCase()}: {isHigh ? `+${percent}%` : `${percent}%`}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Local Owned Infrastructure */}
+              {(cityOwnedProperties.length > 0 || cityLabs.length > 0) && (
+                <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 text-xs space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Local Syndicate Assets:</div>
+                  <div className="flex flex-wrap gap-2 text-[11px]">
+                    {cityOwnedProperties.length > 0 && (
+                      <span className="text-amber-300 flex items-center gap-1">
+                        <Building className="w-3.5 h-3.5" /> {cityOwnedProperties.length} Safehouse(s)
+                      </span>
+                    )}
+                    {cityLabs.length > 0 && (
+                      <span className="text-cyan-300 flex items-center gap-1">
+                        <Beaker className="w-3.5 h-3.5" /> {cityLabs.length} Clandestine Lab(s)
                       </span>
                     )}
                   </div>
                 </div>
-              ))}
-
-              {/* Geopolitical Hotspot Briefing */}
-              {activeHotspot && (
-                <div
-                  className={`p-3 rounded-xl border text-xs space-y-1 ${
-                    activeHotspot.severity === 'danger'
-                      ? 'bg-rose-950/50 border-rose-700 text-rose-200'
-                      : activeHotspot.severity === 'sanctuary'
-                      ? 'bg-amber-950/50 border-amber-600 text-amber-200'
-                      : 'bg-sky-950/50 border-sky-700 text-sky-200'
-                  }`}
-                >
-                  <div className="font-bold flex items-center gap-1.5 uppercase text-[11px]">
-                    {activeHotspot.severity === 'danger' && <Flame className="w-3.5 h-3.5 text-rose-400" />}
-                    {activeHotspot.severity === 'sanctuary' && <Shield className="w-3.5 h-3.5 text-amber-400" />}
-                    {activeHotspot.severity === 'warning' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
-                    {activeHotspot.severity === 'info' && <Anchor className="w-3.5 h-3.5 text-sky-400" />}
-                    <span>{activeHotspot.title}</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed opacity-90">{activeHotspot.description}</p>
-                </div>
               )}
-
-              {/* Security & Risk Gauges */}
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
-                <div className="font-bold text-slate-300 uppercase text-[11px] flex items-center justify-between">
-                  <span>Customs & Security Profile</span>
-                  <span className="text-[10px] text-slate-500">{targetAirport?.terminals} Terminals</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Patrol</span>
-                    <strong className="text-slate-100 text-sm">
-                      {Math.round(targetCity.policeRisk * 100)}%
-                    </strong>
-                  </div>
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">K9 Customs</span>
-                    <strong className="text-slate-100 text-sm">
-                      {Math.round(targetCity.dogRisk * 100)}%
-                    </strong>
-                  </div>
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Local Heat</span>
-                    <strong
-                      className={`text-sm ${
-                        targetHeat >= 70
-                          ? 'text-red-400 font-black'
-                          : targetHeat >= 30
-                          ? 'text-amber-400 font-bold'
-                          : 'text-emerald-400'
-                      }`}
-                    >
-                      {targetHeat}%
-                    </strong>
-                  </div>
-                </div>
-
-                {hasBaggageHandler && (
-                  <div className="text-[10px] text-sky-400 flex items-center gap-1 pt-1">
-                    <Check className="w-3 h-3 text-sky-400" />
-                    <span>Corrupt Baggage Handler bypasses 100% of customs in commercial flights.</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Infrastructure & Stash Presence */}
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
-                <div className="font-bold text-slate-300 uppercase text-[11px] flex items-center justify-between">
-                  <span>Cartel Assets in {targetCity.name}</span>
-                  <span className="text-purple-400 font-bold">
-                    {cityVaultUnits.toLocaleString()} units
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 pt-1 text-[11px]">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="flex items-center gap-1.5 text-slate-400">
-                      <Package className="w-3.5 h-3.5 text-purple-400" /> Safehouse Vault:
-                    </span>
-                    <strong className={cityVaultUnits > 0 ? 'text-purple-300' : 'text-slate-500'}>
-                      {cityVaultUnits > 0 ? `${cityVaultUnits.toLocaleString()} units stashed` : 'Empty'}
-                    </strong>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="flex items-center gap-1.5 text-slate-400">
-                      <Building className="w-3.5 h-3.5 text-emerald-400" /> Properties Owned:
-                    </span>
-                    <strong className={cityOwnedProperties.length > 0 ? 'text-emerald-300' : 'text-slate-500'}>
-                      {cityOwnedProperties.length > 0 ? `${cityOwnedProperties.length} properties` : 'None'}
-                    </strong>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="flex items-center gap-1.5 text-slate-400">
-                      <Beaker className="w-3.5 h-3.5 text-amber-400" /> Clandestine Labs:
-                    </span>
-                    <strong className={cityLabs.length > 0 ? 'text-amber-300' : 'text-slate-500'}>
-                      {cityLabs.length > 0 ? `${cityLabs.length} operational` : 'None'}
-                    </strong>
-                  </div>
-                </div>
-              </div>
             </div>
           ) : (
-            <div className="py-12 text-center text-slate-500 font-mono">
-              Select a city node on the vector map to inspect flight corridors and customs intelligence.
+            <div className="text-center py-12 text-slate-500 text-xs">
+              Select any city on the tactical radar to inspect flight schedules and market conditions.
             </div>
           )}
 
           {/* Action Departure Buttons */}
-          {targetCity && targetCity.id !== player.currentCityId && (
-            <div className="space-y-2 pt-3 border-t border-slate-800">
-              {/* Private Jet Departure */}
-              {activeAircraft && (
+          <div className="space-y-2 pt-3 border-t border-slate-800">
+            {targetCity && targetCity.id !== player.currentCityId ? (
+              <>
+                {activeAircraft && (
+                  <button
+                    onClick={() => startFlight(true)}
+                    disabled={player.cash < aircraftFuelCost}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <span>🚀 Dispatch {activeAircraft.name.split(' ')[0]}</span>
+                    <span>({aircraftFuelCost === 0 ? 'Free Fuel' : `$${aircraftFuelCost.toLocaleString()}`})</span>
+                  </button>
+                )}
+
                 <button
-                  onClick={() => startFlight(true)}
-                  disabled={player.cash < aircraftFuelCost || !!flightAnim}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between shadow-lg cursor-pointer ${
-                    player.cash >= aircraftFuelCost && !flightAnim
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 shadow-emerald-950/50 hover:scale-[1.02] active:scale-95'
-                      : 'bg-slate-800 text-slate-600 border border-slate-700 cursor-not-allowed opacity-60'
-                  }`}
-                  title={`Fly personal ${activeAircraft.name} (-${Math.round(activeAircraft.customsReduction * 100)}% customs)`}
+                  onClick={() => startFlight(false)}
+                  disabled={player.cash < targetCity.flightCost}
+                  className="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  <div className="flex items-center gap-2">
-                    <Plane className="w-4 h-4" />
-                    <span>Fly {activeAircraft.name}</span>
-                  </div>
-                  <span className="font-mono">
-                    {aircraftFuelCost === 0 ? 'FREE (Hangar)' : `$${aircraftFuelCost.toLocaleString()}`}
-                  </span>
+                  <Plane className="w-3.5 h-3.5" />
+                  <span>Depart on Commercial Coach (${targetCity.flightCost.toLocaleString()})</span>
                 </button>
-              )}
-
-              {/* Commercial Airline Flight */}
-              <button
-                onClick={() => startFlight(false)}
-                disabled={player.cash < targetCity.flightCost || !!flightAnim}
-                className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between shadow-lg cursor-pointer ${
-                  player.cash >= targetCity.flightCost && !flightAnim
-                    ? 'bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-400 hover:to-blue-400 text-slate-950 shadow-sky-950/50 hover:scale-[1.02] active:scale-95'
-                    : 'bg-slate-800 text-slate-600 border border-slate-700 cursor-not-allowed opacity-60'
-                }`}
-                title="Board scheduled commercial flight"
-              >
-                <div className="flex items-center gap-2">
-                  <Plane className="w-4 h-4" />
-                  <span>Fly Commercial Airline</span>
-                </div>
-                <span className="font-mono">${targetCity.flightCost.toLocaleString()}</span>
-              </button>
-
-              {/* Safehouse Stash Fast-Link */}
-              {cityVaultUnits > 0 && (
-                <button
-                  onClick={() => {
-                    setActiveTab('places');
-                    setPlacesSubTab('vaults');
-                  }}
-                  className="w-full py-2 px-3 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 text-purple-300 border border-purple-800/80 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Package className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Manage {targetCity.name} Safehouse Stash</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {targetCity && targetCity.id === player.currentCityId && (
-            <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800 text-xs text-emerald-300 text-center space-y-1">
-              <span className="font-bold block">CURRENT BASE LOCATION</span>
-              <p className="text-[11px] text-slate-400">
-                You are currently docked in {targetCity.name}. Click another destination on the vector radar to plot flight routes.
-              </p>
-            </div>
-          )}
+              </>
+            ) : (
+              <div className="text-center py-2 text-xs font-bold text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800">
+                📍 You are currently stationed in {targetCity?.name}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

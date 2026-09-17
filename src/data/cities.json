@@ -563,5 +563,167 @@
     },
     "specialty": "Northern Border Exchange & Financial Bay St",
     "description": "Prosperous multicultural center commanding high retail street prices and seamless cross-border freight conduits."
+  },
+  {
+    "id": "kuala_lumpur",
+    "name": "Kuala Lumpur",
+    "country": "Malaysia",
+    "region": "Asia-Pacific",
+    "flightCost": 1350,
+    "policeRisk": 0.32,
+    "dogRisk": 0.30,
+    "drugModifiers": {
+      "heroin": 0.75,
+      "ice": 0.85,
+      "ecstasy": 1.40,
+      "special_k": 1.35,
+      "cocaine": 2.10
+    },
+    "specialty": "Strait of Malacca Transshipment Hub (+40% Ecstasy)",
+    "description": "Dynamic capital connected to the Strait of Malacca maritime cargo lines and high-end golden triangle trafficking."
+  },
+  {
+    "id": "penang",
+    "name": "Penang",
+    "country": "Malaysia",
+    "region": "Asia-Pacific",
+    "flightCost": 1300,
+    "policeRisk": 0.28,
+    "dogRisk": 0.25,
+    "drugModifiers": {
+      "special_k": 0.65,
+      "ice": 0.75,
+      "heroin": 0.70,
+      "pot": 0.80,
+      "ecstasy": 1.25
+    },
+    "specialty": "Free Industrial Port & Chemical Precursors (-35% Special K)",
+    "description": "Historic island free port known for industrial manufacturing, clandestine precursor imports, and Andaman speedboats."
+  },
+  {
+    "id": "chiang_mai",
+    "name": "Chiang Mai",
+    "country": "Thailand",
+    "region": "Asia-Pacific",
+    "flightCost": 1150,
+    "policeRisk": 0.38,
+    "dogRisk": 0.32,
+    "drugModifiers": {
+      "opium": 0.45,
+      "kat": 0.45,
+      "heroin": 0.50,
+      "mushrooms": 0.60,
+      "ice": 0.80
+    },
+    "specialty": "Northern Highland Opium Valley (-55% Opium & Kat)",
+    "description": "Mountain staging post bordering the Shan hills. Direct access to tribal raw opium and unrefined poppy paste."
+  },
+  {
+    "id": "jakarta",
+    "name": "Jakarta",
+    "country": "Indonesia",
+    "region": "Asia-Pacific",
+    "flightCost": 1400,
+    "policeRisk": 0.36,
+    "dogRisk": 0.34,
+    "drugModifiers": {
+      "ice": 2.10,
+      "ecstasy": 1.95,
+      "pot": 0.60,
+      "special_k": 1.80,
+      "heroin": 1.40
+    },
+    "specialty": "Archipelago Megacity & Shabu Boom (+110% Ice)",
+    "description": "Sinking mega-city of 30 million souls. Massive nightclub appetite for crystal meth (shabu) with porous island sea borders."
+  },
+  {
+    "id": "surabaya",
+    "name": "Surabaya",
+    "country": "Indonesia",
+    "region": "Asia-Pacific",
+    "flightCost": 1450,
+    "policeRisk": 0.30,
+    "dogRisk": 0.26,
+    "drugModifiers": {
+      "kat": 0.75,
+      "pot": 0.65,
+      "ice": 1.50,
+      "ecstasy": 1.40,
+      "crack": 0.80
+    },
+    "specialty": "Java Maritime Port & Contraband Depot (-25% Kat)",
+    "description": "East Java industrial harbor coordinating inter-island ferry contraband and maritime drug shipments across the Flores Sea."
+  },
+  {
+    "id": "ho_chi_minh",
+    "name": "Ho Chi Minh City",
+    "country": "Vietnam",
+    "region": "Asia-Pacific",
+    "flightCost": 1200,
+    "policeRisk": 0.35,
+    "dogRisk": 0.30,
+    "drugModifiers": {
+      "ice": 0.70,
+      "heroin": 0.65,
+      "speed": 0.70,
+      "ecstasy": 1.30,
+      "special_k": 1.25
+    },
+    "specialty": "Southern Mekong Export Terminal (-30% Ice)",
+    "description": "Vibrant southern economic engine. Mekong River barges meet international container freighters bound for Pacific export."
+  },
+  {
+    "id": "hanoi",
+    "name": "Hanoi",
+    "country": "Vietnam",
+    "region": "Asia-Pacific",
+    "flightCost": 1250,
+    "policeRisk": 0.40,
+    "dogRisk": 0.35,
+    "drugModifiers": {
+      "fentanyl": 1.60,
+      "ice": 0.75,
+      "opium": 0.55,
+      "heroin": 0.60,
+      "tranq": 1.20
+    },
+    "specialty": "Northern Border Conduit & Precursor Route (+60% Fentanyl)",
+    "description": "Historic political capital commanding cross-border road arteries to chemical synthesis super-labs in southern China."
+  },
+  {
+    "id": "vientiane",
+    "name": "Vientiane",
+    "country": "Laos",
+    "region": "Asia-Pacific",
+    "flightCost": 1100,
+    "policeRisk": 0.22,
+    "dogRisk": 0.20,
+    "drugModifiers": {
+      "heroin": 0.50,
+      "opium": 0.45,
+      "pot": 0.45,
+      "ice": 0.65,
+      "kat": 0.55
+    },
+    "specialty": "Mekong River Sanctuary & Border Crossings (-50% Heroin)",
+    "description": "Sleepy Mekong river capital functioning as the ultimate low-heat Golden Triangle transit corridor and cartel haven."
+  },
+  {
+    "id": "phnom_penh",
+    "name": "Phnom Penh",
+    "country": "Cambodia",
+    "region": "Asia-Pacific",
+    "flightCost": 1150,
+    "policeRisk": 0.26,
+    "dogRisk": 0.22,
+    "drugModifiers": {
+      "speed": 0.75,
+      "ice": 0.70,
+      "pot": 0.40,
+      "heroin": 0.65,
+      "special_k": 1.10
+    },
+    "specialty": "Delta Free Zone & Casino Launder Haven (-25% Speed)",
+    "description": "Mekong confluence boomtown teeming with offshore high-roller casinos, shadow banking networks, and speed transshipments."
   }
 ]

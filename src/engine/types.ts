@@ -350,11 +350,100 @@ export interface PlayerState {
   activeChallengeId?: string;
   activeChallengeSeed?: string;
   challengeModifiers?: ChallengeModifiers;
+  swissAccountTier?: SwissAccountTier;
+  bearerBonds?: BearerBond[];
+  consularImmunity?: ConsularImmunityLevel;
+  safehouseUpgrades?: Record<string, SafehouseUpgradeId[]>;
+  aircraftFleetState?: Record<string, AircraftState>;
+  syndicateStrikeContracts?: SyndicateStrikeContract[];
+  lastRacketCollectedDay?: number;
   stats?: PlayerStats;
   cheats: {
     godMode: boolean;
     extraCapacity: number;
   };
+}
+
+export type SwissAccountTier = 'standard' | 'numbered' | 'cipher_vault' | 'diplomatic_escrow' | 'quantum_bastion';
+
+export interface SwissSecurityTierConfig {
+  id: SwissAccountTier;
+  name: string;
+  cost: number;
+  seizureImmunityPercent: number;
+  dailyInterestBonus: number;
+  badge: string;
+  description: string;
+}
+
+export interface BearerBond {
+  id: string;
+  bondType: 'short_term_1d' | 'medium_term_3d' | 'sovereign_gold_7d';
+  name: string;
+  principal: number;
+  dailyYieldPercent: number;
+  purchasedDay: number;
+  termDays: number;
+  matureDay: number;
+  accruedYield: number;
+  isClaimed: boolean;
+}
+
+export type ConsularImmunityLevel = 'none' | 'vanuatu_golden' | 'caribbean_pouch' | 'sovereign_ambassador';
+
+export interface ConsularImmunityConfig {
+  id: ConsularImmunityLevel;
+  name: string;
+  cost: number;
+  customsReduction: number;
+  badge: string;
+  description: string;
+}
+
+export type SafehouseUpgradeId =
+  | 'steel_doors'
+  | 'decoy_radio'
+  | 'escape_tunnel'
+  | 'chem_ventilation'
+  | 'auto_turret';
+
+export interface SafehouseUpgradeConfig {
+  id: SafehouseUpgradeId;
+  name: string;
+  cost: number;
+  icon: string;
+  description: string;
+  storageBonus: number;
+  heatReductionBonus: number;
+  raidDefenseBonus: number;
+}
+
+export interface AircraftState {
+  wearPercent: number; // 0 (mint) to 100 (grounded / critical wear)
+  hasAuxFuelTanks: boolean;
+  hasHiddenCompartment: boolean;
+  hasTransponderSpoofer: boolean;
+  transponderSpoofsRemaining: number;
+}
+
+export interface SyndicateStrikeContract {
+  id: string;
+  syndicateId: SyndicateId;
+  targetName: string;
+  targetTitle: string;
+  locationCityId: string;
+  rewardCash: number;
+  repReward: number;
+  dangerLevel: 'medium' | 'high' | 'extreme';
+  intelBrief: string;
+  status: 'available' | 'completed' | 'failed';
+}
+
+export interface TerritoryInfluence {
+  region: string;
+  dominatingSyndicateId: SyndicateId;
+  playerInfluence: number;
+  syndicateInfluence: Record<SyndicateId, number>;
 }
 
 export interface ChallengeModifiers {

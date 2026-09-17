@@ -60,8 +60,30 @@ import {
   ShieldCheck,
   Plane,
   FlaskConical,
+  Wrench,
 } from 'lucide-react';
-import { AIRCRAFT_FLEET, calculateAircraftFlightCost } from '../engine/aviation';
+import {
+  AIRCRAFT_FLEET,
+  calculateAircraftFlightCost,
+  getAircraftState,
+  calculateOverhaulCost,
+} from '../engine/aviation';
+import {
+  SWISS_TIERS,
+  BEARER_BOND_TEMPLATES,
+  CONSULAR_IMMUNITIES,
+  getSwissSecurityTier,
+} from '../engine/swissBank';
+import {
+  SAFEHOUSE_UPGRADES,
+  hasPropertyUpgrade,
+} from '../engine/safehouseUpgrades';
+import {
+  SwissAccountTier,
+  ConsularImmunityLevel,
+  SafehouseUpgradeId,
+  BearerBond,
+} from '../engine/types';
 import { AircraftImage } from './AircraftImage';
 import { ShellImage } from './ShellImage';
 import { SharkImage } from './SharkImage';
@@ -92,6 +114,13 @@ export const PlacesModal: React.FC = () => {
     buyShellBusinessAction,
     buyCorporateUpgradeAction,
     executeBusinessLaunderAction,
+    buySwissSecurityTierAction,
+    buyBearerBondAction,
+    claimMaturedBearerBondsAction,
+    buyConsularImmunityAction,
+    buyPropertyUpgradeAction,
+    overhaulAircraftAction,
+    buyAvionicsUpgradeAction,
   } = useGameStore();
 
   const [bankAmount, setBankAmount] = useState<number>(0);
@@ -204,6 +233,51 @@ export const PlacesModal: React.FC = () => {
   const handleBribePolice = () => {
     setFeedback(null);
     const res = bribePoliceAction();
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleBuySwissTier = (tier: SwissAccountTier) => {
+    setFeedback(null);
+    const res = buySwissSecurityTierAction(tier);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleBuyBearerBond = (bondType: BearerBond['bondType']) => {
+    setFeedback(null);
+    const res = buyBearerBondAction(bondType);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleClaimBearerBonds = () => {
+    setFeedback(null);
+    const res = claimMaturedBearerBondsAction();
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleBuyConsularImmunity = (level: ConsularImmunityLevel) => {
+    setFeedback(null);
+    const res = buyConsularImmunityAction(level);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleBuyPropertyUpgrade = (propertyId: string, upgradeId: SafehouseUpgradeId) => {
+    setFeedback(null);
+    const res = buyPropertyUpgradeAction(propertyId, upgradeId);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleOverhaulAircraft = (aircraftId: string) => {
+    setFeedback(null);
+    const res = overhaulAircraftAction(aircraftId);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleBuyAvionicsUpgrade = (
+    aircraftId: string,
+    upgradeType: 'aux_tanks' | 'hidden_compartment' | 'transponder_spoofer'
+  ) => {
+    setFeedback(null);
+    const res = buyAvionicsUpgradeAction(aircraftId, upgradeType);
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
   };
 
@@ -409,26 +483,57 @@ export const PlacesModal: React.FC = () => {
           </div>
         )}
 
-        {/* BANK TAB */}
+        {/* BANK TAB - BANQUE PRIVÉE DE GENÈVE */}
         {placesSubTab === 'bank' && (
-          <div className="space-y-6 max-w-xl mx-auto">
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 text-center">
-              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                Offshore Private Account (Cayman Islands)
-              </div>
-              <div className="text-4xl font-black text-cyan-400 mt-2">
-                ${player.bank.toLocaleString()}
-              </div>
-              <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
-                Offshore bank funds earn 0.1% daily compounding interest and are completely immune to street muggings and police confiscation.
-              </p>
-            </div>
+          <div className="space-y-6 max-w-4xl mx-auto">
+            {/* Header & Balance Card */}
+            {(() => {
+              const currentTier = getSwissSecurityTier(player.swissAccountTier);
+              const totalRate = (0.1 + currentTier.dailyInterestBonus).toFixed(2);
+              const activeImmunity = CONSULAR_IMMUNITIES.find((c) => c.id === (player.consularImmunity || 'none')) || CONSULAR_IMMUNITIES[0];
 
-            <div className="space-y-4">
+              return (
+                <div className="bg-slate-950/90 p-6 rounded-2xl border border-cyan-500/30 text-center shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex items-center justify-center gap-2 text-xs text-cyan-400 uppercase tracking-widest font-black">
+                    <span>🇨🇭</span>
+                    <span>Banque Privée de Genève • Offshore Private Wealth</span>
+                    <span>🇨🇭</span>
+                  </div>
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 mt-2">
+                    ${player.bank.toLocaleString()}
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center justify-center gap-3 mt-3 text-xs">
+                    <span className="px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 font-bold">
+                      {currentTier.badge}
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 font-bold">
+                      🛡️ {currentTier.seizureImmunityPercent}% RICO Immunity
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-sky-950/80 border border-sky-700/60 text-sky-300 font-bold">
+                      📈 {totalRate}% Daily Compounding
+                    </span>
+                    {player.consularImmunity && player.consularImmunity !== 'none' && (
+                      <span className="px-3 py-1 rounded-full bg-purple-950/80 border border-purple-700/60 text-purple-300 font-bold">
+                        🛂 {activeImmunity.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-400 mt-3 max-w-xl mx-auto leading-relaxed">
+                    Air-gapped subterranean Swiss Alpine vaults protected under Geneva banking secrecy statutes and sovereign consular treaties. Immune to street muggings and law enforcement confiscation.
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Quick Deposit & Withdrawal Controls */}
+            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-400">Transaction Amount:</span>
-                <span className="text-slate-300">
-                  Cash on Hand: <strong className="text-emerald-400 font-bold">${player.cash.toLocaleString()}</strong>
+                <span className="text-slate-400 font-bold text-xs uppercase tracking-wide">Vault Wire Transaction:</span>
+                <span className="text-slate-300 text-xs">
+                  Cash in Briefcase: <strong className="text-emerald-400 font-bold">${player.cash.toLocaleString()}</strong>
                 </span>
               </div>
               <input
@@ -436,15 +541,15 @@ export const PlacesModal: React.FC = () => {
                 min={0}
                 value={bankAmount || ''}
                 onChange={(e) => setBankAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                placeholder="Enter dollar amount..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 font-bold focus:outline-none focus:border-cyan-500 text-base"
+                placeholder="Enter dollar amount to wire..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 font-bold focus:outline-none focus:border-cyan-500 text-base"
               />
 
               {/* Quick Deposit Presets */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                   <span>Quick Deposit Presets (Cash):</span>
-                  <span className="text-emerald-400 font-bold">${player.cash.toLocaleString()} in Briefcase</span>
+                  <span className="text-emerald-400 font-bold">${player.cash.toLocaleString()} Available</span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   <button
@@ -482,7 +587,7 @@ export const PlacesModal: React.FC = () => {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                   <span>Quick Withdraw Presets (Bank):</span>
-                  <span className="text-cyan-400 font-bold">${player.bank.toLocaleString()} in Offshore</span>
+                  <span className="text-cyan-400 font-bold">${player.bank.toLocaleString()} in Geneva</span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   <button
@@ -520,17 +625,319 @@ export const PlacesModal: React.FC = () => {
                 <button
                   onClick={handleDeposit}
                   disabled={bankAmount <= 0 || player.cash < bankAmount}
-                  className="py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-sm transition-all shadow-md active:scale-95"
+                  className="py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
                 >
-                  Deposit Cash
+                  <Landmark className="w-4 h-4" />
+                  <span>Deposit Cash to Geneva</span>
                 </button>
                 <button
                   onClick={handleWithdraw}
                   disabled={bankAmount <= 0 || player.bank < bankAmount}
-                  className="py-3 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 font-bold text-sm border border-slate-700 transition-colors"
+                  className="py-3 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 font-bold text-sm border border-slate-700 transition-colors flex items-center justify-center gap-2"
                 >
-                  Withdraw to Pocket
+                  <Briefcase className="w-4 h-4" />
+                  <span>Withdraw to Briefcase</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Swiss Account Security Protocols (4 Tiers) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Banque Privée de Genève • Account Security Protocols</span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-mono">Seizure Immunity & Yield Multipliers</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {SWISS_TIERS.filter((t) => t.id !== 'standard').map((tier) => {
+                  const currentTierId = player.swissAccountTier || 'standard';
+                  const isCurrent = currentTierId === tier.id;
+                  const currentTierIdx = SWISS_TIERS.findIndex((t) => t.id === currentTierId);
+                  const thisTierIdx = SWISS_TIERS.findIndex((t) => t.id === tier.id);
+                  const isAlreadySurpassed = currentTierIdx >= thisTierIdx;
+                  const canAfford = player.cash >= tier.cost;
+
+                  return (
+                    <div
+                      key={tier.id}
+                      className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
+                        isCurrent
+                          ? 'bg-cyan-950/30 border-cyan-500 shadow-md shadow-cyan-950/30'
+                          : isAlreadySurpassed
+                          ? 'bg-slate-950/40 border-slate-800/80 opacity-75'
+                          : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                              <span>{tier.name}</span>
+                            </div>
+                            <div className="text-[10px] text-cyan-400 font-mono font-bold mt-0.5">
+                              {tier.badge}
+                            </div>
+                          </div>
+                          <span className="text-xs font-black text-slate-200 font-mono">
+                            ${tier.cost.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                          {tier.description}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                        <div className="flex justify-between items-center text-[11px] font-mono">
+                          <span className="text-slate-400">DEA Seizure Immunity:</span>
+                          <strong className="text-emerald-400 font-bold">{tier.seizureImmunityPercent}%</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] font-mono">
+                          <span className="text-slate-400">Daily Yield Bonus:</span>
+                          <strong className="text-sky-400 font-bold">+{tier.dailyInterestBonus}% / day</strong>
+                        </div>
+
+                        {isCurrent ? (
+                          <div className="w-full py-2 rounded-lg bg-cyan-950/80 border border-cyan-600 text-cyan-300 font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Active Security Protocol</span>
+                          </div>
+                        ) : isAlreadySurpassed ? (
+                          <div className="w-full py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 font-bold text-xs text-center">
+                            <span>Protocol Cleared</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleBuySwissTier(tier.id)}
+                            disabled={!canAfford}
+                            className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow active:scale-95"
+                          >
+                            {canAfford ? `Upgrade Protocol ($${tier.cost.toLocaleString()})` : 'Insufficient Cash'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Alpine Bearer Bonds Vault (Bons au Porteur) */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
+                  <Landmark className="w-4 h-4" />
+                  <span>Alpine Bearer Bonds Vault (Bons au Porteur)</span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-mono">Anonymous High-Yield Physical Certificates</span>
+              </div>
+
+              {/* Active Player Bearer Bonds List */}
+              {(() => {
+                const bonds = (player.bearerBonds || []).filter((b) => !b.isClaimed);
+                const maturedCount = bonds.filter((b) => player.currentDay >= b.matureDay).length;
+                const totalMaturedValue = bonds
+                  .filter((b) => player.currentDay >= b.matureDay)
+                  .reduce((sum, b) => sum + b.principal + b.accruedYield, 0);
+
+                return (
+                  <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-300 font-bold">
+                        Active Bearer Certificates ({bonds.length})
+                      </span>
+                      {maturedCount > 0 && (
+                        <button
+                          onClick={handleClaimBearerBonds}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md animate-pulse flex items-center gap-1.5"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Claim {maturedCount} Matured Bonds (${totalMaturedValue.toLocaleString()})</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {bonds.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-slate-500 bg-slate-900/50 rounded-lg border border-slate-800">
+                        No active bearer bonds in vault. Issue new certificates below to generate guaranteed daily yields.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {bonds.map((bond) => {
+                          const isMatured = player.currentDay >= bond.matureDay;
+                          const daysLeft = Math.max(0, bond.matureDay - player.currentDay);
+
+                          return (
+                            <div
+                              key={bond.id}
+                              className={`p-3 rounded-lg border flex items-center justify-between text-xs font-mono ${
+                                isMatured
+                                  ? 'bg-amber-950/30 border-amber-500/60 text-amber-200'
+                                  : 'bg-slate-900/80 border-slate-800 text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="font-bold flex items-center gap-2">
+                                  <span>📜 {bond.name}</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                                    Principal: ${bond.principal.toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-400 mt-0.5">
+                                  Purchased Day {bond.purchasedDay} • Accrued Yield: <strong className="text-emerald-400">+${bond.accruedYield.toLocaleString()}</strong> ({bond.dailyYieldPercent}%/day)
+                                </div>
+                              </div>
+
+                              <div className="text-right">
+                                {isMatured ? (
+                                  <span className="px-2.5 py-1 rounded bg-amber-500 text-slate-950 font-black text-[11px] uppercase">
+                                    Matured (${(bond.principal + bond.accruedYield).toLocaleString()})
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-xs">
+                                    {daysLeft} day{daysLeft > 1 ? 's' : ''} to maturity
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Bearer Bond Showroom / Catalog */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {BEARER_BOND_TEMPLATES.map((tmpl) => {
+                  const canAfford = player.cash >= tmpl.principal;
+                  const totalYieldEstimate = Math.round(tmpl.principal * (tmpl.dailyYieldPercent / 100) * tmpl.termDays);
+
+                  return (
+                    <div
+                      key={tmpl.bondType}
+                      className="p-4 rounded-xl border border-slate-800 bg-slate-950/70 hover:border-slate-700 flex flex-col justify-between transition-all"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <h5 className="font-bold text-slate-100 text-sm">{tmpl.name}</h5>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed font-sans">
+                          {tmpl.description}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-1.5 text-xs font-mono">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-400">Principal:</span>
+                          <strong className="text-slate-200">${tmpl.principal.toLocaleString()}</strong>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-400">Daily Coupon:</span>
+                          <strong className="text-emerald-400">+{tmpl.dailyYieldPercent}% / day</strong>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-400">Total Term Payout:</span>
+                          <strong className="text-amber-400 font-bold">+${totalYieldEstimate.toLocaleString()}</strong>
+                        </div>
+
+                        <button
+                          onClick={() => handleBuyBearerBond(tmpl.bondType)}
+                          disabled={!canAfford}
+                          className="w-full mt-2 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow active:scale-95"
+                        >
+                          {canAfford ? `Issue Bond ($${tmpl.principal.toLocaleString()})` : 'Insufficient Cash'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Consular Immunity & Sovereign Passports */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-400 uppercase tracking-wider">
+                  <FileCheck className="w-4 h-4" />
+                  <span>Consular Immunity & Diplomatic Passports (Passeport Diplomatique)</span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-mono">Customs Interdiction & Biometric Evasion</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {CONSULAR_IMMUNITIES.filter((c) => c.id !== 'none').map((passport) => {
+                  const currentImmunity = player.consularImmunity || 'none';
+                  const isCurrent = currentImmunity === passport.id;
+                  const currentIdx = CONSULAR_IMMUNITIES.findIndex((c) => c.id === currentImmunity);
+                  const thisIdx = CONSULAR_IMMUNITIES.findIndex((c) => c.id === passport.id);
+                  const isAlreadySurpassed = currentIdx >= thisIdx;
+                  const canAfford = player.cash >= passport.cost;
+
+                  return (
+                    <div
+                      key={passport.id}
+                      className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
+                        isCurrent
+                          ? 'bg-purple-950/30 border-purple-500 shadow-md shadow-purple-950/30'
+                          : isAlreadySurpassed
+                          ? 'bg-slate-950/40 border-slate-800/80 opacity-75'
+                          : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="font-bold text-slate-100 text-sm">{passport.name}</h5>
+                            <span className="text-[10px] text-purple-400 font-mono font-bold block mt-0.5">
+                              {passport.badge}
+                            </span>
+                          </div>
+                          <span className="text-xs font-black text-slate-200 font-mono">
+                            ${passport.cost.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-400 mt-2 leading-relaxed font-sans">
+                          {passport.description}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                        <div className="flex justify-between items-center text-[11px] font-mono">
+                          <span className="text-slate-400">Customs Search Reduction:</span>
+                          <strong className="text-emerald-400 font-bold">
+                            -{Math.round(passport.customsReduction * 100)}%
+                          </strong>
+                        </div>
+
+                        {isCurrent ? (
+                          <div className="w-full py-2 rounded-lg bg-purple-950/80 border border-purple-600 text-purple-300 font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Active Passport</span>
+                          </div>
+                        ) : isAlreadySurpassed ? (
+                          <div className="w-full py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 font-bold text-xs text-center">
+                            <span>Credentials Surpassed</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleBuyConsularImmunity(passport.id)}
+                            disabled={!canAfford}
+                            className="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow active:scale-95"
+                          >
+                            {canAfford ? `Acquire Passport ($${passport.cost.toLocaleString()})` : 'Insufficient Cash'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -790,13 +1197,72 @@ export const PlacesModal: React.FC = () => {
                       </div>
 
                       {isOwned ? (
-                        <button
-                          disabled
-                          className="w-full py-2.5 rounded-xl bg-amber-950/80 border border-amber-600 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-default"
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                          <span>Title Deed Secured</span>
-                        </button>
+                        <div className="space-y-3">
+                          <button
+                            disabled
+                            className="w-full py-2 rounded-xl bg-amber-950/80 border border-amber-600 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-default"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                            <span>Title Deed Secured</span>
+                          </button>
+
+                          {/* Modular Safehouse Upgrades */}
+                          <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                            <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center justify-between">
+                              <span>Estate Fortifications:</span>
+                              <span className="text-amber-400 font-mono text-[10px]">
+                                {(player.safehouseUpgrades?.[prop.id] || []).length} / {SAFEHOUSE_UPGRADES.length} Active
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {SAFEHOUSE_UPGRADES.map((upgrade) => {
+                                const isInstalled = hasPropertyUpgrade(player, prop.id, upgrade.id);
+                                const canAffordUpgrade = player.cash >= upgrade.cost;
+
+                                return (
+                                  <div
+                                    key={upgrade.id}
+                                    className={`p-2 rounded-lg border text-xs flex items-center justify-between gap-2 transition-all ${
+                                      isInstalled
+                                        ? 'bg-emerald-950/30 border-emerald-600/50 text-emerald-200'
+                                        : 'bg-slate-900/60 border-slate-800 text-slate-300'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold truncate flex items-center gap-1.5">
+                                        <span>{upgrade.icon}</span>
+                                        <span className="text-[11px] text-slate-200">{upgrade.name}</span>
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 truncate">
+                                        {upgrade.storageBonus > 0 && `+${upgrade.storageBonus} Stash `}
+                                        {upgrade.heatReductionBonus > 0 && `-${Math.round(upgrade.heatReductionBonus * 100)}% Heat `}
+                                        {upgrade.raidDefenseBonus > 0 && `+${Math.round(upgrade.raidDefenseBonus * 100)}% Raid Defense`}
+                                      </div>
+                                    </div>
+
+                                    <div className="shrink-0">
+                                      {isInstalled ? (
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 font-bold border border-emerald-700/60 flex items-center gap-1">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          <span>Installed</span>
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={() => handleBuyPropertyUpgrade(prop.id, upgrade.id)}
+                                          disabled={!canAffordUpgrade}
+                                          className="text-[10px] px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black transition-all shadow"
+                                        >
+                                          Install (${upgrade.cost.toLocaleString()})
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
                       ) : (
                         <button
                           onClick={() => handleBuyProperty(prop.id)}
@@ -2261,33 +2727,165 @@ export const PlacesModal: React.FC = () => {
                       </div>
 
                       {isOwned ? (
-                        <div className="flex gap-2">
-                          {isActive ? (
-                            <>
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            {isActive ? (
+                              <>
+                                <button
+                                  disabled
+                                  className="flex-1 py-2 rounded-xl bg-emerald-950/80 border border-emerald-500 text-emerald-300 font-black text-xs flex items-center justify-center gap-1.5 cursor-default shadow-sm"
+                                >
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                  <span>Active Flagship</span>
+                                </button>
+                                <button
+                                  onClick={() => handleSelectActiveAircraft(null)}
+                                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-xs font-bold transition-colors"
+                                  title="Stand down flagship"
+                                >
+                                  Stand Down
+                                </button>
+                              </>
+                            ) : (
                               <button
-                                disabled
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-950/80 border border-emerald-500 text-emerald-300 font-black text-xs flex items-center justify-center gap-1.5 cursor-default shadow-sm"
+                                onClick={() => handleSelectActiveAircraft(craft.id)}
+                                className="w-full py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
                               >
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                <span>Active Flagship</span>
+                                <Plane className="w-4 h-4" />
+                                <span>Set as Active Flagship</span>
                               </button>
-                              <button
-                                onClick={() => handleSelectActiveAircraft(null)}
-                                className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-xs font-bold transition-colors"
-                                title="Stand down flagship"
-                              >
-                                Stand Down
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => handleSelectActiveAircraft(craft.id)}
-                              className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
-                            >
-                              <Plane className="w-4 h-4" />
-                              <span>Set as Active Flagship</span>
-                            </button>
-                          )}
+                            )}
+                          </div>
+
+                          {/* Airframe Structural Integrity & Overhaul */}
+                          {(() => {
+                            const craftState = getAircraftState(player, craft.id);
+                            const structuralIntegrity = Math.max(0, 100 - craftState.wearPercent);
+                            const overhaulCost = calculateOverhaulCost(craftState.wearPercent);
+                            const canAffordOverhaul = player.cash >= overhaulCost;
+
+                            return (
+                              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+                                <div className="flex items-center justify-between text-[11px] font-mono">
+                                  <span className="text-slate-400 flex items-center gap-1">
+                                    <Wrench className="w-3.5 h-3.5 text-sky-400" />
+                                    <span>Airframe Integrity:</span>
+                                  </span>
+                                  <span
+                                    className={`font-black ${
+                                      structuralIntegrity >= 80
+                                        ? 'text-emerald-400'
+                                        : structuralIntegrity >= 50
+                                        ? 'text-amber-400'
+                                        : 'text-rose-400 animate-pulse'
+                                    }`}
+                                  >
+                                    {structuralIntegrity}% (Wear: {craftState.wearPercent}%)
+                                  </span>
+                                </div>
+
+                                <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all ${
+                                      structuralIntegrity >= 80
+                                        ? 'bg-emerald-500'
+                                        : structuralIntegrity >= 50
+                                        ? 'bg-amber-500'
+                                        : 'bg-rose-500'
+                                    }`}
+                                    style={{ width: `${structuralIntegrity}%` }}
+                                  />
+                                </div>
+
+                                {craftState.wearPercent > 0 && (
+                                  <button
+                                    onClick={() => handleOverhaulAircraft(craft.id)}
+                                    disabled={!canAffordOverhaul}
+                                    className="w-full py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-[11px] transition-all flex items-center justify-center gap-1.5"
+                                  >
+                                    <Wrench className="w-3.5 h-3.5" />
+                                    <span>
+                                      FAA/EASA Maintenance Overhaul (${overhaulCost.toLocaleString()})
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Modular Avionics Upgrades */}
+                          {(() => {
+                            const craftState = getAircraftState(player, craft.id);
+
+                            return (
+                              <div className="space-y-1.5 pt-1">
+                                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wide">
+                                  Avionics & Radar Countermeasures:
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-1.5 text-xs">
+                                  {/* Aux Drop Tanks */}
+                                  <div className="p-2 bg-slate-900/50 rounded-lg border border-slate-800 flex items-center justify-between text-[11px]">
+                                    <div>
+                                      <div className="font-bold text-slate-200">Auxiliary Drop Tanks</div>
+                                      <div className="text-[10px] text-slate-400">-50% Aviation Kerosene Consumption</div>
+                                    </div>
+                                    {craftState.hasAuxFuelTanks ? (
+                                      <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-bold text-[10px]">
+                                        Installed
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleBuyAvionicsUpgrade(craft.id, 'aux_tanks')}
+                                        disabled={player.cash < 45000}
+                                        className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-slate-950 font-black text-[10px]"
+                                      >
+                                        Install ($45,000)
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Contraband Smuggle Bay */}
+                                  <div className="p-2 bg-slate-900/50 rounded-lg border border-slate-800 flex items-center justify-between text-[11px]">
+                                    <div>
+                                      <div className="font-bold text-slate-200">Lead Contraband Bay</div>
+                                      <div className="text-[10px] text-slate-400">Masks 100 Units Cargo from K9 Dogs</div>
+                                    </div>
+                                    {craftState.hasHiddenCompartment ? (
+                                      <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-bold text-[10px]">
+                                        Installed
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleBuyAvionicsUpgrade(craft.id, 'hidden_compartment')}
+                                        disabled={player.cash < 65000}
+                                        className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-slate-950 font-black text-[10px]"
+                                      >
+                                        Fabricate ($65,000)
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* ICAO Transponder Spoofer */}
+                                  <div className="p-2 bg-slate-900/50 rounded-lg border border-slate-800 flex items-center justify-between text-[11px]">
+                                    <div>
+                                      <div className="font-bold text-slate-200">ICAO Transponder Spoofer</div>
+                                      <div className="text-[10px] text-slate-400">
+                                        {craftState.transponderSpoofsRemaining || 0} Ghost Disguise Flights Left
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleBuyAvionicsUpgrade(craft.id, 'transponder_spoofer')}
+                                      disabled={player.cash < 35000}
+                                      className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-slate-950 font-black text-[10px]"
+                                    >
+                                      Calibrate +3 ($35,000)
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <button

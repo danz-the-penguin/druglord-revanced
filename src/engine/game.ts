@@ -47,6 +47,44 @@ import {
   triggerTurfWar,
   triggerMacroEvent,
 } from './turfWars';
+import {
+  getSwissSecurityTier,
+  calculateBankSeizureProtection,
+  buySwissSecurityTier,
+  buyBearerBond,
+  processDailyBearerBonds,
+  claimMaturedBearerBonds,
+  buyConsularImmunity,
+  getConsularCustomsReduction,
+  SWISS_TIERS,
+  SWISS_TIER_MAP,
+  BEARER_BOND_TEMPLATES,
+  CONSULAR_IMMUNITIES,
+  CONSULAR_MAP,
+} from './swissBank';
+import {
+  SAFEHOUSE_UPGRADES,
+  SAFEHOUSE_UPGRADE_MAP,
+  getPropertyUpgrades,
+  hasPropertyUpgrade,
+  buyPropertyUpgrade,
+  calculateTotalPropertyStorageBonus,
+  calculatePropertyRaidDefense,
+} from './safehouseUpgrades';
+import {
+  getAircraftState,
+  applyFlightWear,
+  calculateOverhaulCost,
+  overhaulAircraft,
+  buyAvionicsUpgrade,
+} from './aviation';
+import {
+  calculateTerritoryInfluences,
+  calculateProtectionRacketRevenue,
+  collectProtectionRacket,
+  getStrikeContracts,
+  executeStrikeContract,
+} from './syndicateWarRoom';
 
 export {
   hasActiveOfficial,
@@ -65,6 +103,36 @@ export {
   getMacroCustomsMultiplier,
   triggerTurfWar,
   triggerMacroEvent,
+  getSwissSecurityTier,
+  calculateBankSeizureProtection,
+  buySwissSecurityTier,
+  buyBearerBond,
+  processDailyBearerBonds,
+  claimMaturedBearerBonds,
+  buyConsularImmunity,
+  getConsularCustomsReduction,
+  SWISS_TIERS,
+  SWISS_TIER_MAP,
+  BEARER_BOND_TEMPLATES,
+  CONSULAR_IMMUNITIES,
+  CONSULAR_MAP,
+  SAFEHOUSE_UPGRADES,
+  SAFEHOUSE_UPGRADE_MAP,
+  getPropertyUpgrades,
+  hasPropertyUpgrade,
+  buyPropertyUpgrade,
+  calculateTotalPropertyStorageBonus,
+  calculatePropertyRaidDefense,
+  getAircraftState,
+  applyFlightWear,
+  calculateOverhaulCost,
+  overhaulAircraft,
+  buyAvionicsUpgrade,
+  calculateTerritoryInfluences,
+  calculateProtectionRacketRevenue,
+  collectProtectionRacket,
+  getStrikeContracts,
+  executeStrikeContract,
 };
 
 export interface GameEngineState {
@@ -343,10 +411,11 @@ export function getCityVaultUnits(player: PlayerState, cityId: string): number {
 
 export function getCityVaultCapacity(player: PlayerState, _cityId?: string): number {
   // Base local stash locker: 25 units
-  // Plus storage units provided by all owned properties
+  // Plus storage units provided by all owned properties and installed steel doors
   const baseStorage = 25;
   const propertyBonus = getPropertyBonusCapacity(player);
-  return baseStorage + propertyBonus;
+  const upgradeStorage = calculateTotalPropertyStorageBonus(player);
+  return baseStorage + propertyBonus + upgradeStorage;
 }
 
 export function getTotalVaultUnitsAllCities(player: PlayerState): number {
@@ -390,6 +459,13 @@ export function getPlayerHeatReduction(player: PlayerState): number {
       const prop = PROPERTY_MAP.get(propId);
       if (prop?.heatReduction) {
         reduction += prop.heatReduction;
+      }
+    }
+  }
+  if (player.safehouseUpgrades) {
+    for (const propId of Object.keys(player.safehouseUpgrades)) {
+      if (player.safehouseUpgrades[propId]?.includes('decoy_radio')) {
+        reduction += 0.35;
       }
     }
   }
@@ -1355,10 +1431,30 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
     }
   }
 
-  // 2. Bank interest: 0.1% daily
+  // 2. Bank interest: 0.1% daily base + Swiss tier bonus
   if (state.player.bank > 0) {
-    const bankInterest = Math.round(state.player.bank * 0.001);
+    const swissTier = getSwissSecurityTier(state.player.swissAccountTier);
+    const effectiveRate = 0.001 + (swissTier.dailyInterestBonus / 100);
+    const bankInterest = Math.round(state.player.bank * effectiveRate);
     state.player.bank += bankInterest;
+  }
+
+  // 2a. Swiss Vault Bearer Bonds Yield Accrual
+  if (state.player.bearerBonds && state.player.bearerBonds.length > 0) {
+    const { totalYieldAccrued, updatedBonds } = processDailyBearerBonds(
+      state.player.bearerBonds,
+      state.player.currentDay
+    );
+    state.player.bearerBonds = updatedBonds;
+    if (totalYieldAccrued > 0) {
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: currentCity,
+        type: 'finance',
+        message: `SWISS VAULT: Accrued +$${totalYieldAccrued.toLocaleString()} daily yield across active bearer bonds.`,
+        timestamp: Date.now(),
+      });
+    }
   }
 
   // 2b. Corporate Shell Businesses Passive Income
@@ -1767,15 +1863,27 @@ export function travelToCity(
 
   const activeAircraftId = state.player.selectedAircraftId || (state.player.ownedAircraft && state.player.ownedAircraft[0]);
   const activeAircraft = (useOwnedAircraft || state.player.challengeModifiers?.aviationOnly) && activeAircraftId ? AIRCRAFT_MAP.get(activeAircraftId) : null;
+  const aircraftState = activeAircraft ? getAircraftState(state.player, activeAircraft.id) : null;
 
   if (state.player.challengeModifiers?.aviationOnly && !activeAircraft) {
     return { success: false, message: 'Challenge Rule: Commercial passenger flights prohibited! Must fly using your private aircraft.' };
   }
 
-  if (activeAircraft) {
-    totalCost = calculateAircraftFlightCost(activeAircraft, state.player.ownedProperties);
+  let isSpoofed = false;
+  if (activeAircraft && aircraftState) {
+    totalCost = calculateAircraftFlightCost(activeAircraft, state.player.ownedProperties, aircraftState);
     customsReduction = activeAircraft.customsReduction;
     flightDesc = `Private Aircraft (${activeAircraft.name})`;
+
+    // Apply airframe wear
+    applyFlightWear(state.player, activeAircraft.id);
+
+    // Check transponder spoofing
+    if (aircraftState.hasTransponderSpoofer && aircraftState.transponderSpoofsRemaining > 0) {
+      aircraftState.transponderSpoofsRemaining--;
+      isSpoofed = true;
+      flightDesc += ` [ICAO Ghost Transponder Active • ${aircraftState.transponderSpoofsRemaining} left]`;
+    }
   } else {
     const baseCost = flightCostOverride ?? targetCity.flightCost;
     const seatDetails = calculateSeatClassDetails(baseCost, seatClass);
@@ -1807,23 +1915,29 @@ export function travelToCity(
   const hasBaggageHandler = hasActiveOfficial(state.player, 'airport_baggage_handler');
 
   if (totalDrugs > 0) {
-    if (!activeAircraft && hasBaggageHandler) {
+    if ((!activeAircraft && hasBaggageHandler) || isSpoofed) {
       state.logs.unshift({
         day: state.player.currentDay,
         city: targetCity.name,
         type: 'corruption',
-        message: `🧳 BAGGAGE HANDLER BYPASS: Corrupt baggage handler shuttled your luggage through tarmac service tunnels in ${targetCity.name}. Customs checkpoints and sniffer dogs bypassed completely!`,
+        message: isSpoofed
+          ? `🛰️ GHOST TRANSPONDER RADAR BYPASS: ICAO Hex spoof disguise routed your aircraft into private commercial freight airspace. Zero customs scrutiny in ${targetCity.name}!`
+          : `🧳 BAGGAGE HANDLER BYPASS: Corrupt baggage handler shuttled your luggage through tarmac service tunnels in ${targetCity.name}. Customs checkpoints and sniffer dogs bypassed completely!`,
         timestamp: Date.now(),
       });
     } else {
-      const maskedUnits = state.player.noScentCans * 100;
+      let maskedUnits = state.player.noScentCans * 100;
+      if (aircraftState?.hasHiddenCompartment) {
+        maskedUnits += 100; // Extra lead-lined concealed hold
+      }
       const unmasked = Math.max(0, totalDrugs - maskedUnits);
 
       if (unmasked > 0) {
         // Base risk from target city + departure city heat penalty
         const heatPenalty = (originHeat / 100) * 0.35; // up to +35% risk
         const corporateBonus = calculateCustomsBonusFromBusinesses(state.player.ownedBusinesses);
-        const riskReduction = customsReduction + corporateBonus;
+        const consularBonus = getConsularCustomsReduction(state.player);
+        const riskReduction = customsReduction + corporateBonus + consularBonus;
         const macroCustomsMult = getMacroCustomsMultiplier(targetCityId, state.player.activeMacroEvents);
         const effectiveCustomsRisk = Math.max(0.02, Math.min(0.95, (targetCity.dogRisk + heatPenalty) * (1 - riskReduction) * macroCustomsMult));
 

@@ -203,7 +203,8 @@ export const AIRPORT_REGISTRY: Record<string, AirportInfo> = {
     hubTier: 'major_regional',
     directDestinations: [
       'singapore', 'hong_kong', 'tokyo', 'sydney', 'dubai', 'istanbul',
-      'london', 'paris', 'frankfurt', 'amsterdam', 'zurich'
+      'london', 'paris', 'frankfurt', 'amsterdam', 'zurich',
+      'kuala_lumpur', 'penang', 'chiang_mai', 'jakarta', 'ho_chi_minh', 'hanoi', 'vientiane', 'phnom_penh'
     ],
   },
   hong_kong: {
@@ -216,7 +217,8 @@ export const AIRPORT_REGISTRY: Record<string, AirportInfo> = {
     directDestinations: [
       'singapore', 'bangkok', 'tokyo', 'sydney', 'dubai', 'istanbul',
       'los_angeles', 'new_york', 'vancouver', 'toronto',
-      'london', 'paris', 'frankfurt', 'amsterdam', 'zurich'
+      'london', 'paris', 'frankfurt', 'amsterdam', 'zurich',
+      'kuala_lumpur', 'penang', 'jakarta', 'ho_chi_minh', 'hanoi'
     ],
   },
   dubai: {
@@ -230,7 +232,7 @@ export const AIRPORT_REGISTRY: Record<string, AirportInfo> = {
       'london', 'paris', 'frankfurt', 'amsterdam', 'berlin', 'madrid', 'zurich', 'istanbul',
       'singapore', 'bangkok', 'hong_kong', 'tokyo', 'sydney',
       'johannesburg', 'lagos',
-      'new_york', 'los_angeles', 'toronto', 'sao_paulo'
+      'new_york', 'los_angeles', 'toronto', 'sao_paulo', 'kuala_lumpur', 'jakarta'
     ],
   },
   johannesburg: {
@@ -279,7 +281,8 @@ export const AIRPORT_REGISTRY: Record<string, AirportInfo> = {
     directDestinations: [
       'bangkok', 'hong_kong', 'tokyo', 'sydney', 'dubai', 'istanbul',
       'london', 'paris', 'frankfurt', 'amsterdam', 'zurich',
-      'los_angeles', 'new_york', 'johannesburg'
+      'los_angeles', 'new_york', 'johannesburg',
+      'kuala_lumpur', 'penang', 'chiang_mai', 'jakarta', 'surabaya', 'ho_chi_minh', 'hanoi', 'vientiane', 'phnom_penh'
     ],
   },
   zurich: {
@@ -377,6 +380,95 @@ export const AIRPORT_REGISTRY: Record<string, AirportInfo> = {
       'london', 'paris', 'amsterdam', 'frankfurt', 'zurich',
       'dubai', 'hong_kong', 'tokyo'
     ],
+  },
+  kuala_lumpur: {
+    cityId: 'kuala_lumpur',
+    iata: 'KUL',
+    airportName: 'Kuala Lumpur International Airport',
+    terminals: 2,
+    coordinates: { lat: 2.7456, lng: 101.7099 },
+    hubTier: 'major_regional',
+    directDestinations: [
+      'singapore', 'penang', 'bangkok', 'jakarta', 'hong_kong', 'dubai', 'london', 'tokyo', 'ho_chi_minh', 'surabaya'
+    ],
+  },
+  penang: {
+    cityId: 'penang',
+    iata: 'PEN',
+    airportName: 'Penang International Airport',
+    terminals: 1,
+    coordinates: { lat: 5.2971, lng: 100.2768 },
+    hubTier: 'specialized',
+    directDestinations: ['kuala_lumpur', 'singapore', 'bangkok', 'jakarta', 'hong_kong'],
+  },
+  chiang_mai: {
+    cityId: 'chiang_mai',
+    iata: 'CNX',
+    airportName: 'Chiang Mai International Airport',
+    terminals: 2,
+    coordinates: { lat: 18.7668, lng: 98.9626 },
+    hubTier: 'specialized',
+    directDestinations: ['bangkok', 'vientiane', 'hanoi', 'singapore', 'hong_kong'],
+  },
+  jakarta: {
+    cityId: 'jakarta',
+    iata: 'CGK',
+    airportName: 'Soekarno-Hatta International Airport',
+    terminals: 3,
+    coordinates: { lat: -6.1256, lng: 106.6559 },
+    hubTier: 'major_regional',
+    directDestinations: [
+      'singapore', 'kuala_lumpur', 'surabaya', 'bangkok', 'hong_kong', 'tokyo', 'sydney', 'dubai'
+    ],
+  },
+  surabaya: {
+    cityId: 'surabaya',
+    iata: 'SUB',
+    airportName: 'Juanda International Airport',
+    terminals: 2,
+    coordinates: { lat: -7.3798, lng: 112.7874 },
+    hubTier: 'specialized',
+    directDestinations: ['jakarta', 'singapore', 'kuala_lumpur', 'sydney'],
+  },
+  ho_chi_minh: {
+    cityId: 'ho_chi_minh',
+    iata: 'SGN',
+    airportName: 'Tan Son Nhat International Airport',
+    terminals: 2,
+    coordinates: { lat: 10.8188, lng: 106.6519 },
+    hubTier: 'major_regional',
+    directDestinations: [
+      'hanoi', 'phnom_penh', 'singapore', 'bangkok', 'kuala_lumpur', 'hong_kong', 'tokyo', 'paris'
+    ],
+  },
+  hanoi: {
+    cityId: 'hanoi',
+    iata: 'HAN',
+    airportName: 'Noi Bai International Airport',
+    terminals: 2,
+    coordinates: { lat: 21.2212, lng: 105.8072 },
+    hubTier: 'major_regional',
+    directDestinations: [
+      'ho_chi_minh', 'bangkok', 'vientiane', 'hong_kong', 'tokyo', 'singapore', 'paris', 'frankfurt'
+    ],
+  },
+  vientiane: {
+    cityId: 'vientiane',
+    iata: 'VTE',
+    airportName: 'Wattay International Airport',
+    terminals: 1,
+    coordinates: { lat: 17.9883, lng: 102.5633 },
+    hubTier: 'specialized',
+    directDestinations: ['bangkok', 'hanoi', 'chiang_mai', 'phnom_penh', 'singapore'],
+  },
+  phnom_penh: {
+    cityId: 'phnom_penh',
+    iata: 'PNH',
+    airportName: 'Phnom Penh International Airport',
+    terminals: 1,
+    coordinates: { lat: 11.5466, lng: 104.8441 },
+    hubTier: 'specialized',
+    directDestinations: ['bangkok', 'ho_chi_minh', 'singapore', 'kuala_lumpur', 'vientiane', 'hong_kong'],
   },
 };
 

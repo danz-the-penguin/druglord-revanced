@@ -34,6 +34,15 @@ import {
   buyAircraft,
   selectActiveAircraft,
   getTotalWealth,
+  buySwissSecurityTier,
+  buyBearerBond,
+  claimMaturedBearerBonds,
+  buyConsularImmunity,
+  buyPropertyUpgrade,
+  overhaulAircraft,
+  buyAvionicsUpgrade,
+  collectProtectionRacket,
+  executeStrikeContract,
 } from '../engine/game';
 import { CITY_MAP, CITIES, DRUGS, RANK_MAP } from '../engine/constants';
 import {
@@ -46,7 +55,17 @@ import {
 } from '../engine/dailyChallenge';
 import { generateAllCitiesPrices, createInitialGlobalPriceHistory } from '../engine/economy';
 import { executeCheat, registerWindowCheatApi } from '../engine/cheats';
-import { GameDurationMode, DURATION_MODES, FlightSeatClass, SyndicateId, CombatDuelAction } from '../engine/types';
+import {
+  GameDurationMode,
+  DURATION_MODES,
+  FlightSeatClass,
+  SyndicateId,
+  CombatDuelAction,
+  SwissAccountTier,
+  BearerBond,
+  ConsularImmunityLevel,
+  SafehouseUpgradeId,
+} from '../engine/types';
 import {
   SaveSlotId,
   DrugLordSaveFile,
@@ -148,6 +167,21 @@ export interface GameStore extends GameEngineState {
   // Private Aircraft Fleet & Hangars
   buyAircraftAction: (aircraftId: string) => { success: boolean; message: string };
   selectActiveAircraftAction: (aircraftId: string | null) => { success: boolean; message: string };
+  overhaulAircraftAction: (aircraftId: string) => { success: boolean; message: string };
+  buyAvionicsUpgradeAction: (aircraftId: string, upgradeType: 'aux_tanks' | 'hidden_compartment' | 'transponder_spoofer') => { success: boolean; message: string };
+
+  // Swiss Offshore Private Banking & Bearer Bonds
+  buySwissSecurityTierAction: (tier: SwissAccountTier) => { success: boolean; message: string };
+  buyBearerBondAction: (bondType: BearerBond['bondType']) => { success: boolean; message: string };
+  claimMaturedBearerBondsAction: () => { success: boolean; message: string; claimedCash: number };
+  buyConsularImmunityAction: (level: ConsularImmunityLevel) => { success: boolean; message: string };
+
+  // Safehouse Modular Upgrades
+  buyPropertyUpgradeAction: (propertyId: string, upgradeId: SafehouseUpgradeId) => { success: boolean; message: string };
+
+  // Syndicate War Room
+  collectProtectionRacketAction: () => { success: boolean; message: string; collectedCash: number };
+  executeStrikeContractAction: (contractId: string) => { success: boolean; message: string; cashReward?: number; repReward?: number };
 
   // Shell Businesses & Corporate Laundering
   buyShellBusinessAction: (businessId: string) => { success: boolean; message: string };
@@ -1539,6 +1573,126 @@ export const useGameStore = create<GameStore>((set, get) => {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    overhaulAircraftAction: (aircraftId: string) => {
+      const player = { ...get().player };
+      const result = overhaulAircraft(player, aircraftId);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('buy');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    buyAvionicsUpgradeAction: (
+      aircraftId: string,
+      upgradeType: 'aux_tanks' | 'hidden_compartment' | 'transponder_spoofer'
+    ) => {
+      const player = { ...get().player };
+      const result = buyAvionicsUpgrade(player, aircraftId, upgradeType);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('vault');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    buySwissSecurityTierAction: (tier: SwissAccountTier) => {
+      const player = { ...get().player };
+      const result = buySwissSecurityTier(player, tier);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    buyBearerBondAction: (bondType: BearerBond['bondType']) => {
+      const player = { ...get().player };
+      const result = buyBearerBond(player, bondType);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    claimMaturedBearerBondsAction: () => {
+      const player = { ...get().player };
+      const result = claimMaturedBearerBonds(player);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    buyConsularImmunityAction: (level: ConsularImmunityLevel) => {
+      const player = { ...get().player };
+      const result = buyConsularImmunity(player, level);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('vault');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    buyPropertyUpgradeAction: (propertyId: string, upgradeId: SafehouseUpgradeId) => {
+      const player = { ...get().player };
+      const result = buyPropertyUpgrade(player, propertyId, upgradeId);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('buy');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    collectProtectionRacketAction: () => {
+      const player = { ...get().player };
+      const result = collectProtectionRacket(player);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      } else {
+        soundEngine.play('defeat');
+      }
+      return result;
+    },
+
+    executeStrikeContractAction: (contractId: string) => {
+      const player = { ...get().player };
+      const result = executeStrikeContract(player, contractId);
+      if (result.success) {
+        set({ player });
+        triggerAutoSave(get, set);
+        soundEngine.play('victory');
+      } else {
+        soundEngine.play('defeat');
       }
       return result;
     },

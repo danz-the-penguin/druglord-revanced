@@ -10,10 +10,11 @@ Welcome to the clandestine operator manual for **Drug Lord: ReVanced**. This doc
 2. [Console Cheat Commands Reference](#-console-cheat-commands-reference)
 3. [All 25 Contraband Commodity IDs](#-all-25-contraband-commodity-ids)
 4. [Chemical Precursor IDs (Clandestine Labs)](#-chemical-precursor-ids-clandestine-labs)
-5. [All 30 Global City IDs](#-all-30-global-city-ids)
+5. [All 39 Global City IDs (incl. ASEAN Hubs)](#-all-39-global-city-ids)
 6. [Cheat Engine (.CT) & Memory Buffer Offsets](#-cheat-engine-ct--memory-buffer-offsets)
 7. [Browser DevTools JavaScript API](#-browser-devtools-javascript-api)
 8. [Easter Eggs & Secret Key Combos](#-easter-eggs--secret-key-combos)
+9. [Underworld Expansion Reference (Swiss Bank, Fortifications, Fleet & War Room)](#-underworld-expansion-reference)
 
 ---
 
@@ -204,6 +205,15 @@ Use these exact IDs when running `teleport <city_id>` or `vault_give <city_id> .
 | `tokyo` | Tokyo | Japan | Asia (Premium Markup) |
 | `bangkok` | Bangkok | Thailand | Southeast Asia |
 | `singapore` | Singapore | Singapore | Southeast Asia |
+| `kuala_lumpur` | Kuala Lumpur | Malaysia | Southeast Asia (Transit Hub) |
+| `penang` | Penang | Malaysia | Southeast Asia (Port Logistics) |
+| `chiang_mai` | Chiang Mai | Thailand | Southeast Asia (Golden Triangle Gateway) |
+| `jakarta` | Jakarta | Indonesia | Southeast Asia (Mega Consumer Market) |
+| `surabaya` | Surabaya | Indonesia | Southeast Asia (Maritime Container Hub) |
+| `ho_chi_minh` | Ho Chi Minh City | Vietnam | Southeast Asia (Mekong Delta Hub) |
+| `hanoi` | Hanoi | Vietnam | Southeast Asia (Northern Border Transit) |
+| `vientiane` | Vientiane | Laos | Southeast Asia (Mekong River Crossing) |
+| `phnom_penh` | Phnom Penh | Cambodia | Southeast Asia (Port River Logistics) |
 | `hong_kong` | Hong Kong | Hong Kong | East Asia |
 | `sydney` | Sydney | Australia | Oceania (Premium Markup) |
 | `johannesburg` | Johannesburg | South Africa | Africa |
@@ -279,6 +289,44 @@ At any time while playing, enter the classic sequence on your keyboard:
 ↑  ↑  ↓  ↓  ←  →  ←  →  B  A
 ```
 * **Reward**: Grants **+$100,000 Cash**, **+100 Stash Capacity**, and **100% Full Health**.
+
+---
+
+## 🏛️ Underworld Expansion Reference
+
+### 🇨🇭 Banque Privée de Genève Security Tiers
+* `numbered` ($25,000): 50% RICO immunity, +0.05% daily compounding interest.
+* `cipher_vault` ($100,000): 80% RICO immunity, +0.10% daily compounding interest.
+* `diplomatic_escrow` ($350,000): 95% RICO immunity, +0.15% daily compounding interest.
+* `quantum_bastion` ($1,000,000): 100% RICO immunity, +0.20% daily compounding interest.
+
+### 📜 Alpine Bearer Bonds Catalog (Bons au Porteur)
+* `short_term_1d`: 1-Day Swiss Canton Note ($10,000, 1.5%/day yield, 1-day maturity).
+* `medium_term_3d`: 3-Day Geneva Commercial Paper ($50,000, 2.5%/day yield, 3-day maturity).
+* `sovereign_gold_7d`: 7-Day Alpine Treasury Bullion Bond ($200,000, 3.5%/day yield, 7-day maturity).
+
+### 🛂 Consular Immunity & Passports (Passeport Diplomatique)
+* `vanuatu_golden` ($50,000): -25% customs search risk.
+* `caribbean_pouch` ($150,000): -50% customs search risk.
+* `sovereign_ambassador` ($500,000): -80% customs search risk.
+
+### 🛡️ Modular Safehouse Fortifications
+* `steel_doors` ($15,000): +250 units vault stash, +50% raid defense.
+* `decoy_radio` ($25,000): -35% local city heat accumulation.
+* `escape_tunnel` ($45,000): 100% escape hatch guarantee if raided.
+* `chem_ventilation` ($35,000): Eliminates lab explosions, -20% city heat.
+* `auto_turret` ($60,000): +35% defense counter-fire during turf war ambushes.
+
+### 🛩️ Aviation Fleet Maintenance & Avionics
+* **Airframe Wear**: Flights accumulate 3-6% structural wear. Overhaul service restores structural integrity to 100%.
+* `aux_tanks` ($45,000): Auxiliary drop tanks (-50% fuel consumption).
+* `hidden_compartment` ($65,000): Lead-lined contraband bay (masks 100 cargo units).
+* `transponder_spoofer` ($35,000): ICAO transponder spoofer (+3 ghost disguise flights).
+
+### ⚔️ Syndicate War Room & Dominance
+* **Protection Racket Treasury**: Claim daily dividends from Associate ($5,000/day) and Allied Don ($12,500/day) syndicates.
+* **Territory Hegemony**: 4 global theaters (Americas, Europe, Asia-Pacific & ASEAN, Middle East & Africa).
+* **Hitman Black-Ops**: 5 elimination contracts targeting wiretaps, precursor warehouses, river pirates, club extorters, and ordnance depots.
 
 ---
 
