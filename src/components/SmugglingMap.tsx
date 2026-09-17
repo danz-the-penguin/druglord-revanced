@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import L from 'leaflet';
-import '@maplibre/maplibre-gl-leaflet';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { useGameStore } from '../store/gameStore';
 import { CITIES } from '../engine/constants';
 import { AIRPORT_REGISTRY } from '../engine/flightNetwork';
@@ -41,7 +39,7 @@ import {
 const REGIONS = ['All', 'Americas', 'Europe', 'Asia-Pacific', 'Middle East & Africa'] as const;
 type RegionFilter = (typeof REGIONS)[number];
 
-export type MapTileStyle = 'fiord' | 'liberty' | 'satellite' | 'dark_canvas';
+export type MapTileStyle = 'satellite' | 'street' | 'dark_canvas';
 
 const REGION_CENTERS: Record<RegionFilter, { lat: number; lng: number; zoom: number }> = {
   All: { lat: 20, lng: 10, zoom: 2 },
@@ -52,20 +50,15 @@ const REGION_CENTERS: Record<RegionFilter, { lat: number; lng: number; zoom: num
 };
 
 const TILE_CONFIGS: Record<MapTileStyle, { name: string; url: string; attribution: string }> = {
-  fiord: {
-    name: 'OpenFreeMap Fiord',
-    url: 'https://tiles.openfreemap.org/styles/fiord',
-    attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
-  },
-  liberty: {
-    name: 'OpenFreeMap Liberty',
-    url: 'https://tiles.openfreemap.org/styles/liberty',
-    attribution: '&copy; OpenFreeMap &copy; OpenStreetMap',
-  },
   satellite: {
-    name: 'Orbital Recon',
+    name: 'Esri Satellite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri &copy; Earthstar Geographics',
+  },
+  street: {
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
   },
   dark_canvas: {
     name: 'Tactical Radar',
@@ -120,7 +113,7 @@ export const SmugglingMap: React.FC = () => {
     player.currentCityId === 'miami' ? 'bogota' : 'miami'
   );
   const [selectedRegion, setSelectedRegion] = useState<RegionFilter>('All');
-  const [tileStyle, setTileStyle] = useState<MapTileStyle>('fiord');
+  const [tileStyle, setTileStyle] = useState<MapTileStyle>('satellite');
 
   // Layer Toggles
   const [showDirectCorridors, setShowDirectCorridors] = useState(true);
@@ -182,39 +175,19 @@ export const SmugglingMap: React.FC = () => {
       tileLayerRef.current = null;
     }
 
-    try {
-      if (style === 'fiord' || style === 'liberty') {
-        if (typeof (L as any).maplibreGL === 'function') {
-          const maplibreLayer = (L as any).maplibreGL({
-            style: TILE_CONFIGS[style].url,
-            attribution: TILE_CONFIGS[style].attribution,
-          });
-          maplibreLayer.addTo(map);
-          tileLayerRef.current = maplibreLayer;
-          return;
-        }
-      }
-
-      if (style === 'dark_canvas') {
-        const canvasLayer = createDarkCanvasGridLayer();
-        canvasLayer.addTo(map);
-        tileLayerRef.current = canvasLayer;
-        return;
-      }
-
-      // Raster layer fallback (e.g. Orbital Recon)
-      const tile = L.tileLayer(TILE_CONFIGS[style].url, {
-        maxZoom: 7,
-        subdomains: 'abcd',
-        attribution: TILE_CONFIGS[style].attribution,
-      }).addTo(map);
-      tileLayerRef.current = tile;
-    } catch (err) {
-      console.warn('Fallback to tactical radar canvas grid:', err);
-      const fallbackLayer = createDarkCanvasGridLayer();
-      fallbackLayer.addTo(map);
-      tileLayerRef.current = fallbackLayer;
+    if (style === 'dark_canvas') {
+      const canvasLayer = createDarkCanvasGridLayer();
+      canvasLayer.addTo(map);
+      tileLayerRef.current = canvasLayer;
+      return;
     }
+
+    const cfg = TILE_CONFIGS[style] || TILE_CONFIGS.satellite;
+    const tile = L.tileLayer(cfg.url, {
+      maxZoom: 19,
+      attribution: cfg.attribution,
+    }).addTo(map);
+    tileLayerRef.current = tile;
   };
 
   // Initialize Leaflet Map
@@ -225,7 +198,7 @@ export const SmugglingMap: React.FC = () => {
       center: [20, 10],
       zoom: 2,
       minZoom: 2,
-      maxZoom: 7,
+      maxZoom: 19,
       zoomControl: false,
       attributionControl: false,
       worldCopyJump: true,
@@ -744,7 +717,7 @@ export const SmugglingMap: React.FC = () => {
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Tile Style Picker */}
           <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 text-xs">
-            {(['fiord', 'liberty', 'satellite', 'dark_canvas'] as MapTileStyle[]).map((style) => (
+            {(['satellite', 'street', 'dark_canvas'] as MapTileStyle[]).map((style) => (
               <button
                 key={style}
                 onClick={() => {
