@@ -40,7 +40,7 @@ export const Header: React.FC = () => {
 
   return (
     <header className="bg-slate-900/90 border-b border-slate-800 backdrop-blur px-4 py-3 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 font-mono">
+      <div className="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between gap-4 font-mono">
         {/* Logo & City & Day */}
         <div className="flex items-center gap-4">
           <div>

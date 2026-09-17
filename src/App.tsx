@@ -32,7 +32,7 @@ export const App: React.FC = () => {
 
       {/* Main navigation & quick actions */}
       <nav className="bg-slate-900/60 border-b border-slate-800 px-4 py-2 sticky top-[97px] z-30 backdrop-blur">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 font-mono">
+        <div className="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between gap-3 font-mono">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('market')}
@@ -96,13 +96,13 @@ export const App: React.FC = () => {
       </nav>
 
       {/* Main Content Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 space-y-4">
+      <main className="flex-1 max-w-[1750px] w-full mx-auto p-4 sm:p-5 lg:p-6 space-y-4">
         {activeTab === 'market' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-7">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-8">
               <MarketBoard />
             </div>
-            <div className="lg:col-span-5 space-y-4">
+            <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-4 space-y-4">
               <InventoryBoard />
               <EventLog />
             </div>

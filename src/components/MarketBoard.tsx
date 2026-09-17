@@ -85,7 +85,7 @@ export const MarketBoard: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-400 truncate max-w-[240px] mt-0.5">
+                        <div className="text-xs text-slate-400 truncate max-w-sm sm:max-w-md xl:max-w-lg mt-0.5">
                           {drug.scientificName ? `${drug.scientificName} • ` : ''}
                           {drug.description}
                         </div>
@@ -100,7 +100,7 @@ export const MarketBoard: React.FC = () => {
 
                   {/* 14D Sparkline Chart */}
                   <td className="py-3.5 px-3 text-center">
-                    <Sparkline data={history} width={90} height={24} />
+                    <Sparkline data={history} width={110} height={26} />
                   </td>
 
                   {/* Trend / Surge */}
