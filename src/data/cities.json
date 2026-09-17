@@ -10,7 +10,10 @@
       "cocaine": 1.25,
       "heroin": 1.30,
       "crack": 1.20,
-      "pot": 1.05
+      "pot": 1.05,
+      "fentanyl": 1.35,
+      "tranq": 1.30,
+      "krokodil": 1.10
     },
     "description": "Dense metropolis with sky-high demand and relentless NYPD presence."
   },
@@ -25,7 +28,9 @@
       "cocaine": 0.70,
       "crack": 0.80,
       "pot": 0.85,
-      "mda": 1.15
+      "mda": 1.15,
+      "fentanyl": 0.85,
+      "tranq": 0.90
     },
     "description": "Sun, speedboats, and coastal supply corridors. Cheap cocaine straight off the water."
   },
@@ -40,7 +45,9 @@
       "ice": 0.80,
       "speed": 0.85,
       "pot": 0.90,
-      "pcp": 0.85
+      "pcp": 0.85,
+      "fentanyl": 0.80,
+      "tranq": 1.10
     },
     "description": "Sprawling West Coast hub with active street gangs and meth laboratories."
   },
@@ -55,7 +62,10 @@
       "crack": 0.90,
       "heroin": 1.10,
       "ice": 1.15,
-      "pot": 0.95
+      "pot": 0.95,
+      "fentanyl": 1.25,
+      "tranq": 1.25,
+      "krokodil": 1.15
     },
     "description": "Gritty Rust Belt market with lower security but aggressive street toughs."
   },
@@ -70,7 +80,9 @@
       "ecstasy": 1.45,
       "special_k": 1.50,
       "cocaine": 1.60,
-      "hashish": 1.10
+      "hashish": 1.10,
+      "fentanyl": 1.70,
+      "krokodil": 1.35
     },
     "description": "High-end European club scene. Immense margins on club drugs, but strict customs."
   },
@@ -85,7 +97,9 @@
       "heroin": 1.35,
       "cocaine": 1.50,
       "ecstasy": 1.30,
-      "opium": 1.40
+      "opium": 1.40,
+      "fentanyl": 1.55,
+      "krokodil": 1.40
     },
     "description": "Fashionable European hub with premium prices for exotic psychedelics and powder."
   },
@@ -100,7 +114,10 @@
       "cocaine": 2.20,
       "ice": 2.10,
       "heroin": 1.90,
-      "ecstasy": 1.80
+      "ecstasy": 1.80,
+      "fentanyl": 2.50,
+      "tranq": 2.20,
+      "krokodil": 2.10
     },
     "description": "Isolated island continent. Border security is brutal, but street prices are astronomical."
   },
@@ -114,7 +131,9 @@
     "drugModifiers": {
       "cocaine": 0.35,
       "pot": 0.40,
-      "hashish": 0.50
+      "hashish": 0.50,
+      "fentanyl": 1.20,
+      "tranq": 0.85
     },
     "description": "Source market at the heart of the trade. Cocaine is practically free, but cartel wars are lethal."
   }

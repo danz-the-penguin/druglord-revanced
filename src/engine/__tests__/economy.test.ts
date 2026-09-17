@@ -33,4 +33,22 @@ describe('Economy Simulation', () => {
 
     expect(sydneyAvg).toBeGreaterThan(bogotaAvg * 2.5);
   });
+
+  it('includes modern commodities (fentanyl, krokodil, tranq) with complete chemical dossiers', () => {
+    const targetIds = ['fentanyl', 'krokodil', 'tranq'];
+    const { market } = generateCityMarket('new_york');
+
+    for (const id of targetIds) {
+      const drug = DRUGS.find((d) => d.id === id);
+      expect(drug).toBeDefined();
+      expect(drug?.image).toBe(`/assets/drugs/${id}.png`);
+      expect(drug?.chemicalFormula).toBeDefined();
+      expect(drug?.molecularWeight).toContain('g/mol');
+      expect(drug?.scientificName).toBeDefined();
+
+      const marketItem = market[id];
+      expect(marketItem).toBeDefined();
+      expect(marketItem.price).toBeGreaterThan(0);
+    }
+  });
 });

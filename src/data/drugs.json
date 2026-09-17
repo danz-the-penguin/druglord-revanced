@@ -13,6 +13,19 @@
     "description": "High-purity crystalline alkaloid. Massive margins, heavy DEA focus."
   },
   {
+    "id": "fentanyl",
+    "name": "Fentanyl",
+    "scientificName": "N-(1-Phenethyl-4-piperidinyl)propionanilide",
+    "chemicalFormula": "C22H28N2O",
+    "molecularWeight": "336.47 g/mol",
+    "image": "/assets/drugs/fentanyl.png",
+    "minPrice": 11000,
+    "maxPrice": 26000,
+    "basePrice": 17500,
+    "volatility": 0.38,
+    "description": "Ultra-potent synthetic piperidine opioid. Microgram dosing creates astronomical profit margins, but draws lethal federal scrutiny."
+  },
+  {
     "id": "heroin",
     "name": "Heroin",
     "scientificName": "Diacetylmorphine",
@@ -91,6 +104,19 @@
     "description": "Compressed cannabis trichomes. High stability and steady international markup."
   },
   {
+    "id": "krokodil",
+    "name": "Krokodil",
+    "scientificName": "Desomorphine",
+    "chemicalFormula": "C17H21NO2",
+    "molecularWeight": "271.35 g/mol",
+    "image": "/assets/drugs/krokodil.png",
+    "minPrice": 320,
+    "maxPrice": 1250,
+    "basePrice": 650,
+    "volatility": 0.35,
+    "description": "Crude street-cooked desomorphine synthesized with red phosphorus and iodine. Infamous toxic necrotic side-effects with wild price swings."
+  },
+  {
     "id": "lsd",
     "name": "LSD",
     "scientificName": "Lysergic Acid Diethylamide",
@@ -143,6 +169,19 @@
     "description": "Fast-acting synthetic phenethylamine. Reliable low-tier starter volume."
   },
   {
+    "id": "tranq",
+    "name": "Tranq",
+    "scientificName": "Xylazine Hydrochloride",
+    "chemicalFormula": "C12H16N2S",
+    "molecularWeight": "220.33 g/mol",
+    "image": "/assets/drugs/tranq.png",
+    "minPrice": 60,
+    "maxPrice": 260,
+    "basePrice": 140,
+    "volatility": 0.3,
+    "description": "Diverted veterinary alpha-2 adrenergic agonist commonly cut into street supplies. Deep sedation, necrotic ulceration risks."
+  },
+  {
     "id": "mda",
     "name": "MDA",
     "scientificName": "Tenamfetamine",
@@ -169,17 +208,17 @@
     "description": "Naturally occurring tryptamine alkaloid prodrug produced by psilocybe fungi."
   },
   {
-    "id": "ecstasy",
-    "name": "Ecstacy",
-    "scientificName": "3,4-Methylenedioxymethamphetamine",
-    "chemicalFormula": "C11H15NO2",
-    "molecularWeight": "193.25 g/mol",
-    "image": "/assets/drugs/ecstasy.png",
+    "id": "pot",
+    "name": "Pot",
+    "scientificName": "Tetrahydrocannabinol",
+    "chemicalFormula": "C21H30O2",
+    "molecularWeight": "314.46 g/mol",
+    "image": "/assets/drugs/pot.png",
     "minPrice": 20,
-    "maxPrice": 75,
-    "basePrice": 45,
-    "volatility": 0.3,
-    "description": "Press-stamped party tablets. Tremendous arbitrage margins in London and Paris."
+    "maxPrice": 110,
+    "basePrice": 60,
+    "volatility": 0.2,
+    "description": "Cured cannabis flowers. High volume, zero barrier to entry."
   },
   {
     "id": "special_k",
@@ -195,17 +234,17 @@
     "description": "Dissociative arylcyclohexylamine powder diverted from veterinary anesthesia."
   },
   {
-    "id": "pot",
-    "name": "Pot",
-    "scientificName": "Tetrahydrocannabinol",
-    "chemicalFormula": "C21H30O2",
-    "molecularWeight": "314.46 g/mol",
-    "image": "/assets/drugs/pot.png",
+    "id": "ecstasy",
+    "name": "Ecstacy",
+    "scientificName": "3,4-Methylenedioxymethamphetamine",
+    "chemicalFormula": "C11H15NO2",
+    "molecularWeight": "193.25 g/mol",
+    "image": "/assets/drugs/ecstasy.png",
     "minPrice": 20,
-    "maxPrice": 110,
-    "basePrice": 60,
-    "volatility": 0.2,
-    "description": "Cured cannabis flowers. High volume, zero barrier to entry."
+    "maxPrice": 75,
+    "basePrice": 45,
+    "volatility": 0.3,
+    "description": "Press-stamped party tablets. Tremendous arbitrage margins in London and Paris."
   },
   {
     "id": "kat",
