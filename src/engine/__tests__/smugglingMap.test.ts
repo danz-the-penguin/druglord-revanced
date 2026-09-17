@@ -11,6 +11,7 @@ import {
   generateGeodesicArcPoints,
   generateGeodesicArcSegments,
   getGeodesicPointAt,
+  wrapLongitudeToCenter,
 } from '../smugglingMapData';
 import { AIRPORT_REGISTRY } from '../flightNetwork';
 import { CITIES } from '../constants';
@@ -248,5 +249,40 @@ describe('Smuggling Map Engine & Geodesic Navigation', () => {
     expect(midPoint.lat).toBeLessThan(65);
     expect(midPoint.headingDeg).toBeGreaterThanOrEqual(0);
     expect(midPoint.headingDeg).toBeLessThanOrEqual(360);
+  });
+
+  it('correctly re-projects and wraps city longitudes to visible center preventing marker desync on pan', () => {
+    const jakarta = AIRPORT_REGISTRY['jakarta'].coordinates;
+    const la = AIRPORT_REGISTRY['los_angeles'].coordinates;
+    const ny = AIRPORT_REGISTRY['new_york'].coordinates;
+
+    // 1. In standard center (0° to 10° longitude)
+    expect(wrapLongitudeToCenter(jakarta.lng, 10)).toBeCloseTo(106.66, 1);
+    expect(wrapLongitudeToCenter(la.lng, 10)).toBeCloseTo(-118.40, 1);
+    expect(wrapLongitudeToCenter(ny.lng, 10)).toBeCloseTo(-73.78, 1);
+
+    // 2. When panning west into the Pacific (centerLng = -160°)
+    // Jakarta wraps across into adjacent world copy (-253.34°) rather than staying 266° away
+    const jakartaWrappedWest = wrapLongitudeToCenter(jakarta.lng, -160);
+    expect(jakartaWrappedWest).toBeCloseTo(106.6559 - 360, 2);
+    expect(Math.abs(jakartaWrappedWest - (-160))).toBeLessThanOrEqual(180);
+
+    // 3. When panning east into the Pacific (centerLng = 200°)
+    // LA wraps across into adjacent world copy (241.60°) rather than staying 318° away
+    const laWrappedEast = wrapLongitudeToCenter(la.lng, 200);
+    expect(laWrappedEast).toBeCloseTo(-118.4085 + 360, 2);
+    expect(Math.abs(laWrappedEast - 200)).toBeLessThanOrEqual(180);
+
+    // 4. Verify all 30 cities stay within [centerLng - 180, centerLng + 180] for any pan center
+    const testCenters = [-500, -220, -160, 0, 15, 180, 240, 540];
+    for (const center of testCenters) {
+      for (const city of CITIES) {
+        const airport = AIRPORT_REGISTRY[city.id];
+        if (!airport) continue;
+        const wrapped = wrapLongitudeToCenter(airport.coordinates.lng, center);
+        expect(wrapped).toBeGreaterThanOrEqual(center - 180);
+        expect(wrapped).toBeLessThanOrEqual(center + 180);
+      }
+    }
   });
 });

@@ -13,6 +13,7 @@ import {
   ASEAN_WATERWAYS,
   generateGeodesicArcPoints,
   getGeodesicPointAt,
+  wrapLongitudeToCenter,
 } from '../engine/smugglingMapData';
 import {
   GeopoliticalHotspot,
@@ -69,37 +70,134 @@ const TILE_CONFIGS: Record<MapTileStyle, { name: string; url: string; attributio
 
 /**
  * Creates an offline-resilient tactical radar grid layer using native HTML5 Canvas
+ * with high-contrast tactical grid lines, concentric radar rings, luminous crosshairs,
+ * and high-DPI Retina display scaling.
  */
 function createDarkCanvasGridLayer(): L.GridLayer {
   const DarkCanvasGrid = L.GridLayer.extend({
-    createTile: function () {
+    options: {
+      minZoom: 1,
+      maxZoom: 19,
+      tileSize: 256,
+      pane: 'tilePane',
+      className: 'tactical-radar-canvas-layer',
+    },
+    createTile: function (coords: L.Coords, done?: (error: Error | null, tile: HTMLElement) => void) {
       const tile = document.createElement('canvas');
-      tile.width = 256;
-      tile.height = 256;
+      const size = this.getTileSize();
+      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+      tile.width = size.x * dpr;
+      tile.height = size.y * dpr;
+      tile.style.width = `${size.x}px`;
+      tile.style.height = `${size.y}px`;
+
       const ctx = tile.getContext('2d');
       if (ctx) {
-        ctx.fillStyle = '#070b16';
-        ctx.fillRect(0, 0, 256, 256);
+        ctx.scale(dpr, dpr);
+        const w = size.x;
+        const h = size.y;
 
-        // Tactical radar grid borders
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(0, 0, 256, 256);
+        // 1. Radar background: Deep tactical midnight navy
+        ctx.fillStyle = '#050a16';
+        ctx.fillRect(0, 0, w, h);
 
-        // Subtle center crosshair
-        ctx.strokeStyle = '#0284c730';
-        ctx.lineWidth = 1;
+        // 2. Fine subgrid lines (64px intervals)
+        ctx.strokeStyle = 'rgba(14, 165, 233, 0.12)';
+        ctx.lineWidth = 0.75;
         ctx.beginPath();
-        ctx.moveTo(122, 128);
-        ctx.lineTo(134, 128);
-        ctx.moveTo(128, 122);
-        ctx.lineTo(128, 134);
+        for (let x = 64; x < w; x += 64) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+        }
+        for (let y = 64; y < h; y += 64) {
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+        }
         ctx.stroke();
+
+        // 3. Tile boundary borders (Tactical major grid line)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, 0, w, h);
+
+        // 4. Circular radar range rings centered on tile
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, 48, 0, Math.PI * 2);
+        ctx.arc(w / 2, h / 2, 96, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 5. High-contrast center tactical crosshair with reticle ring
+        const cx = w / 2;
+        const cy = h / 2;
+
+        // Subtle glow halo
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.3)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 16, cy); ctx.lineTo(cx + 16, cy);
+        ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy + 16);
+        ctx.stroke();
+
+        // Sharp core crosshair with center reticle ring
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx - 16, cy); ctx.lineTo(cx - 4, cy);
+        ctx.moveTo(cx + 4, cy); ctx.lineTo(cx + 16, cy);
+        ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy - 4);
+        ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy + 16);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 6. Corner reticle markers at tile corners
+        ctx.strokeStyle = 'rgba(14, 165, 233, 0.45)';
+        ctx.lineWidth = 1.2;
+        const cornerLen = 10;
+        ctx.beginPath();
+        // Top-left
+        ctx.moveTo(0, cornerLen); ctx.lineTo(0, 0); ctx.lineTo(cornerLen, 0);
+        // Top-right
+        ctx.moveTo(w - cornerLen, 0); ctx.lineTo(w, 0); ctx.lineTo(w, cornerLen);
+        // Bottom-left
+        ctx.moveTo(0, h - cornerLen); ctx.lineTo(0, h); ctx.lineTo(cornerLen, h);
+        // Bottom-right
+        ctx.moveTo(w - cornerLen, h); ctx.lineTo(w, h); ctx.lineTo(w, h - cornerLen);
+        ctx.stroke();
+
+        // 7. Tactical sector & coordinates watermark
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`SEC [Z${coords.z}:${coords.x},${coords.y}]`, 8, 8);
+
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.45)';
+        ctx.font = '8px monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`TACTICAL RADAR // VECTOR 2D`, w - 8, h - 8);
+      }
+
+      if (done) {
+        setTimeout(() => done(null, tile), 0);
       }
       return tile;
     },
   });
-  return new (DarkCanvasGrid as any)();
+
+  return new (DarkCanvasGrid as any)({
+    minZoom: 1,
+    maxZoom: 19,
+    tileSize: 256,
+    pane: 'tilePane',
+  });
 }
 
 export const SmugglingMap: React.FC = () => {
@@ -136,6 +234,25 @@ export const SmugglingMap: React.FC = () => {
   const blockadesGroupRef = useRef<L.LayerGroup | null>(null);
   const couriersGroupRef = useRef<L.LayerGroup | null>(null);
   const animatedFlightMarkerRef = useRef<L.Marker | null>(null);
+  const [worldShift, setWorldShift] = useState(0);
+  const cityMarkersMapRef = useRef<Map<string, { marker: L.Marker; baseLat: number; baseLng: number }>>(new Map());
+
+  const reprojectMarkers = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const centerLng = map.getCenter().lng;
+
+    cityMarkersMapRef.current.forEach(({ marker, baseLat, baseLng }) => {
+      const targetLng = wrapLongitudeToCenter(baseLng, centerLng);
+      const currentPos = marker.getLatLng();
+      if (Math.abs(currentPos.lng - targetLng) > 0.0001 || Math.abs(currentPos.lat - baseLat) > 0.0001) {
+        marker.setLatLng([baseLat, targetLng]);
+      }
+    });
+
+    const newShift = Math.round(centerLng / 360) * 360;
+    setWorldShift((prev) => (prev !== newShift ? newShift : prev));
+  };
 
   const currentCity = CITIES.find((c) => c.id === player.currentCityId);
   const targetCity = CITIES.find((c) => c.id === selectedCityId) || currentCity;
@@ -179,6 +296,8 @@ export const SmugglingMap: React.FC = () => {
       const canvasLayer = createDarkCanvasGridLayer();
       canvasLayer.addTo(map);
       tileLayerRef.current = canvasLayer;
+      (canvasLayer as any).redraw();
+      map.invalidateSize({ pan: false });
       return;
     }
 
@@ -188,6 +307,7 @@ export const SmugglingMap: React.FC = () => {
       attribution: cfg.attribution,
     }).addTo(map);
     tileLayerRef.current = tile;
+    map.invalidateSize({ pan: false });
   };
 
   // Initialize Leaflet Map
@@ -201,7 +321,7 @@ export const SmugglingMap: React.FC = () => {
       maxZoom: 19,
       zoomControl: false,
       attributionControl: false,
-      worldCopyJump: true,
+      worldCopyJump: false,
     });
 
     applyTileLayer(map, tileStyle);
@@ -214,7 +334,54 @@ export const SmugglingMap: React.FC = () => {
 
     mapInstanceRef.current = map;
 
+    // Immediate & deferred invalidateSize calls to lock in container geometry
+    map.invalidateSize({ pan: false });
+    const animId = requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false });
+      reprojectMarkers();
+    });
+    const timerId = setTimeout(() => {
+      map.invalidateSize({ pan: false });
+      reprojectMarkers();
+    }, 150);
+
+    // Event bindings: re-project markers to visible world coordinates during drag, move, and zoom
+    map.on('move', reprojectMarkers);
+    map.on('drag', reprojectMarkers);
+    map.on('zoom', reprojectMarkers);
+    map.on('viewreset', reprojectMarkers);
+    map.on('moveend', reprojectMarkers);
+    map.on('zoomend', reprojectMarkers);
+    map.on('resize', reprojectMarkers);
+
+    // Responsive container ResizeObserver to trigger invalidateSize
+    const container = mapContainerRef.current;
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && container) {
+      resizeObserver = new ResizeObserver(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize({ pan: false });
+          reprojectMarkers();
+        }
+      });
+      resizeObserver.observe(container);
+    }
+
     return () => {
+      cancelAnimationFrame(animId);
+      clearTimeout(timerId);
+      if (resizeObserver && container) {
+        resizeObserver.unobserve(container);
+        resizeObserver.disconnect();
+      }
+      map.off('move', reprojectMarkers);
+      map.off('drag', reprojectMarkers);
+      map.off('zoom', reprojectMarkers);
+      map.off('viewreset', reprojectMarkers);
+      map.off('moveend', reprojectMarkers);
+      map.off('zoomend', reprojectMarkers);
+      map.off('resize', reprojectMarkers);
+
       if (tileLayerRef.current && mapInstanceRef.current) {
         try {
           mapInstanceRef.current.removeLayer(tileLayerRef.current);
@@ -243,6 +410,7 @@ export const SmugglingMap: React.FC = () => {
       mapInstanceRef.current.flyTo([center.lat, center.lng], center.zoom, {
         duration: 1.2,
       });
+      mapInstanceRef.current.invalidateSize({ pan: false });
     }
   };
 
@@ -262,6 +430,10 @@ export const SmugglingMap: React.FC = () => {
   useEffect(() => {
     if (!cityMarkersGroupRef.current || !mapInstanceRef.current) return;
     cityMarkersGroupRef.current.clearLayers();
+    cityMarkersMapRef.current.clear();
+
+    const map = mapInstanceRef.current;
+    const centerLng = map ? map.getCenter().lng : 0;
 
     for (const city of CITIES) {
       const airport = AIRPORT_REGISTRY[city.id];
@@ -321,7 +493,8 @@ export const SmugglingMap: React.FC = () => {
         iconAnchor: [12, 12],
       });
 
-      const marker = L.marker([airport.coordinates.lat, airport.coordinates.lng], { icon });
+      const initialLng = wrapLongitudeToCenter(airport.coordinates.lng, centerLng);
+      const marker = L.marker([airport.coordinates.lat, initialLng], { icon });
 
       marker.on('click', () => {
         soundEngine.play('click');
@@ -329,6 +502,11 @@ export const SmugglingMap: React.FC = () => {
       });
 
       cityMarkersGroupRef.current.addLayer(marker);
+      cityMarkersMapRef.current.set(city.id, {
+        marker,
+        baseLat: airport.coordinates.lat,
+        baseLng: airport.coordinates.lng,
+      });
     }
   }, [player.currentCityId, selectedCityId, hotspotMap, player.cityHeat]);
 
@@ -337,17 +515,22 @@ export const SmugglingMap: React.FC = () => {
     if (!routesGroupRef.current || !originAirport || !mapInstanceRef.current) return;
     routesGroupRef.current.clearLayers();
 
+    const centerLng = mapInstanceRef.current.getCenter().lng;
+    const origWrappedLng = wrapLongitudeToCenter(originAirport.coordinates.lng, centerLng);
+
     // 1. Direct connections from current base
     if (showDirectCorridors && originAirport.directDestinations) {
       for (const destId of originAirport.directDestinations) {
         const destAirport = AIRPORT_REGISTRY[destId];
         if (!destAirport || destId === selectedCityId) continue;
 
+        const destWrappedLng = wrapLongitudeToCenter(destAirport.coordinates.lng, origWrappedLng);
+
         const arcPoints = generateGeodesicArcPoints(
           originAirport.coordinates.lat,
-          originAirport.coordinates.lng,
+          origWrappedLng,
           destAirport.coordinates.lat,
-          destAirport.coordinates.lng,
+          destWrappedLng,
           35
         );
 
@@ -364,11 +547,13 @@ export const SmugglingMap: React.FC = () => {
 
     // 2. High-priority selected corridor
     if (selectedCityId && selectedCityId !== player.currentCityId && targetAirport) {
+      const destWrappedLng = wrapLongitudeToCenter(targetAirport.coordinates.lng, origWrappedLng);
+
       const selectedArcPoints = generateGeodesicArcPoints(
         originAirport.coordinates.lat,
-        originAirport.coordinates.lng,
+        origWrappedLng,
         targetAirport.coordinates.lat,
-        targetAirport.coordinates.lng,
+        destWrappedLng,
         50
       );
 
@@ -390,7 +575,7 @@ export const SmugglingMap: React.FC = () => {
       routesGroupRef.current.addLayer(glowPoly);
       routesGroupRef.current.addLayer(routePoly);
     }
-  }, [originAirport, targetAirport, selectedCityId, showDirectCorridors, player.currentCityId]);
+  }, [originAirport, targetAirport, selectedCityId, showDirectCorridors, player.currentCityId, worldShift]);
 
   // Render ASEAN Waterways & Maritime Smuggling Corridors
   useEffect(() => {
@@ -400,7 +585,11 @@ export const SmugglingMap: React.FC = () => {
     if (!showWaterways) return;
 
     for (const waterway of ASEAN_WATERWAYS) {
-      const poly = L.polyline(waterway.coordinates, {
+      const shiftedCoords = waterway.coordinates.map(
+        ([lat, lng]) => [lat, lng + worldShift] as [number, number]
+      );
+
+      const poly = L.polyline(shiftedCoords, {
         color: waterway.color,
         weight: 3.5,
         opacity: 0.85,
@@ -417,7 +606,7 @@ export const SmugglingMap: React.FC = () => {
 
       waterwaysGroupRef.current.addLayer(poly);
     }
-  }, [showWaterways]);
+  }, [showWaterways, worldShift]);
 
   // Render DEA Blockade Zones
   useEffect(() => {
@@ -460,7 +649,11 @@ export const SmugglingMap: React.FC = () => {
       const coords = BLOCKADE_COORDS[zone.id];
       if (!coords) continue;
 
-      const polygon = L.polygon(coords, {
+      const shiftedCoords = coords.map(
+        ([lat, lng]) => [lat, lng + worldShift] as [number, number]
+      );
+
+      const polygon = L.polygon(shiftedCoords, {
         color: '#f43f5e',
         fillColor: '#f43f5e',
         fillOpacity: 0.15,
@@ -478,7 +671,7 @@ export const SmugglingMap: React.FC = () => {
 
       blockadesGroupRef.current.addLayer(polygon);
     }
-  }, [showBlockades]);
+  }, [showBlockades, worldShift]);
 
   // Render Active Courier Blips
   useEffect(() => {
@@ -487,16 +680,21 @@ export const SmugglingMap: React.FC = () => {
 
     if (!showCouriers) return;
 
+    const centerLng = mapInstanceRef.current.getCenter().lng;
+
     for (const courier of activeCouriers) {
       const orig = AIRPORT_REGISTRY[courier.originCityId];
       const dest = AIRPORT_REGISTRY[courier.targetCityId];
       if (!orig || !dest) continue;
 
+      const origWrappedLng = wrapLongitudeToCenter(orig.coordinates.lng, centerLng);
+      const destWrappedLng = wrapLongitudeToCenter(dest.coordinates.lng, origWrappedLng);
+
       const pt = getGeodesicPointAt(
         orig.coordinates.lat,
-        orig.coordinates.lng,
+        origWrappedLng,
         dest.coordinates.lat,
-        dest.coordinates.lng,
+        destWrappedLng,
         courier.progressPercent / 100
       );
 
@@ -517,7 +715,7 @@ export const SmugglingMap: React.FC = () => {
       const marker = L.marker([pt.lat, pt.lng], { icon: courierIcon });
       couriersGroupRef.current.addLayer(marker);
     }
-  }, [activeCouriers, showCouriers]);
+  }, [activeCouriers, showCouriers, worldShift]);
 
   // Handle Flight Execution with Animation
   const startFlight = (useJet: boolean) => {
@@ -577,12 +775,15 @@ export const SmugglingMap: React.FC = () => {
       iconSize: [28, 28],
     });
 
+    const centerLng = mapInstanceRef.current?.getCenter().lng ?? 0;
+    const origWrappedLng = wrapLongitudeToCenter(originAirport.coordinates.lng, centerLng);
+
     if (mapInstanceRef.current && originAirport) {
       if (animatedFlightMarkerRef.current) {
         mapInstanceRef.current.removeLayer(animatedFlightMarkerRef.current);
       }
       animatedFlightMarkerRef.current = L.marker(
-        [originAirport.coordinates.lat, originAirport.coordinates.lng],
+        [originAirport.coordinates.lat, origWrappedLng],
         { icon: planeIcon }
       ).addTo(mapInstanceRef.current);
     }
@@ -593,11 +794,15 @@ export const SmugglingMap: React.FC = () => {
 
       let currentHeading = 90;
       if (originAirport && targetAirport && animatedFlightMarkerRef.current) {
+        const curCenterLng = mapInstanceRef.current?.getCenter().lng ?? 0;
+        const curOrigLng = wrapLongitudeToCenter(originAirport.coordinates.lng, curCenterLng);
+        const curDestLng = wrapLongitudeToCenter(targetAirport.coordinates.lng, curOrigLng);
+
         const pt = getGeodesicPointAt(
           originAirport.coordinates.lat,
-          originAirport.coordinates.lng,
+          curOrigLng,
           targetAirport.coordinates.lat,
-          targetAirport.coordinates.lng,
+          curDestLng,
           progress
         );
         animatedFlightMarkerRef.current.setLatLng([pt.lat, pt.lng]);

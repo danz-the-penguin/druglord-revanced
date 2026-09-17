@@ -164,6 +164,18 @@ export function generateGeodesicArcPoints(
 }
 
 /**
+ * Wraps any geographic longitude into the continuous 360° window centered around `centerLng`.
+ * Ensures markers, flight lines, and telemetry remain anchored in the visible viewport
+ * during map panning across world copies.
+ */
+export function wrapLongitudeToCenter(lng: number, centerLng: number): number {
+  let diff = lng - centerLng;
+  while (diff > 180) diff -= 360;
+  while (diff < -180) diff += 360;
+  return centerLng + diff;
+}
+
+/**
  * Backward compatibility wrapper returning a single continuous unwrapped polyline.
  */
 export function generateGeodesicArcSegments(
