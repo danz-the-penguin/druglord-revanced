@@ -117,8 +117,8 @@ export function interpolateQuadraticBezier(
 /**
  * Generates an array of continuous geodesic arc segments, cleanly splitting
  * any segments that cross the antimeridian (180° / -180° longitude) so
- * Trans-Pacific or high-latitude routes (e.g. New York to Singapore, Tokyo to Los Angeles)
- * render smoothly without snapping across the screen.
+ * Trans-Pacific or long-haul routes (e.g. New York to Surabaya, Tokyo to Los Angeles)
+ * render smoothly across the Pacific without shooting up toward the Arctic.
  */
 export function generateGeodesicArcSegments(
   lat1: number,
@@ -127,79 +127,84 @@ export function generateGeodesicArcSegments(
   lng2: number,
   numPoints = 60
 ): [number, number][][] {
-  const p1Lat = (lat1 * Math.PI) / 180;
-  const p1Lng = (lng1 * Math.PI) / 180;
-  const p2Lat = (lat2 * Math.PI) / 180;
-  const p2Lng = (lng2 * Math.PI) / 180;
-
-  // Haversine angular distance
-  const d =
-    2 *
-    Math.asin(
-      Math.sqrt(
-        Math.pow(Math.sin((p1Lat - p2Lat) / 2), 2) +
-          Math.cos(p1Lat) * Math.cos(p2Lat) * Math.pow(Math.sin((p1Lng - p2Lng) / 2), 2)
-      )
-    );
-
-  if (d < 1e-6) return [[[lat1, lng1]]];
-
-  const rawPoints: [number, number][] = [];
-
-  for (let i = 0; i <= numPoints; i++) {
-    const f = i / numPoints;
-    const A = Math.sin((1 - f) * d) / Math.sin(d);
-    const B = Math.sin(f * d) / Math.sin(d);
-    const x = A * Math.cos(p1Lat) * Math.cos(p1Lng) + B * Math.cos(p2Lat) * Math.cos(p2Lng);
-    const y = A * Math.cos(p1Lat) * Math.sin(p1Lng) + B * Math.cos(p2Lat) * Math.sin(p2Lng);
-    const z = A * Math.sin(p1Lat) + B * Math.sin(p2Lat);
-    const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
-    const lng = Math.atan2(y, x);
-    rawPoints.push([(lat * 180) / Math.PI, (lng * 180) / Math.PI]);
+  // 1. Calculate shortest directional longitude delta crossing ±180°
+  let deltaLon = lng2 - lng1;
+  if (deltaLon > 180) {
+    deltaLon -= 360;
+  } else if (deltaLon < -180) {
+    deltaLon += 360;
   }
 
-  // Antimeridian wrapping splitter
+  const distanceDeg = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(deltaLon, 2));
+  if (distanceDeg < 1e-6) {
+    return [[[lat1, lng1]]];
+  }
+
+  // Determine natural hemisphere arc lift (bounded so it never arches toward the Arctic poles)
+  const avgLat = (lat1 + lat2) / 2;
+  const liftSign = avgLat >= 0 ? 1 : -1;
+  const maxLift = Math.min(18, distanceDeg * 0.12);
+
   const segments: [number, number][][] = [];
   let currentSegment: [number, number][] = [];
 
-  for (let i = 0; i < rawPoints.length; i++) {
-    const pt = rawPoints[i];
-    if (currentSegment.length === 0) {
-      currentSegment.push(pt);
+  let prevRawLng = lng1;
+  let prevLat = lat1;
+  let prevNormLng = lng1;
+
+  for (let i = 0; i <= numPoints; i++) {
+    const f = i / numPoints;
+    const rawLng = lng1 + f * deltaLon;
+    const baseLat = lat1 + f * (lat2 - lat1);
+    const lift = maxLift * Math.sin(Math.PI * f) * liftSign;
+    const lat = Math.max(-80, Math.min(80, baseLat + lift));
+
+    let normLng = rawLng;
+    while (normLng > 180) normLng -= 360;
+    while (normLng < -180) normLng += 360;
+
+    if (i === 0) {
+      currentSegment.push([lat, normLng]);
+      prevRawLng = rawLng;
+      prevLat = lat;
+      prevNormLng = normLng;
       continue;
     }
 
-    const prevPt = currentSegment[currentSegment.length - 1];
-    const deltaLng = pt[1] - prevPt[1];
+    // Check if we crossed the antimeridian (+180 / -180) between prevNormLng and normLng
+    const stepDeltaLng = normLng - prevNormLng;
 
-    if (Math.abs(deltaLng) > 180) {
+    if (Math.abs(stepDeltaLng) > 180) {
+      // Crossing occurred: compute exact intersection latitude at the 180° meridian
       let t = 0.5;
-      let crossLng1 = 180;
-      let crossLng2 = -180;
+      let exitLng = 180;
+      let enterLng = -180;
 
-      if (deltaLng < -180) {
-        // Crossing from +180 to -180 (eastbound across antimeridian)
-        const d1 = 180 - prevPt[1];
-        const d2 = pt[1] - (-180);
-        t = (d1 + d2) > 0 ? d1 / (d1 + d2) : 0.5;
-        crossLng1 = 180;
-        crossLng2 = -180;
+      if (deltaLon > 0) {
+        // Eastbound crossing: passed +180° from west to east
+        t = (180 - prevRawLng) / (rawLng - prevRawLng);
+        exitLng = 180;
+        enterLng = -180;
       } else {
-        // Crossing from -180 to +180 (westbound across antimeridian)
-        const d1 = prevPt[1] - (-180);
-        const d2 = 180 - pt[1];
-        t = (d1 + d2) > 0 ? d1 / (d1 + d2) : 0.5;
-        crossLng1 = -180;
-        crossLng2 = 180;
+        // Westbound crossing: passed -180° from east to west
+        t = (-180 - prevRawLng) / (rawLng - prevRawLng);
+        exitLng = -180;
+        enterLng = 180;
       }
 
-      const crossLat = prevPt[0] + t * (pt[0] - prevPt[0]);
-      currentSegment.push([crossLat, crossLng1]);
+      t = Math.max(0, Math.min(1, t));
+      const crossLat = prevLat + t * (lat - prevLat);
+
+      currentSegment.push([crossLat, exitLng]);
       segments.push(currentSegment);
-      currentSegment = [[crossLat, crossLng2], pt];
+      currentSegment = [[crossLat, enterLng], [lat, normLng]];
     } else {
-      currentSegment.push(pt);
+      currentSegment.push([lat, normLng]);
     }
+
+    prevRawLng = rawLng;
+    prevLat = lat;
+    prevNormLng = normLng;
   }
 
   if (currentSegment.length > 0) {
@@ -221,53 +226,50 @@ export function getGeodesicPointAt(
   fraction: number
 ): { lat: number; lng: number; headingDeg: number } {
   const f = Math.max(0, Math.min(1, fraction));
-  const p1Lat = (lat1 * Math.PI) / 180;
-  const p1Lng = (lng1 * Math.PI) / 180;
-  const p2Lat = (lat2 * Math.PI) / 180;
-  const p2Lng = (lng2 * Math.PI) / 180;
 
-  const d =
-    2 *
-    Math.asin(
-      Math.sqrt(
-        Math.pow(Math.sin((p1Lat - p2Lat) / 2), 2) +
-          Math.cos(p1Lat) * Math.cos(p2Lat) * Math.pow(Math.sin((p1Lng - p2Lng) / 2), 2)
-      )
-    );
+  let deltaLon = lng2 - lng1;
+  if (deltaLon > 180) {
+    deltaLon -= 360;
+  } else if (deltaLon < -180) {
+    deltaLon += 360;
+  }
 
-  if (d < 1e-6) {
+  const distanceDeg = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(deltaLon, 2));
+  if (distanceDeg < 1e-6) {
     return { lat: lat1, lng: lng1, headingDeg: 0 };
   }
 
-  const A = Math.sin((1 - f) * d) / Math.sin(d);
-  const B = Math.sin(f * d) / Math.sin(d);
-  const x = A * Math.cos(p1Lat) * Math.cos(p1Lng) + B * Math.cos(p2Lat) * Math.cos(p2Lng);
-  const y = A * Math.cos(p1Lat) * Math.sin(p1Lng) + B * Math.cos(p2Lat) * Math.sin(p2Lng);
-  const z = A * Math.sin(p1Lat) + B * Math.sin(p2Lat);
-  const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
-  const lng = Math.atan2(y, x);
+  const avgLat = (lat1 + lat2) / 2;
+  const liftSign = avgLat >= 0 ? 1 : -1;
+  const maxLift = Math.min(18, distanceDeg * 0.12);
 
-  // Compute tangent heading by taking a tiny epsilon step forward
-  const fNext = Math.min(1, f + 0.01);
-  const An = Math.sin((1 - fNext) * d) / Math.sin(d);
-  const Bn = Math.sin(fNext * d) / Math.sin(d);
-  const xn = An * Math.cos(p1Lat) * Math.cos(p1Lng) + Bn * Math.cos(p2Lat) * Math.cos(p2Lng);
-  const yn = An * Math.cos(p1Lat) * Math.sin(p1Lng) + Bn * Math.cos(p2Lat) * Math.sin(p2Lng);
-  const zn = An * Math.sin(p1Lat) + Bn * Math.sin(p2Lat);
-  const latNext = Math.atan2(zn, Math.sqrt(xn * xn + yn * yn));
-  const lngNext = Math.atan2(yn, xn);
+  // Position at fraction f
+  const rawLng = lng1 + f * deltaLon;
+  const baseLat = lat1 + f * (lat2 - lat1);
+  const lift = maxLift * Math.sin(Math.PI * f) * liftSign;
+  const lat = Math.max(-80, Math.min(80, baseLat + lift));
 
-  const yDelta = Math.sin(lngNext - lng) * Math.cos(latNext);
-  const xDelta =
-    Math.cos(lat) * Math.sin(latNext) -
-    Math.sin(lat) * Math.cos(latNext) * Math.cos(lngNext - lng);
-  let bearing = (Math.atan2(yDelta, xDelta) * 180) / Math.PI;
-  if (bearing < 0) bearing += 360;
+  let normLng = rawLng;
+  while (normLng > 180) normLng -= 360;
+  while (normLng < -180) normLng += 360;
+
+  // Tangent heading calculation: take a forward/backward step df
+  const df = f < 0.99 ? 0.01 : -0.01;
+  const nextF = f + df;
+  const nextBaseLat = lat1 + nextF * (lat2 - lat1);
+  const nextLift = maxLift * Math.sin(Math.PI * nextF) * liftSign;
+  const nextLat = Math.max(-80, Math.min(80, nextBaseLat + nextLift));
+
+  const dLat = (nextLat - lat) * (df > 0 ? 1 : -1);
+  const dLng = deltaLon * (df > 0 ? 1 : -1);
+
+  let heading = (Math.atan2(dLng, dLat) * 180) / Math.PI;
+  if (heading < 0) heading += 360;
 
   return {
-    lat: (lat * 180) / Math.PI,
-    lng: (lng * 180) / Math.PI,
-    headingDeg: Math.round(bearing),
+    lat: Math.round(lat * 10000) / 10000,
+    lng: Math.round(normLng * 10000) / 10000,
+    headingDeg: Math.round(heading),
   };
 }
 

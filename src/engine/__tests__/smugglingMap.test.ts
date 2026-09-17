@@ -201,4 +201,39 @@ describe('Smuggling Map Engine & Geodesic Navigation', () => {
     expect(mid.headingDeg).toBeGreaterThanOrEqual(0);
     expect(mid.headingDeg).toBeLessThanOrEqual(360);
   });
+
+  it('correctly calculates shortest path and antimeridian split for New York to Surabaya without Arctic arching', () => {
+    const ny = AIRPORT_REGISTRY['new_york'].coordinates;
+    const sub = AIRPORT_REGISTRY['surabaya'].coordinates;
+    expect(ny).toBeDefined();
+    expect(sub).toBeDefined();
+
+    const segments = generateGeodesicArcSegments(ny.lat, ny.lng, sub.lat, sub.lng, 60);
+
+    // Splits into 2 segments across the Pacific antimeridian
+    expect(segments.length).toBe(2);
+
+    // Ensure all points stay well south of the Arctic (never arching into 70°+ Arctic)
+    for (const segment of segments) {
+      for (const [lat, lng] of segment) {
+        expect(lat).toBeLessThan(65); // never arches toward Arctic poles
+        expect(lat).toBeGreaterThan(-65);
+        expect(lng).toBeGreaterThanOrEqual(-180);
+        expect(lng).toBeLessThanOrEqual(180);
+      }
+      for (let i = 1; i < segment.length; i++) {
+        const deltaLng = Math.abs(segment[i][1] - segment[i - 1][1]);
+        expect(deltaLng).toBeLessThanOrEqual(180);
+      }
+    }
+
+    // Segment 1 ends near antimeridian boundary (-180)
+    const seg1End = segments[0][segments[0].length - 1];
+    expect(seg1End[1]).toBe(-180);
+
+    // Segment 2 begins at corresponding antimeridian boundary (+180)
+    const seg2Start = segments[1][0];
+    expect(seg2Start[1]).toBe(180);
+    expect(seg2Start[0]).toBeCloseTo(seg1End[0], 0.1);
+  });
 });
