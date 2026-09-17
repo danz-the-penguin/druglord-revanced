@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUGS } from '../engine/constants';
 import { getInventoryTotalUnits, getCarryingCapacity } from '../engine/game';
 import { Sparkline } from './Sparkline';
-import { DrugImage } from './DrugImage';
+import { CommodityPreviewCard } from './CommodityPreviewCard';
 import { TrendingUp, TrendingDown, ShoppingCart, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 export const MarketBoard: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const market = useGameStore((s) => s.market);
   const player = useGameStore((s) => s.player);
   const priceHistory = useGameStore((s) => s.priceHistory);
@@ -29,7 +30,7 @@ export const MarketBoard: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+    <div ref={containerRef} className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
       <div className="px-5 py-4 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <ShoppingCart className="w-5 h-5 text-emerald-400" />
@@ -70,70 +71,14 @@ export const MarketBoard: React.FC = () => {
                   key={drug.id}
                   className="hover:bg-slate-800/50 transition-colors group"
                 >
-                  {/* Commodity Card with Hover Zoom & Embedded Large Image */}
+                  {/* Commodity Card with Boundary-Safe Hover & Click Zoom */}
                   <td className="py-2 px-3 relative">
-                    <div className="relative group/card">
-                      {/* Resting Card View */}
-                      <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-2.5 transition-all duration-200 group-hover/card:border-emerald-500/80 group-hover/card:bg-slate-900/90 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <DrugImage drug={drug} size="sm" />
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-100 text-base group-hover/card:text-emerald-300 transition-colors">
-                                {drug.name}
-                              </span>
-                              {drug.chemicalFormula && (
-                                <span className="px-1.5 py-0.5 rounded bg-slate-950 text-emerald-400 font-bold border border-emerald-900/60 text-[10px] tracking-tight shrink-0">
-                                  {formatFormula(drug.chemicalFormula)}
-                                </span>
-                              )}
-                            </div>
-                            {/* Shorter resting definition */}
-                            <div className="text-xs text-slate-400 truncate max-w-[170px] sm:max-w-[210px] mt-0.5">
-                              {drug.scientificName ? drug.scientificName : drug.description}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* The Whole Zoomed Hover Card (Bigger zoom & bigger image with the card!) */}
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[440px] hidden group-hover/card:flex z-50 rounded-3xl border-2 border-emerald-400 bg-slate-950/98 p-5 shadow-[0_20px_60px_-15px_rgba(16,185,129,0.35)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 scale-105 pointer-events-none gap-4 items-start ring-1 ring-emerald-500/40">
-                        {/* Much larger image WITH the card */}
-                        <div className="shrink-0">
-                          <DrugImage drug={drug} size="lg" className="ring-2 ring-emerald-400/80 shadow-2xl rounded-2xl" />
-                        </div>
-
-                        {/* Complete Details & Definition */}
-                        <div className="flex-1 min-w-0 font-mono">
-                          <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
-                            <span className="font-black text-emerald-300 text-lg uppercase tracking-wide truncate">
-                              {drug.name}
-                            </span>
-                            {drug.chemicalFormula && (
-                              <span className="px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-300 font-black border border-emerald-700 text-xs shrink-0 shadow-sm">
-                                {formatFormula(drug.chemicalFormula)}
-                              </span>
-                            )}
-                          </div>
-
-                          {drug.scientificName && (
-                            <div className="text-xs font-bold text-sky-400 mb-1.5 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
-                              {drug.scientificName}
-                            </div>
-                          )}
-
-                          <p className="text-xs text-slate-200 leading-relaxed font-sans">
-                            {drug.description}
-                          </p>
-
-                          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                            <span>Mol Mass: <strong className="text-slate-100">{drug.molecularWeight || 'N/A'}</strong></span>
-                            <span>Base: <strong className="text-emerald-400 font-bold">${drug.basePrice.toLocaleString()}</strong></span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <CommodityPreviewCard
+                      drug={drug}
+                      formatFormula={formatFormula}
+                      theme="emerald"
+                      containerRef={containerRef}
+                    />
                   </td>
 
                   {/* Spot Price */}
