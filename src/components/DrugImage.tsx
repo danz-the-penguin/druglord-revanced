@@ -38,15 +38,15 @@ export const DrugImage: React.FC<DrugImageProps> = ({
   const formattedFormula = formatFormula(drug.chemicalFormula);
 
   if (imageError) {
-    // Elegant SVG fallback featuring the authentic chemical formula and molecular iconography
+    // SVG fallback with chemical formula and hover zoom expansion
     return (
       <div
-        className={`${sizeDimensions[size]} rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-800/60 flex flex-col items-center justify-center p-1 relative overflow-hidden shadow-inner shrink-0 group ${className}`}
+        className={`${sizeDimensions[size]} rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-800/60 flex flex-col items-center justify-center p-1 relative overflow-hidden shadow-inner shrink-0 transition-all duration-300 transform group-hover:scale-125 hover:!scale-140 z-10 group-hover:z-30 group-hover:shadow-xl group-hover:shadow-emerald-950/80 group-hover:border-emerald-500/80 cursor-pointer ${className}`}
         title={`${drug.name} (${drug.scientificName || ''}) - ${drug.chemicalFormula || ''}`}
       >
-        <div className="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors" />
-        <Atom className="w-5 h-5 text-emerald-400 opacity-70 group-hover:scale-110 transition-transform mb-0.5" />
-        <span className="text-[9px] font-mono font-black text-emerald-300 tracking-tighter truncate max-w-full z-10 px-0.5">
+        <div className="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/15 transition-colors" />
+        <Atom className="w-5 h-5 text-emerald-400 opacity-70 group-hover:opacity-100 group-hover:scale-120 transition-all mb-0.5" />
+        <span className="text-[9px] font-mono font-black text-emerald-300 tracking-tighter truncate max-w-full z-10 px-0.5 group-hover:scale-105 transition-transform">
           {formattedFormula || drug.id.toUpperCase().slice(0, 4)}
         </span>
       </div>
@@ -55,13 +55,13 @@ export const DrugImage: React.FC<DrugImageProps> = ({
 
   return (
     <div
-      className={`${sizeDimensions[size]} rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0 relative shadow-md group ${className}`}
+      className={`${sizeDimensions[size]} rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0 relative shadow-md transition-all duration-300 transform group-hover:scale-125 hover:!scale-140 z-10 group-hover:z-30 group-hover:shadow-xl group-hover:shadow-emerald-950/80 group-hover:border-emerald-500/80 cursor-pointer ${className}`}
     >
       <img
         src={imageSrc}
         alt={drug.name}
         onError={() => setImageError(true)}
-        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+        className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300"
       />
       {drug.chemicalFormula && size === 'lg' && (
         <span className="absolute bottom-1 right-1 bg-slate-950/80 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-emerald-400 border border-slate-800">

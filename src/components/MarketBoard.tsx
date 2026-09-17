@@ -74,20 +74,45 @@ export const MarketBoard: React.FC = () => {
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-3">
                       <DrugImage drug={drug} size="sm" />
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-100 text-base group-hover:text-emerald-300 transition-colors">
                             {drug.name}
                           </span>
                           {drug.chemicalFormula && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-950 text-emerald-400 font-bold border border-emerald-900/60 text-[11px] tracking-tight">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-950 text-emerald-400 font-bold border border-emerald-900/60 text-[11px] tracking-tight shrink-0">
                               {formatFormula(drug.chemicalFormula)}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-400 truncate max-w-sm sm:max-w-md xl:max-w-lg mt-0.5">
-                          {drug.scientificName ? `${drug.scientificName} • ` : ''}
-                          {drug.description}
+
+                        {/* Shorter Definition with Zoom on Hover */}
+                        <div className="relative group/def cursor-help inline-block">
+                          <div className="text-xs text-slate-400 truncate max-w-[170px] sm:max-w-[210px] mt-0.5 transition-all duration-200 origin-left group-hover/def:scale-105 group-hover/def:text-emerald-300">
+                            {drug.scientificName ? drug.scientificName : drug.description}
+                          </div>
+
+                          {/* Floating Zoomed Card */}
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/def:block z-50 w-72 p-3 bg-slate-950/95 border border-emerald-500/80 rounded-xl shadow-2xl backdrop-blur-md text-xs font-mono pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800">
+                              <span className="font-bold text-emerald-400 text-xs uppercase">{drug.name}</span>
+                              <span className="text-[10px] text-slate-400 font-bold">{formatFormula(drug.chemicalFormula)}</span>
+                            </div>
+                            {drug.scientificName && (
+                              <div className="text-[11px] text-indigo-300 font-semibold mb-1">
+                                {drug.scientificName}
+                              </div>
+                            )}
+                            <p className="text-[11px] text-slate-300 leading-relaxed">
+                              {drug.description}
+                            </p>
+                            {drug.molecularWeight && (
+                              <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex justify-between">
+                                <span>Molecular Mass:</span>
+                                <span className="text-emerald-400 font-bold">{drug.molecularWeight}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
