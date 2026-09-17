@@ -9,12 +9,21 @@ import { TravelModal } from './components/TravelModal';
 import { TradeModal } from './components/TradeModal';
 import { CombatModal } from './components/CombatModal';
 import { CartelDebugTerminal } from './components/CartelDebugTerminal';
+import { SaveLoadModal } from './components/SaveLoadModal';
 import { EventLog } from './components/EventLog';
 import { useKonamiCode } from './hooks/useKonamiCode';
-import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal } from 'lucide-react';
+import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal, HardDrive } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { activeTab, setActiveTab, nextDay, restartGame, toggleTerminal, fontScale } = useGameStore();
+  const {
+    activeTab,
+    setActiveTab,
+    nextDay,
+    restartGame,
+    toggleTerminal,
+    toggleSaveModal,
+    fontScale,
+  } = useGameStore();
 
   // Activate keyboard hotkeys: ~ (Terminal), Konami Code, and memory polling
   useKonamiCode();
@@ -69,6 +78,14 @@ export const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => toggleSaveModal()}
+              className="px-2.5 py-1.5 rounded-lg bg-cyan-950/60 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Underworld Data Vault (Save Slots / JSON Export / Import)"
+            >
+              <HardDrive className="w-3.5 h-3.5 text-cyan-400" /> Vault
+            </button>
+
             <button
               onClick={toggleTerminal}
               className="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 text-emerald-400 border border-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-colors"
@@ -128,6 +145,7 @@ export const App: React.FC = () => {
       <TradeModal />
       <CombatModal />
       <CartelDebugTerminal />
+      <SaveLoadModal />
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-3 px-4 text-center text-[11px] text-slate-500 font-mono">

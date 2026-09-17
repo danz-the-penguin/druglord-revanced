@@ -19,12 +19,23 @@ import {
 } from '../engine/game';
 import { CITY_MAP, DRUGS } from '../engine/constants';
 import { executeCheat, registerWindowCheatApi } from '../engine/cheats';
+import {
+  SaveSlotId,
+  DrugLordSaveFile,
+  createSaveFile,
+  saveToLocalStorage,
+  loadFromLocalStorage,
+  deleteLocalSaveSlot,
+  clearAllLocalSaves,
+  parseAndValidateSave,
+} from '../engine/persistence';
 
 export interface GameStore extends GameEngineState {
   // Modal / View Controls
   activeTab: 'market' | 'places' | 'travel';
   placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties';
   isTerminalOpen: boolean;
+  isSaveModalOpen: boolean;
   fontScale: 'normal' | 'large' | 'xl';
   tradeModal: {
     isOpen: boolean;
@@ -34,6 +45,16 @@ export interface GameStore extends GameEngineState {
 
   // 14-Day Price History for Sparklines
   priceHistory: Record<string, number[]>;
+
+  // Persistence & Save Manager
+  lastSavedAt: number | null;
+  toggleSaveModal: (open?: boolean) => void;
+  saveGame: (slotId: SaveSlotId, title?: string) => { success: boolean; message: string };
+  loadGame: (saveData: DrugLordSaveFile) => { success: boolean; message: string };
+  exportCurrentSave: (slotId?: SaveSlotId) => DrugLordSaveFile;
+  importGameString: (rawInput: string) => { success: boolean; message: string; data?: DrugLordSaveFile };
+  deleteSave: (slotId: SaveSlotId) => void;
+  clearAllSaves: () => void;
 
   // Actions
   setActiveTab: (tab: 'market' | 'places' | 'travel') => void;
@@ -79,21 +100,158 @@ function createInitialPriceHistory(initialMarket: Record<string, { price: number
   return history;
 }
 
-const initial = createInitialState();
+let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+function triggerAutoSave(get: () => GameStore, set: any) {
+  if (typeof window === 'undefined') return;
+  if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+  autoSaveTimeout = setTimeout(() => {
+    try {
+      const current = get();
+      const saveFile = createSaveFile(
+        {
+          player: current.player,
+          market: current.market,
+          logs: current.logs,
+          priceHistory: current.priceHistory,
+        },
+        'autosave'
+      );
+      const ok = saveToLocalStorage('autosave', saveFile);
+      if (ok) {
+        set({ lastSavedAt: Date.now() });
+      }
+    } catch (e) {
+      console.error('Auto-save failed:', e);
+    }
+  }, 350);
+}
+
+function getInitialStoreState() {
+  const fresh = createInitialState();
+  if (typeof window === 'undefined') {
+    return {
+      state: fresh,
+      priceHistory: createInitialPriceHistory(fresh.market),
+      lastSavedAt: null,
+    };
+  }
+
+  const saved = loadFromLocalStorage('autosave');
+  if (saved && saved.state?.player) {
+    syncStateToMemory(saved.state);
+    return {
+      state: {
+        player: saved.state.player,
+        market: saved.state.market,
+        logs: saved.state.logs,
+      },
+      priceHistory: saved.state.priceHistory || createInitialPriceHistory(saved.state.market),
+      lastSavedAt: saved.savedAt || null,
+    };
+  }
+
+  return {
+    state: fresh,
+    priceHistory: createInitialPriceHistory(fresh.market),
+    lastSavedAt: null,
+  };
+}
+
+const initialPayload = getInitialStoreState();
 
 export const useGameStore = create<GameStore>((set, get) => {
   const storeApi = {
-    ...initial,
+    ...initialPayload.state,
     activeTab: 'market' as const,
     placesSubTab: 'bank' as const,
     isTerminalOpen: false,
+    isSaveModalOpen: false,
+    lastSavedAt: initialPayload.lastSavedAt,
     fontScale: 'normal' as const,
     tradeModal: {
       isOpen: false,
       drugId: null,
       mode: 'buy' as const,
     },
-    priceHistory: createInitialPriceHistory(initial.market),
+    priceHistory: initialPayload.priceHistory,
+
+    toggleSaveModal: (open?: boolean) =>
+      set((state) => ({ isSaveModalOpen: open !== undefined ? open : !state.isSaveModalOpen })),
+
+    saveGame: (slotId: SaveSlotId, title?: string) => {
+      const current = get();
+      const saveFile = createSaveFile(
+        {
+          player: current.player,
+          market: current.market,
+          logs: current.logs,
+          priceHistory: current.priceHistory,
+        },
+        slotId,
+        title
+      );
+      const ok = saveToLocalStorage(slotId, saveFile);
+      if (ok) {
+        set({ lastSavedAt: Date.now() });
+        return {
+          success: true,
+          message: `Saved successfully to ${slotId === 'autosave' ? 'Auto-Save' : slotId.replace('_', ' ').toUpperCase()}!`,
+        };
+      }
+      return { success: false, message: 'Failed to write to browser local storage.' };
+    },
+
+    loadGame: (saveData: DrugLordSaveFile) => {
+      if (!saveData || !saveData.state || !saveData.state.player) {
+        return { success: false, message: 'Corrupted save data payload' };
+      }
+      const st = saveData.state;
+      syncStateToMemory(st);
+      set({
+        player: st.player,
+        market: st.market,
+        logs: st.logs,
+        priceHistory: st.priceHistory || createInitialPriceHistory(st.market),
+        lastSavedAt: saveData.savedAt || Date.now(),
+        tradeModal: { isOpen: false, drugId: null, mode: 'buy' },
+      });
+      triggerAutoSave(get, set);
+      return {
+        success: true,
+        message: `Run restored: Day ${st.player.currentDay} • $${st.player.cash.toLocaleString()} Cash`,
+      };
+    },
+
+    exportCurrentSave: (slotId: SaveSlotId = 'autosave') => {
+      const current = get();
+      return createSaveFile(
+        {
+          player: current.player,
+          market: current.market,
+          logs: current.logs,
+          priceHistory: current.priceHistory,
+        },
+        slotId
+      );
+    },
+
+    importGameString: (rawInput: string) => {
+      const res = parseAndValidateSave(rawInput);
+      if (!res.success) {
+        return { success: false, message: res.error };
+      }
+      const loadRes = get().loadGame(res.data);
+      return { success: loadRes.success, message: loadRes.message, data: res.data };
+    },
+
+    deleteSave: (slotId: SaveSlotId) => {
+      deleteLocalSaveSlot(slotId);
+    },
+
+    clearAllSaves: () => {
+      clearAllLocalSaves();
+      set({ lastSavedAt: null });
+    },
 
     setActiveTab: (tab: 'market' | 'places' | 'travel') => set({ activeTab: tab }),
     setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties') =>
@@ -133,6 +291,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           market: state.market,
           logs: state.logs,
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -151,6 +310,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           market: state.market,
           logs: state.logs,
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -168,6 +328,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           player: state.player,
           logs: state.logs,
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -185,6 +346,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           player: state.player,
           logs: state.logs,
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -207,6 +369,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           player: state.player,
           logs: state.logs,
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -221,6 +384,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (result.success) {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -235,6 +399,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (result.success) {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -249,6 +414,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (result.success) {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -263,6 +429,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (result.success) {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -277,6 +444,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (result.success) {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -307,6 +475,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           priceHistory: updatedHistory,
           activeTab: 'market',
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -336,6 +505,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         logs: state.logs,
         priceHistory: updatedHistory,
       });
+      triggerAutoSave(get, set);
     },
 
     resolveEncounterAction: (action: 'fight' | 'flee' | 'bribe' | 'surrender') => {
@@ -442,6 +612,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         player: state.player,
         logs: state.logs,
       });
+      triggerAutoSave(get, set);
     },
 
     runCheat: (cmd: string) => {
@@ -474,6 +645,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           market: state.market,
           logs: updatedLogs,
         });
+        triggerAutoSave(get, set);
       }
       return result;
     },
@@ -509,6 +681,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         player: state.player,
         logs: state.logs,
       });
+      triggerAutoSave(get, set);
     },
 
     checkMemoryUpdates: () => {
@@ -524,6 +697,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restartGame: () => {
+      deleteLocalSaveSlot('autosave');
       const fresh = createInitialState();
       syncStateToMemory(fresh);
       set({
@@ -531,6 +705,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         activeTab: 'market',
         placesSubTab: 'bank',
         isTerminalOpen: false,
+        isSaveModalOpen: false,
+        lastSavedAt: null,
         priceHistory: createInitialPriceHistory(fresh.market),
         tradeModal: { isOpen: false, drugId: null, mode: 'buy' },
       });

@@ -20,11 +20,14 @@ import {
   Award,
   Terminal,
   Shield,
+  HardDrive,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const player = useGameStore((s) => s.player);
   const toggleTerminal = useGameStore((s) => s.toggleTerminal);
+  const toggleSaveModal = useGameStore((s) => s.toggleSaveModal);
+  const lastSavedAt = useGameStore((s) => s.lastSavedAt);
   const fontScale = useGameStore((s) => s.fontScale);
   const setFontScale = useGameStore((s) => s.setFontScale);
   const city = CITY_MAP.get(player.currentCityId);
@@ -179,6 +182,22 @@ export const Header: React.FC = () => {
           >
             <Terminal className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden sm:inline">DEV</span> [~]
+          </button>
+
+          {/* Underworld Data Vault (Save / Export / Import) */}
+          <button
+            onClick={() => toggleSaveModal()}
+            className="px-2.5 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/80 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-cyan-950/50"
+            title="Underworld Data Vault: Save Slots, Export JSON & Syndicate Codes"
+          >
+            <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">VAULT</span>
+            {lastSavedAt && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+                title="Auto-saved to local browser storage"
+              />
+            )}
           </button>
         </div>
 
