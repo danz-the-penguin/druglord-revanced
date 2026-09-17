@@ -96,39 +96,40 @@ export const MarketBoard: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* The Whole Zoomed Hover Card (Enlarged image is with the card!) */}
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[350px] hidden group-hover/card:flex z-50 rounded-2xl border-2 border-emerald-500 bg-slate-950/98 p-3.5 shadow-2xl shadow-emerald-950/90 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200 pointer-events-none gap-3.5 items-start">
-                        {/* Larger image WITH the card */}
+                      {/* The Whole Zoomed Hover Card (Bigger zoom & bigger image with the card!) */}
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[440px] hidden group-hover/card:flex z-50 rounded-3xl border-2 border-emerald-400 bg-slate-950/98 p-5 shadow-[0_20px_60px_-15px_rgba(16,185,129,0.35)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 scale-105 pointer-events-none gap-4 items-start ring-1 ring-emerald-500/40">
+                        {/* Much larger image WITH the card */}
                         <div className="shrink-0">
-                          <DrugImage drug={drug} size="md" className="ring-2 ring-emerald-500/60 shadow-lg" />
+                          <DrugImage drug={drug} size="lg" className="ring-2 ring-emerald-400/80 shadow-2xl rounded-2xl" />
                         </div>
 
                         {/* Complete Details & Definition */}
                         <div className="flex-1 min-w-0 font-mono">
-                          <div className="flex items-center justify-between gap-1 border-b border-slate-800 pb-1.5 mb-1.5">
-                            <span className="font-black text-emerald-400 text-base uppercase tracking-wide truncate">
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+                            <span className="font-black text-emerald-300 text-lg uppercase tracking-wide truncate">
                               {drug.name}
                             </span>
                             {drug.chemicalFormula && (
-                              <span className="px-1.5 py-0.5 rounded bg-slate-900 text-emerald-300 font-black border border-emerald-800 text-[10px] shrink-0">
+                              <span className="px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-300 font-black border border-emerald-700 text-xs shrink-0 shadow-sm">
                                 {formatFormula(drug.chemicalFormula)}
                               </span>
                             )}
                           </div>
 
                           {drug.scientificName && (
-                            <div className="text-xs font-bold text-indigo-300 mb-1">
+                            <div className="text-xs font-bold text-sky-400 mb-1.5 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
                               {drug.scientificName}
                             </div>
                           )}
 
-                          <p className="text-xs text-slate-300 leading-relaxed">
+                          <p className="text-xs text-slate-200 leading-relaxed font-sans">
                             {drug.description}
                           </p>
 
-                          <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-                            <span>Molecular Mass: <strong className="text-slate-200">{drug.molecularWeight || 'N/A'}</strong></span>
-                            <span>Base: <strong className="text-emerald-400">${drug.basePrice.toLocaleString()}</strong></span>
+                          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                            <span>Mol Mass: <strong className="text-slate-100">{drug.molecularWeight || 'N/A'}</strong></span>
+                            <span>Base: <strong className="text-emerald-400 font-bold">${drug.basePrice.toLocaleString()}</strong></span>
                           </div>
                         </div>
                       </div>
