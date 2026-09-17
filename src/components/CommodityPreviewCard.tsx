@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Drug } from '../engine/types';
 import { DrugImage } from './DrugImage';
+import { useGameStore } from '../store/gameStore';
 
 interface CommodityPreviewCardProps {
   drug: Drug;
@@ -14,71 +16,121 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
   drug,
   formatFormula,
   theme = 'emerald',
-  containerRef,
   extraFooter,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+
+  const fontScale = useGameStore((s) => s.fontScale);
+  const fontScaleClass =
+    fontScale === 'xl' ? 'font-scale-xl' : fontScale === 'large' ? 'font-scale-large' : 'font-scale-normal';
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Boundary collision detection
-  const calculateCollision = useCallback(() => {
-    if (!popoverRef.current) return;
-    const popoverRect = popoverRef.current.getBoundingClientRect();
-    const container = containerRef?.current || document.body;
-    const containerRect = container.getBoundingClientRect();
+  // Calculate viewport-aware fixed coordinates
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    if (triggerRect.width === 0 && triggerRect.height === 0) return;
 
-    const padding = 16; // Minimum 16px safety margin from parent borders
-    let shiftX = 0;
-    let shiftY = 0;
+    const padding = 16;
+    const cardWidth = 465; // popover width (440px) + scale factor allowance
+    const cardHeight = (popoverRef.current ? popoverRef.current.offsetHeight : 230) * 1.05;
 
-    // Left collision detection: if popover overlaps left boundary, shift right
-    if (popoverRect.left < containerRect.left + padding) {
-      shiftX = containerRect.left + padding - popoverRect.left;
-    } else if (popoverRect.right > containerRect.right - padding) {
-      // Right collision detection: shift left if overflowing right
-      shiftX = containerRect.right - padding - popoverRect.right;
+    // Align left with trigger cell, keeping within viewport
+    let left = triggerRect.left;
+    if (left + cardWidth > window.innerWidth - padding) {
+      left = Math.max(padding, window.innerWidth - padding - cardWidth);
+    }
+    if (left < padding) {
+      left = padding;
     }
 
-    // Top and Bottom collision detection
-    if (popoverRect.top < containerRect.top + padding) {
-      shiftY = containerRect.top + padding - popoverRect.top;
-    } else if (popoverRect.bottom > containerRect.bottom - padding) {
-      shiftY = containerRect.bottom - padding - popoverRect.bottom;
+    // Center vertically on the trigger row
+    let top = triggerRect.top + triggerRect.height / 2;
+    const halfHeight = cardHeight / 2;
+
+    // Viewport bounds clamping: only clamp if overflowing screen top or bottom
+    if (top - halfHeight < padding) {
+      top = padding + halfHeight;
+    } else if (top + halfHeight > window.innerHeight - padding) {
+      top = window.innerHeight - padding - halfHeight;
     }
 
-    setOffset({ x: shiftX, y: shiftY });
-  }, [containerRef]);
+    setCoords({ left, top });
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    updatePosition();
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (isPinned) return;
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 80);
+  };
+
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPinned) {
+      setIsPinned(false);
+      setIsOpen(false);
+    } else {
+      updatePosition();
+      setIsPinned(true);
+      setIsOpen(true);
+    }
+  };
+
+  const handlePopoverClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isPinned) {
+      setIsPinned(true);
+    }
+  };
+
+  const handleUnpin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPinned(false);
+    setIsOpen(false);
+  };
 
   useEffect(() => {
     if (isOpen || isPinned) {
-      calculateCollision();
-      // Re-calculate after CSS render pass
-      const timer = setTimeout(calculateCollision, 20);
-      window.addEventListener('resize', calculateCollision);
-      window.addEventListener('scroll', calculateCollision, true);
+      updatePosition();
+      const timer = setTimeout(updatePosition, 16);
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
       return () => {
         clearTimeout(timer);
-        window.removeEventListener('resize', calculateCollision);
-        window.removeEventListener('scroll', calculateCollision, true);
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
       };
-    } else {
-      setOffset({ x: 0, y: 0 });
     }
-  }, [isOpen, isPinned, calculateCollision]);
+  }, [isOpen, isPinned, updatePosition]);
 
   // Handle clicking outside to unpin
   useEffect(() => {
     if (!isPinned) return;
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
         triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node) &&
+        !triggerRef.current.contains(target) &&
         popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node)
+        !popoverRef.current.contains(target)
       ) {
         setIsPinned(false);
         setIsOpen(false);
@@ -87,6 +139,15 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isPinned]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const showPopover = isOpen || isPinned;
 
@@ -105,15 +166,9 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
     <div
       ref={triggerRef}
       className="relative select-none"
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => {
-        if (!isPinned) setIsOpen(false);
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        setIsPinned((prev) => !prev);
-        setIsOpen(true);
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleTriggerClick}
     >
       {/* Resting Compact Card in Table */}
       <div
@@ -124,7 +179,7 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
               : 'border-indigo-500/80 bg-slate-900/90 shadow-md'
             : 'border-slate-800/80 bg-slate-950/60 hover:border-slate-700'
         }`}
-        title="Click to pin/unpin preview"
+        title="Hover to view drug dossier • Click to pin"
       >
         <div className="flex items-center gap-3">
           <DrugImage drug={drug} size="sm" />
@@ -150,68 +205,89 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
         </div>
       </div>
 
-      {/* Zoomed Hover / Pinned Inspection Card with Boundary Protection */}
-      {showPopover && (
-        <div
-          ref={popoverRef}
-          style={{
-            transform: `translate(${Math.max(4, offset.x)}px, calc(-50% + ${offset.y}px)) scale(1.05)`,
-            transformOrigin: 'left center',
-          }}
-          className={`absolute left-0 top-1/2 w-[440px] max-w-[calc(100vw-2rem)] flex z-50 rounded-3xl border-2 ${borderActive} bg-slate-950/98 p-5 ${glowShadow} backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 gap-4 items-start ring-1 ring-white/10 ${
-            isPinned ? 'pointer-events-auto' : 'pointer-events-none'
-          }`}
-        >
-          {/* Large Image with the card */}
-          <div className="shrink-0">
-            <DrugImage drug={drug} size="lg" className={`ring-2 ${ringColor} shadow-2xl rounded-2xl`} />
-          </div>
-
-          {/* Details & Definition */}
-          <div className="flex-1 min-w-0 font-mono">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
-              <span className={`font-black ${textAccent} text-lg uppercase tracking-wide truncate`}>
-                {drug.name}
-              </span>
-              {drug.chemicalFormula && (
-                <span className={`px-2 py-0.5 rounded-lg font-black border text-xs shrink-0 shadow-sm ${tagBg}`}>
-                  {formatFormula(drug.chemicalFormula)}
-                </span>
-              )}
+      {/* Zoomed Hover / Pinned Inspection Card rendered via Portal to escape overflow contexts */}
+      {showPopover &&
+        coords &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              left: `${coords.left}px`,
+              top: `${coords.top}px`,
+              transform: 'translateY(-50%) scale(1.05)',
+              transformOrigin: 'left center',
+              zIndex: 99999,
+            }}
+            className={`w-[440px] max-w-[calc(100vw-2rem)] flex z-[99999] rounded-3xl border-2 ${borderActive} bg-slate-950/98 p-5 ${glowShadow} backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 gap-4 items-start ring-1 ring-white/10 pointer-events-auto shadow-2xl ${fontScaleClass}`}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onClick={handlePopoverClick}
+          >
+            {/* Large Image with the card */}
+            <div className="shrink-0">
+              <DrugImage drug={drug} size="lg" className={`ring-2 ${ringColor} shadow-2xl rounded-2xl`} />
             </div>
 
-            {drug.scientificName && (
-              <div className="text-xs font-bold text-sky-400 mb-1.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
-                {drug.scientificName}
+            {/* Details & Definition */}
+            <div className="flex-1 min-w-0 font-mono">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+                <span className={`font-black ${textAccent} text-lg uppercase tracking-wide truncate`}>
+                  {drug.name}
+                </span>
+                {drug.chemicalFormula && (
+                  <span className={`px-2 py-0.5 rounded-lg font-black border text-xs shrink-0 shadow-sm ${tagBg}`}>
+                    {formatFormula(drug.chemicalFormula)}
+                  </span>
+                )}
               </div>
-            )}
 
-            <p className="text-xs text-slate-200 leading-relaxed font-sans">
-              {drug.description}
-            </p>
+              {drug.scientificName && (
+                <div className="text-xs font-bold text-sky-400 mb-1.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
+                  {drug.scientificName}
+                </div>
+              )}
 
-            <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-              <span>
-                Mol Mass: <strong className="text-slate-100">{drug.molecularWeight || 'N/A'}</strong>
-              </span>
-              {extraFooter ? (
-                extraFooter
-              ) : (
+              <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                {drug.description}
+              </p>
+
+              <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
                 <span>
-                  Base: <strong className="text-emerald-400 font-bold">${drug.basePrice.toLocaleString()}</strong>
+                  Mol Mass: <strong className="text-slate-100">{drug.molecularWeight || 'N/A'}</strong>
                 </span>
+                {extraFooter ? (
+                  extraFooter
+                ) : (
+                  <span>
+                    Base: <strong className="text-emerald-400 font-bold">${drug.basePrice.toLocaleString()}</strong>
+                  </span>
+                )}
+              </div>
+
+              {isPinned ? (
+                <button
+                  type="button"
+                  onClick={handleUnpin}
+                  className={`mt-2.5 w-full text-center text-[10px] font-bold py-1 px-2 rounded-lg border transition-colors cursor-pointer ${
+                    isEmerald
+                      ? 'bg-emerald-950/60 border-emerald-700/80 text-emerald-300 hover:bg-emerald-900/60'
+                      : 'bg-indigo-950/60 border-indigo-700/80 text-indigo-300 hover:bg-indigo-900/60'
+                  }`}
+                >
+                  ✕ PINNED (Click to Close / Unpin)
+                </button>
+              ) : (
+                <div className="mt-2 text-[10px] text-slate-500 text-right uppercase tracking-wider">
+                  Click to Pin
+                </div>
               )}
             </div>
-
-            {isPinned && (
-              <div className="mt-2 text-[10px] text-slate-500 text-right uppercase tracking-wider">
-                [ Pinned • Click anywhere to close ]
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
