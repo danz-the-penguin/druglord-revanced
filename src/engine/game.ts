@@ -1,6 +1,7 @@
 import { RANKS, RANK_MAP, SHARK_MAP, CITY_MAP } from './constants';
 import { generateCityMarket } from './economy';
 import { PlayerState, GameLogEntry, MarketItem } from './types';
+import { memoryMirror } from './memoryBuffer';
 
 export interface GameEngineState {
   player: PlayerState;
@@ -36,7 +37,13 @@ export function createInitialState(): GameEngineState {
     shipments: [],
     activeEncounter: null,
     isGameOver: false,
+    cheats: {
+      godMode: false,
+      extraCapacity: 0,
+    },
   };
+
+  memoryMirror.syncFromState(player, 0, 0);
 
   const { market } = generateCityMarket(initialCityId);
 
@@ -53,13 +60,66 @@ export function createInitialState(): GameEngineState {
   return { player, market, logs: initialLogs };
 }
 
+export function syncStateToMemory(state: GameEngineState): void {
+  memoryMirror.syncFromState(
+    state.player,
+    state.player.cheats?.godMode ? 1 : 0,
+    state.player.cheats?.extraCapacity ?? 0
+  );
+}
+
+export function syncStateFromMemory(state: GameEngineState): boolean {
+  const mem = memoryMirror.readMemory();
+  let changed = false;
+
+  if (state.player.cash !== mem.cash) {
+    state.player.cash = Math.max(0, mem.cash);
+    changed = true;
+  }
+  if (state.player.bank !== mem.bank) {
+    state.player.bank = Math.max(0, mem.bank);
+    changed = true;
+  }
+  if (state.player.debt !== mem.debt) {
+    state.player.debt = Math.max(0, mem.debt);
+    if (state.player.debt === 0) {
+      state.player.loanSharkId = null;
+      state.player.loanDaysLeft = 0;
+    }
+    changed = true;
+  }
+  if (state.player.health !== mem.health) {
+    state.player.health = Math.min(100, Math.max(0, mem.health));
+    changed = true;
+  }
+  if (state.player.currentDay !== mem.currentDay) {
+    state.player.currentDay = mem.currentDay;
+    changed = true;
+  }
+  if (state.player.maxDays !== mem.maxDays) {
+    state.player.maxDays = mem.maxDays;
+    changed = true;
+  }
+  if (state.player.cheats.godMode !== mem.godMode) {
+    state.player.cheats.godMode = mem.godMode;
+    changed = true;
+  }
+  if (state.player.cheats.extraCapacity !== mem.extraCapacity) {
+    state.player.cheats.extraCapacity = mem.extraCapacity;
+    changed = true;
+  }
+
+  return changed;
+}
+
 export function getInventoryTotalUnits(player: PlayerState): number {
   return Object.values(player.inventory).reduce((sum, item) => sum + item.units, 0);
 }
 
 export function getCarryingCapacity(player: PlayerState): number {
   const rank = RANK_MAP.get(player.currentRankId);
-  return rank ? rank.capacity : 10;
+  const base = rank ? rank.capacity : 10;
+  return base + (player.cheats?.extraCapacity ?? 0);
 }
 
 export function getTotalWealth(player: PlayerState): number {

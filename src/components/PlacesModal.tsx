@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LOAN_SHARKS, SHARK_MAP, WEAPONS } from '../engine/constants';
-import { Building2, Skull, HeartPulse, Crosshair } from 'lucide-react';
+import { Building2, Skull, HeartPulse, Crosshair, Landmark, ArrowRight } from 'lucide-react';
 
 export const PlacesModal: React.FC = () => {
   const {
@@ -18,6 +18,12 @@ export const PlacesModal: React.FC = () => {
   const [bankAmount, setBankAmount] = useState<number>(0);
   const [loanAmount, setLoanAmount] = useState<number>(0);
   const [selectedSharkId, setSelectedSharkId] = useState<string>('buddles');
+  const [launderAmount, setLaunderAmount] = useState<number>(0);
+  const [selectedFront, setSelectedFront] = useState<{ name: string; fee: number; limit: number }>({
+    name: 'Suburban Laundromat',
+    fee: 0.08,
+    limit: 50000,
+  });
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const activeShark = player.loanSharkId ? SHARK_MAP.get(player.loanSharkId) : null;
@@ -60,26 +66,68 @@ export const PlacesModal: React.FC = () => {
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
   };
 
+  const handleLaunder = () => {
+    setFeedback(null);
+    if (launderAmount <= 0) {
+      setFeedback({ type: 'error', message: 'Enter a valid amount to wash' });
+      return;
+    }
+    if (player.cash < launderAmount) {
+      setFeedback({ type: 'error', message: 'Not enough liquid cash on hand' });
+      return;
+    }
+    if (launderAmount > selectedFront.limit) {
+      setFeedback({
+        type: 'error',
+        message: `${selectedFront.name} can only clean up to $${selectedFront.limit.toLocaleString()} at a time.`,
+      });
+      return;
+    }
+
+    const feeCost = Math.round(launderAmount * selectedFront.fee);
+    const cleanAmount = launderAmount - feeCost;
+
+    player.cash -= launderAmount;
+    player.bank += cleanAmount;
+
+    setFeedback({
+      type: 'success',
+      message: `Cleaned $${cleanAmount.toLocaleString()} into offshore bank via ${selectedFront.name} (Fee: $${feeCost.toLocaleString()}).`,
+    });
+    setLaunderAmount(0);
+  };
+
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-xl font-mono">
       {/* Subtab navigation */}
-      <div className="flex border-b border-slate-800 bg-slate-950/60">
+      <div className="flex border-b border-slate-800 bg-slate-950/80 overflow-x-auto text-xs font-bold uppercase tracking-wider">
         <button
           onClick={() => setPlacesSubTab('bank')}
-          className={`flex-1 py-3 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 ${
+          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'bank'
-              ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20'
+              ? 'border-cyan-400 text-cyan-400 bg-cyan-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Building2 className="w-4 h-4" /> 1st Offshore Bank
+          <Building2 className="w-4 h-4" /> Offshore Bank
+        </button>
+
+        <button
+          onClick={() => setPlacesSubTab('laundering')}
+          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            placesSubTab === 'laundering'
+              ? 'border-emerald-400 text-emerald-400 bg-emerald-950/30'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Landmark className="w-4 h-4" /> Shells & Laundering
         </button>
 
         <button
           onClick={() => setPlacesSubTab('loans')}
-          className={`flex-1 py-3 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 ${
+          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'loans'
-              ? 'border-rose-400 text-rose-400 bg-rose-950/20'
+              ? 'border-rose-400 text-rose-400 bg-rose-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -88,24 +136,24 @@ export const PlacesModal: React.FC = () => {
 
         <button
           onClick={() => setPlacesSubTab('hospital')}
-          className={`flex-1 py-3 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 ${
+          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'hospital'
-              ? 'border-emerald-400 text-emerald-400 bg-emerald-950/20'
+              ? 'border-amber-400 text-amber-400 bg-amber-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <HeartPulse className="w-4 h-4" /> Back-Alley Clinic
+          <HeartPulse className="w-4 h-4" /> Clinic
         </button>
 
         <button
           onClick={() => setPlacesSubTab('armory')}
-          className={`flex-1 py-3 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 ${
+          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'armory'
-              ? 'border-amber-400 text-amber-400 bg-amber-950/20'
+              ? 'border-indigo-400 text-indigo-400 bg-indigo-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Crosshair className="w-4 h-4" /> Gun Store
+          <Crosshair className="w-4 h-4" /> Armory
         </button>
       </div>
 
@@ -127,7 +175,7 @@ export const PlacesModal: React.FC = () => {
         {placesSubTab === 'bank' && (
           <div className="space-y-6 max-w-xl mx-auto">
             <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-center">
-              <div className="text-xs text-slate-400 uppercase">Offshore Account Balance</div>
+              <div className="text-xs text-slate-400 uppercase">Offshore Private Account</div>
               <div className="text-3xl font-black text-cyan-400 mt-1">
                 ${player.bank.toLocaleString()}
               </div>
@@ -168,6 +216,88 @@ export const PlacesModal: React.FC = () => {
                   Withdraw to Pocket
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MONEY LAUNDERING & SHELL BUSINESSES TAB */}
+        {placesSubTab === 'laundering' && (
+          <div className="space-y-6 max-w-xl mx-auto">
+            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase mb-1">
+                <Landmark className="w-4 h-4" /> Narco-Fintech Laundering Engine
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Transform dirty street cash into clean offshore bank deposits through layered corporate structures.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { name: 'Suburban Laundromat & Car Wash', fee: 0.10, limit: 25000, desc: 'Small cash-intensive local business. Easy to hide small batches.' },
+                { name: 'Neon VIP Nightclub & Lounge', fee: 0.07, limit: 150000, desc: 'High-volume weekend ticket and bottle service cash flow.' },
+                { name: 'Panama Shell LLC & Real Estate', fee: 0.04, limit: 1000000, desc: 'Offshore nominee director trust structure with encrypted banking.' },
+                { name: 'Decentralized Crypto Mixer Protocol', fee: 0.02, limit: 10000000, desc: 'Institutional zero-knowledge privacy pool for unlimited liquidation.' },
+              ].map((front) => (
+                <div
+                  key={front.name}
+                  onClick={() => setSelectedFront(front)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    selectedFront.name === front.name
+                      ? 'bg-emerald-950/40 border-emerald-500 text-slate-100 ring-1 ring-emerald-500/30'
+                      : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-slate-200">{front.name}</span>
+                    <span className="text-emerald-400">{Math.round(front.fee * 100)}% Fee</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">{front.desc}</p>
+                  <div className="text-[10px] text-slate-400 mt-1.5 flex justify-between font-mono">
+                    <span>Batch Limit: ${front.limit.toLocaleString()}</span>
+                    <span>Net Rate: {Math.round((1 - front.fee) * 100)}% to Bank</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-300 font-semibold">Street Cash to Clean:</span>
+                <button
+                  onClick={() => setLaunderAmount(Math.min(player.cash, selectedFront.limit))}
+                  className="text-emerald-400 hover:underline text-[11px]"
+                >
+                  Max (${Math.min(player.cash, selectedFront.limit).toLocaleString()})
+                </button>
+              </div>
+              <input
+                type="number"
+                min={0}
+                max={selectedFront.limit}
+                value={launderAmount || ''}
+                onChange={(e) => setLaunderAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                placeholder={`Max $${selectedFront.limit.toLocaleString()}...`}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-slate-100 font-bold focus:outline-none focus:border-emerald-500 text-sm"
+              />
+
+              {launderAmount > 0 && (
+                <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 text-xs flex justify-between">
+                  <span className="text-slate-400">Net Clean Wire to Bank:</span>
+                  <strong className="text-emerald-400">
+                    ${Math.round(launderAmount * (1 - selectedFront.fee)).toLocaleString()}
+                  </strong>
+                </div>
+              )}
+
+              <button
+                onClick={handleLaunder}
+                disabled={launderAmount <= 0 || player.cash < launderAmount}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 font-bold text-slate-950 text-xs transition-colors shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1.5"
+              >
+                <span>Execute Corporate Wire</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}

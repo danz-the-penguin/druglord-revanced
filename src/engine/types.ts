@@ -119,12 +119,16 @@ export interface PlayerState {
   activeEncounter: ActiveEncounter | null;
   isGameOver: boolean;
   gameOverReason?: string;
+  cheats: {
+    godMode: boolean;
+    extraCapacity: number;
+  };
 }
 
 export interface GameLogEntry {
   day: number;
   city: string;
-  type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system';
+  type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system' | 'cheat';
   message: string;
   timestamp: number;
 }

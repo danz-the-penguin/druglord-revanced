@@ -2,11 +2,13 @@ import React from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUGS } from '../engine/constants';
 import { getInventoryTotalUnits, getCarryingCapacity } from '../engine/game';
+import { Sparkline } from './Sparkline';
 import { TrendingUp, TrendingDown, ShoppingCart, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 export const MarketBoard: React.FC = () => {
   const market = useGameStore((s) => s.market);
   const player = useGameStore((s) => s.player);
+  const priceHistory = useGameStore((s) => s.priceHistory);
   const openTradeModal = useGameStore((s) => s.openTradeModal);
 
   const totalUnits = getInventoryTotalUnits(player);
@@ -14,29 +16,30 @@ export const MarketBoard: React.FC = () => {
   const remainingCapacity = Math.max(0, capacity - totalUnits);
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-      <div className="px-4 py-3 bg-slate-800/60 border-b border-slate-700/60 flex items-center justify-between">
+    <div className="bg-slate-900/70 border border-slate-800 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm">
+      <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-4 h-4 text-emerald-400" />
           <h2 className="text-sm font-bold uppercase tracking-wider font-mono text-slate-200">
-            Street Market Prices
+            Institutional Order Book & Pricing
           </h2>
         </div>
         <span className="text-xs text-slate-400 font-mono">
-          Free Stash Capacity: <strong className="text-emerald-400">{remainingCapacity}</strong> units
+          Available Stash: <strong className="text-emerald-400">{remainingCapacity}</strong> / {capacity} units
         </span>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs font-mono">
-          <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800 uppercase text-[11px]">
+          <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase text-[11px]">
             <tr>
               <th className="py-2.5 px-4 font-semibold">Commodity</th>
-              <th className="py-2.5 px-3 font-semibold text-right">Street Price</th>
+              <th className="py-2.5 px-3 font-semibold text-right">Street Spot</th>
+              <th className="py-2.5 px-3 font-semibold text-center">14D Action</th>
               <th className="py-2.5 px-3 font-semibold text-center">Market Trend</th>
               <th className="py-2.5 px-3 font-semibold text-right">Supply</th>
               <th className="py-2.5 px-3 font-semibold text-right">In Stash</th>
-              <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
+              <th className="py-2.5 px-4 font-semibold text-right">Execution</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -47,18 +50,19 @@ export const MarketBoard: React.FC = () => {
               const playerHolding = player.inventory[drug.id]?.units ?? 0;
               const canAfford = player.cash >= price && remainingCapacity > 0 && availableUnits > 0;
               const canSell = playerHolding > 0;
+              const history = priceHistory[drug.id] || [drug.basePrice, price];
 
               return (
                 <tr
                   key={drug.id}
-                  className="hover:bg-slate-800/40 transition-colors group"
+                  className="hover:bg-slate-800/50 transition-colors group"
                 >
                   {/* Name & Flavor */}
                   <td className="py-2.5 px-4">
                     <div className="font-bold text-slate-200 group-hover:text-emerald-300 transition-colors">
                       {drug.name}
                     </div>
-                    <div className="text-[10px] text-slate-500 truncate max-w-[220px]">
+                    <div className="text-[10px] text-slate-500 truncate max-w-[200px]">
                       {drug.description}
                     </div>
                   </td>
@@ -68,23 +72,28 @@ export const MarketBoard: React.FC = () => {
                     ${price.toLocaleString()}
                   </td>
 
+                  {/* 14D Sparkline Chart */}
+                  <td className="py-2.5 px-3 text-center">
+                    <Sparkline data={history} width={80} height={20} />
+                  </td>
+
                   {/* Trend / Surge */}
                   <td className="py-2.5 px-3 text-center">
                     {marketItem?.surge === 'high' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 border border-amber-600/80 text-amber-300 animate-pulse">
-                        <TrendingUp className="w-3 h-3 text-amber-400" /> Surge!
+                        <TrendingUp className="w-3 h-3 text-amber-400" /> Shortage
                       </span>
                     ) : marketItem?.surge === 'crash' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 border border-rose-600/80 text-rose-300">
                         <TrendingDown className="w-3 h-3 text-rose-400" /> Flooded
                       </span>
                     ) : price > drug.basePrice ? (
-                      <span className="text-emerald-400/80 inline-flex items-center gap-0.5 text-[11px]">
-                        <ArrowUpRight className="w-3 h-3" /> High
+                      <span className="text-emerald-400/90 inline-flex items-center gap-0.5 text-[11px] font-semibold">
+                        <ArrowUpRight className="w-3 h-3" /> Bull
                       </span>
                     ) : (
-                      <span className="text-slate-400/80 inline-flex items-center gap-0.5 text-[11px]">
-                        <ArrowDownRight className="w-3 h-3" /> Low
+                      <span className="text-slate-400/90 inline-flex items-center gap-0.5 text-[11px] font-semibold">
+                        <ArrowDownRight className="w-3 h-3" /> Bear
                       </span>
                     )}
                   </td>
@@ -94,7 +103,7 @@ export const MarketBoard: React.FC = () => {
                     {availableUnits > 0 ? (
                       <span className="text-slate-300 font-medium">{availableUnits}</span>
                     ) : (
-                      <span className="text-slate-600 italic">None</span>
+                      <span className="text-slate-600 italic">0 (Bids only)</span>
                     )}
                   </td>
 
@@ -113,9 +122,9 @@ export const MarketBoard: React.FC = () => {
                       <button
                         onClick={() => openTradeModal(drug.id, 'buy')}
                         disabled={!canAfford}
-                        className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                           canAfford
-                            ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-900/30'
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-950/50 active:scale-95'
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                       >
@@ -124,9 +133,9 @@ export const MarketBoard: React.FC = () => {
                       <button
                         onClick={() => openTradeModal(drug.id, 'sell')}
                         disabled={!canSell}
-                        className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                           canSell
-                            ? 'bg-sky-600 hover:bg-sky-500 text-slate-950 shadow-sm shadow-sky-900/30'
+                            ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-sm shadow-sky-950/50 active:scale-95'
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                       >
