@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateCityMarket } from '../economy';
-import { DRUGS } from '../constants';
+import { DRUGS, CITIES, CITY_MAP } from '../constants';
 
 describe('Economy Simulation', () => {
   it('generates a full market order book for a city', () => {
@@ -49,6 +49,27 @@ describe('Economy Simulation', () => {
       const marketItem = market[id];
       expect(marketItem).toBeDefined();
       expect(marketItem.price).toBeGreaterThan(0);
+    }
+  });
+
+  it('provides a worldwide network of 21 destinations across all global regions', () => {
+    expect(CITIES.length).toBe(21);
+
+    const regions = new Set(CITIES.map((c) => c.region));
+    expect(regions.has('Americas')).toBe(true);
+    expect(regions.has('Europe')).toBe(true);
+    expect(regions.has('Asia-Pacific')).toBe(true);
+    expect(regions.has('Middle East & Africa')).toBe(true);
+
+    for (const city of CITIES) {
+      expect(CITY_MAP.get(city.id)).toBeDefined();
+      expect(city.flightCost).toBeGreaterThan(0);
+      expect(city.policeRisk).toBeGreaterThanOrEqual(0);
+      expect(city.dogRisk).toBeGreaterThanOrEqual(0);
+
+      // Verify market generation succeeds for every global city
+      const { market } = generateCityMarket(city.id);
+      expect(Object.keys(market).length).toBe(DRUGS.length);
     }
   });
 });

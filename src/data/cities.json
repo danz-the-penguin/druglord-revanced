@@ -3,6 +3,7 @@
     "id": "new_york",
     "name": "New York",
     "country": "USA",
+    "region": "Americas",
     "flightCost": 350,
     "policeRisk": 0.25,
     "dogRisk": 0.20,
@@ -15,12 +16,14 @@
       "tranq": 1.30,
       "krokodil": 1.10
     },
-    "description": "Dense metropolis with sky-high demand and relentless NYPD presence."
+    "specialty": "Wall Street & Urban Epicenter",
+    "description": "Dense metropolis with sky-high demand, huge financial appetite, and relentless NYPD presence."
   },
   {
     "id": "miami",
     "name": "Miami",
     "country": "USA",
+    "region": "Americas",
     "flightCost": 300,
     "policeRisk": 0.20,
     "dogRisk": 0.25,
@@ -32,12 +35,14 @@
       "fentanyl": 0.85,
       "tranq": 0.90
     },
+    "specialty": "Speedboat Cocaine Corridor (-30%)",
     "description": "Sun, speedboats, and coastal supply corridors. Cheap cocaine straight off the water."
   },
   {
     "id": "los_angeles",
     "name": "Los Angeles",
     "country": "USA",
+    "region": "Americas",
     "flightCost": 400,
     "policeRisk": 0.22,
     "dogRisk": 0.18,
@@ -49,12 +54,14 @@
       "fentanyl": 0.80,
       "tranq": 1.10
     },
-    "description": "Sprawling West Coast hub with active street gangs and meth laboratories."
+    "specialty": "Synthetic Pipeline & Street Gangs",
+    "description": "Sprawling West Coast hub with active cartel distribution networks and Hollywood demand."
   },
   {
     "id": "detroit",
     "name": "Detroit",
     "country": "USA",
+    "region": "Americas",
     "flightCost": 250,
     "policeRisk": 0.15,
     "dogRisk": 0.10,
@@ -67,12 +74,107 @@
       "tranq": 1.25,
       "krokodil": 1.15
     },
-    "description": "Gritty Rust Belt market with lower security but aggressive street toughs."
+    "specialty": "Rust Belt Street Trade",
+    "description": "Gritty Rust Belt market with lower security but aggressive street crews and trap houses."
+  },
+  {
+    "id": "vancouver",
+    "name": "Vancouver",
+    "country": "Canada",
+    "region": "Americas",
+    "flightCost": 450,
+    "policeRisk": 0.18,
+    "dogRisk": 0.20,
+    "drugModifiers": {
+      "pot": 0.50,
+      "mushrooms": 0.55,
+      "lsd": 0.65,
+      "fentanyl": 0.85,
+      "ice": 0.90,
+      "cocaine": 1.35
+    },
+    "specialty": "BC Bud & Precursor Hub (-50%)",
+    "description": "Pacific Northwest gateway renowned for organic BC Bud, Asian chemical precursors, and relaxed local enforcement."
+  },
+  {
+    "id": "tijuana",
+    "name": "Tijuana",
+    "country": "Mexico",
+    "region": "Americas",
+    "flightCost": 350,
+    "policeRisk": 0.38,
+    "dogRisk": 0.35,
+    "drugModifiers": {
+      "ice": 0.55,
+      "speed": 0.60,
+      "fentanyl": 0.60,
+      "cocaine": 0.50,
+      "crack": 0.65,
+      "pot": 0.65
+    },
+    "specialty": "Cartel Super-Labs & Border Entry (-45%)",
+    "description": "Bustling border crossing dominated by rival cartels. Industrial-scale clandestine meth and fentanyl synthesis."
+  },
+  {
+    "id": "bogota",
+    "name": "Bogota",
+    "country": "Colombia",
+    "region": "Americas",
+    "flightCost": 600,
+    "policeRisk": 0.35,
+    "dogRisk": 0.25,
+    "drugModifiers": {
+      "cocaine": 0.35,
+      "pot": 0.40,
+      "hashish": 0.50,
+      "fentanyl": 1.20,
+      "tranq": 0.85
+    },
+    "specialty": "Cocaine Origin Market (-65%)",
+    "description": "Source market at the heart of the trade. Cocaine is practically free, but cartel wars are lethal."
+  },
+  {
+    "id": "medellin",
+    "name": "Medellin",
+    "country": "Colombia",
+    "region": "Americas",
+    "flightCost": 650,
+    "policeRisk": 0.32,
+    "dogRisk": 0.22,
+    "drugModifiers": {
+      "cocaine": 0.30,
+      "opium": 0.45,
+      "pot": 0.35,
+      "hashish": 0.50,
+      "crack": 0.40
+    },
+    "specialty": "Cradle of the Cartel (-70% Cocaine)",
+    "description": "The legendary City of Eternal Spring. Unrivaled purity and subterranean laboratories at the lowest supply prices on Earth."
+  },
+  {
+    "id": "rio_de_janeiro",
+    "name": "Rio de Janeiro",
+    "country": "Brazil",
+    "region": "Americas",
+    "flightCost": 800,
+    "policeRisk": 0.32,
+    "dogRisk": 0.24,
+    "drugModifiers": {
+      "cocaine": 0.55,
+      "crack": 0.60,
+      "pot": 0.60,
+      "ecstasy": 1.35,
+      "special_k": 1.30,
+      "lsd": 1.25
+    },
+    "specialty": "Favela Fortress & Atlantic Transshipment",
+    "description": "Sun-soaked beaches beneath sprawling favelas ruled by Comando Vermelho. Prime maritime launchpad to West Africa."
   },
   {
     "id": "london",
     "name": "London",
     "country": "UK",
+    "region": "Europe",
     "flightCost": 900,
     "policeRisk": 0.30,
     "dogRisk": 0.35,
@@ -82,14 +184,17 @@
       "cocaine": 1.60,
       "hashish": 1.10,
       "fentanyl": 1.70,
-      "krokodil": 1.35
+      "krokodil": 1.35,
+      "tranq": 1.40
     },
-    "description": "High-end European club scene. Immense margins on club drugs, but strict customs."
+    "specialty": "Mayfair & West End Nightlife (+60%)",
+    "description": "High-end European club scene. Immense margins on club drugs and luxury powder, but strict customs dog teams."
   },
   {
     "id": "paris",
     "name": "Paris",
     "country": "France",
+    "region": "Europe",
     "flightCost": 950,
     "policeRisk": 0.28,
     "dogRisk": 0.30,
@@ -99,14 +204,75 @@
       "ecstasy": 1.30,
       "opium": 1.40,
       "fentanyl": 1.55,
-      "krokodil": 1.40
+      "krokodil": 1.40,
+      "tranq": 1.30
     },
-    "description": "Fashionable European hub with premium prices for exotic psychedelics and powder."
+    "specialty": "High Fashion & Continental Luxury",
+    "description": "Fashionable European hub with premium prices for exotic psychedelics, champagne parties, and powder."
+  },
+  {
+    "id": "amsterdam",
+    "name": "Amsterdam",
+    "country": "Netherlands",
+    "region": "Europe",
+    "flightCost": 850,
+    "policeRisk": 0.18,
+    "dogRisk": 0.22,
+    "drugModifiers": {
+      "ecstasy": 0.40,
+      "mda": 0.45,
+      "pot": 0.50,
+      "hashish": 0.55,
+      "mushrooms": 0.50,
+      "special_k": 0.70,
+      "cocaine": 1.20
+    },
+    "specialty": "Global Ecstasy & Weed Labs (-60%)",
+    "description": "The synthetic chemistry capital of Europe with Rotterdam port connections. World-record wholesale discounts on MDMA."
+  },
+  {
+    "id": "berlin",
+    "name": "Berlin",
+    "country": "Germany",
+    "region": "Europe",
+    "flightCost": 900,
+    "policeRisk": 0.22,
+    "dogRisk": 0.20,
+    "drugModifiers": {
+      "speed": 0.65,
+      "special_k": 0.75,
+      "ecstasy": 0.80,
+      "lsd": 0.75,
+      "cocaine": 1.40,
+      "ice": 1.20
+    },
+    "specialty": "48-Hour Underground Techno Circuit",
+    "description": "Cavernous concrete bunkers and non-stop raves. Insatiable local demand for Speed, Ketamine, and acid."
+  },
+  {
+    "id": "ibiza",
+    "name": "Ibiza",
+    "country": "Spain",
+    "region": "Europe",
+    "flightCost": 920,
+    "policeRisk": 0.26,
+    "dogRisk": 0.28,
+    "drugModifiers": {
+      "ecstasy": 1.90,
+      "special_k": 1.85,
+      "mda": 1.75,
+      "cocaine": 2.05,
+      "lsd": 1.70,
+      "speed": 1.50
+    },
+    "specialty": "Summer Superclubs Arbitrage (+100%)",
+    "description": "Billionaire yachts and open-air superclubs. VIP tourists pay astronomical summer markups for pills and pure powder."
   },
   {
     "id": "sydney",
     "name": "Sydney",
     "country": "Australia",
+    "region": "Asia-Pacific",
     "flightCost": 1500,
     "policeRisk": 0.40,
     "dogRisk": 0.45,
@@ -119,22 +285,121 @@
       "tranq": 2.20,
       "krokodil": 2.10
     },
-    "description": "Isolated island continent. Border security is brutal, but street prices are astronomical."
+    "specialty": "Island Fortress Premium (+120%)",
+    "description": "Isolated island continent. Border security is brutal, but street prices are the highest in the developed world."
   },
   {
-    "id": "bogota",
-    "name": "Bogota",
-    "country": "Colombia",
-    "flightCost": 600,
-    "policeRisk": 0.35,
-    "dogRisk": 0.25,
+    "id": "tokyo",
+    "name": "Tokyo",
+    "country": "Japan",
+    "region": "Asia-Pacific",
+    "flightCost": 1400,
+    "policeRisk": 0.45,
+    "dogRisk": 0.40,
     "drugModifiers": {
-      "cocaine": 0.35,
-      "pot": 0.40,
-      "hashish": 0.50,
-      "fentanyl": 1.20,
-      "tranq": 0.85
+      "ice": 2.45,
+      "speed": 2.10,
+      "cocaine": 2.50,
+      "ecstasy": 2.25,
+      "special_k": 2.05,
+      "lsd": 1.95,
+      "pot": 2.30
     },
-    "description": "Source market at the heart of the trade. Cocaine is practically free, but cartel wars are lethal."
+    "specialty": "Yakuza Black Markets (+150% Shabu/Ice)",
+    "description": "Neon-lit skyscraper jungle with ruthless customs inspections. Shabu (ice) and club stimulants command massive fortunes."
+  },
+  {
+    "id": "bangkok",
+    "name": "Bangkok",
+    "country": "Thailand",
+    "region": "Asia-Pacific",
+    "flightCost": 1100,
+    "policeRisk": 0.42,
+    "dogRisk": 0.36,
+    "drugModifiers": {
+      "heroin": 0.45,
+      "opium": 0.40,
+      "kat": 0.55,
+      "ice": 0.70,
+      "speed": 0.70,
+      "cocaine": 1.90
+    },
+    "specialty": "Golden Triangle Heroin & Opium (-60%)",
+    "description": "Gateway to the historic Golden Triangle. Pure unrefined narcotics at rock-bottom wholesale, under severe drug laws."
+  },
+  {
+    "id": "hong_kong",
+    "name": "Hong Kong",
+    "country": "Hong Kong",
+    "region": "Asia-Pacific",
+    "flightCost": 1250,
+    "policeRisk": 0.35,
+    "dogRisk": 0.30,
+    "drugModifiers": {
+      "special_k": 1.40,
+      "ecstasy": 1.65,
+      "cocaine": 1.95,
+      "ice": 1.35,
+      "heroin": 1.30,
+      "opium": 1.20
+    },
+    "specialty": "Triad Maritime Free Port & Ketamine",
+    "description": "High-octane financial free port crisscrossed by container super-freighters and underground Triad syndicate networks."
+  },
+  {
+    "id": "dubai",
+    "name": "Dubai",
+    "country": "UAE",
+    "region": "Middle East & Africa",
+    "flightCost": 1300,
+    "policeRisk": 0.55,
+    "dogRisk": 0.50,
+    "drugModifiers": {
+      "cocaine": 3.00,
+      "ecstasy": 2.60,
+      "heroin": 2.40,
+      "hashish": 1.70,
+      "special_k": 2.20,
+      "lsd": 2.10
+    },
+    "specialty": "Ultra-Wealth VIP Monopoly (+200%)",
+    "description": "Gleaming desert tax haven and money laundering hub. Extreme biometric scanning, but private penthouses pay limitless cash."
+  },
+  {
+    "id": "johannesburg",
+    "name": "Johannesburg",
+    "country": "South Africa",
+    "region": "Middle East & Africa",
+    "flightCost": 1450,
+    "policeRisk": 0.20,
+    "dogRisk": 0.15,
+    "drugModifiers": {
+      "crack": 0.70,
+      "ice": 0.75,
+      "pot": 0.55,
+      "kat": 0.60,
+      "cocaine": 1.30,
+      "speed": 0.85
+    },
+    "specialty": "Gold Reef Transit & Tik Epidemic",
+    "description": "Sprawling mining metropolis with volatile townships. Massive appetite for crystal meth (Tik) and crack with porous borders."
+  },
+  {
+    "id": "lagos",
+    "name": "Lagos",
+    "country": "Nigeria",
+    "region": "Middle East & Africa",
+    "flightCost": 1150,
+    "policeRisk": 0.24,
+    "dogRisk": 0.16,
+    "drugModifiers": {
+      "cocaine": 0.80,
+      "heroin": 0.85,
+      "pot": 0.50,
+      "tranq": 0.70,
+      "crack": 0.75
+    },
+    "specialty": "West African Smuggling Super-Hub",
+    "description": "Hyper-dynamic Atlantic trade capital linking Latin American cocaine flights to European container ships. High volume, bribery-friendly."
   }
 ]

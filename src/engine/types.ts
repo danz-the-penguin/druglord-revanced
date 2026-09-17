@@ -27,11 +27,13 @@ export interface City {
   id: string;
   name: string;
   country: string;
+  region?: 'Americas' | 'Europe' | 'Asia-Pacific' | 'Middle East & Africa';
   flightCost: number;
   policeRisk: number;
   dogRisk: number;
   drugModifiers: Record<string, number>;
   description: string;
+  specialty?: string;
 }
 
 export interface Weapon {
