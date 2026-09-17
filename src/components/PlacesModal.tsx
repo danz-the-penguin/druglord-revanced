@@ -54,10 +54,7 @@ import {
   Send,
   Lock,
   Unlock,
-  Shield,
   Clock,
-  TrendingUp,
-  TrendingDown,
   Layers,
   Briefcase,
   ShieldCheck,
@@ -69,6 +66,7 @@ import { AircraftImage } from './AircraftImage';
 import { ShellImage } from './ShellImage';
 import { SharkImage } from './SharkImage';
 import { ClandestineLabsView } from './ClandestineLabsView';
+import { CorruptionView } from './CorruptionView';
 
 export const PlacesModal: React.FC = () => {
   const {
@@ -91,7 +89,6 @@ export const PlacesModal: React.FC = () => {
     depositToVaultAction,
     withdrawFromVaultAction,
     dispatchCourierAction,
-    buyIntelAction,
     buyShellBusinessAction,
     buyCorporateUpgradeAction,
     executeBusinessLaunderAction,
@@ -241,12 +238,6 @@ export const PlacesModal: React.FC = () => {
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
   };
 
-  const handleBuyIntel = (tipId: string) => {
-    setFeedback(null);
-    const res = buyIntelAction(tipId);
-    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
-  };
-
   const handleLaunder = () => {
     setFeedback(null);
     if (launderAmount <= 0) {
@@ -341,11 +332,22 @@ export const PlacesModal: React.FC = () => {
           onClick={() => setPlacesSubTab('informant')}
           className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'informant'
-              ? 'border-orange-400 text-orange-400 bg-orange-950/30'
+              ? 'border-sky-400 text-sky-400 bg-sky-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Radio className="w-4 h-4 text-orange-400 animate-pulse" /> Informant Wire
+          <Radio className="w-4 h-4 text-sky-400 animate-pulse" /> Corruption & Wiretaps
+          {typeof player.ricoMeter === 'number' && player.ricoMeter >= 50 && (
+            <span
+              className={`px-1.5 py-0.2 rounded text-[10px] font-black border animate-pulse ${
+                player.isBankFrozen || player.ricoMeter >= 75
+                  ? 'bg-rose-950 text-rose-300 border-rose-600'
+                  : 'bg-amber-950 text-amber-300 border-amber-600'
+              }`}
+            >
+              {player.isBankFrozen ? 'FROZEN' : `RICO ${player.ricoMeter}%`}
+            </span>
+          )}
         </button>
 
         <button
@@ -1490,143 +1492,8 @@ export const PlacesModal: React.FC = () => {
           </div>
         )}
 
-        {/* INFORMANT WIRE & MARKET FORECASTING TAB */}
-        {placesSubTab === 'informant' && (
-          <div className="space-y-6 max-w-5xl mx-auto">
-            {/* Informant Header */}
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-orange-400 font-bold text-sm uppercase">
-                  <Radio className="w-5 h-5 text-orange-400 animate-pulse" /> Underworld Informant Wiretap
-                </div>
-                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                  Pay corrupt port inspectors, chemist whistleblowers, and intercepted cartel pagers for advance market forecasts. Intelligence materializes 1-3 days in advance.
-                </p>
-              </div>
-
-              <div className="bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 text-right">
-                <div className="text-[10px] text-slate-400 uppercase">Decrypted Dossiers</div>
-                <div className="text-xl font-black text-orange-400">
-                  {player.activeIntel?.filter((t) => t.purchased).length ?? 0} / {player.activeIntel?.length ?? 0}
-                </div>
-              </div>
-            </div>
-
-            {/* Intel Feed Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {!player.activeIntel || player.activeIntel.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-xs text-slate-500 italic bg-slate-950/50 rounded-2xl border border-slate-800">
-                  No active wire chatter detected. Advance the calendar or travel to intercept new signals.
-                </div>
-              ) : (
-                player.activeIntel.map((tip) => {
-                  const drug = DRUG_MAP.get(tip.drugId);
-                  const city = CITY_MAP.get(tip.cityId);
-                  const daysAway = tip.targetDay - player.currentDay;
-                  const isToday = daysAway === 0;
-                  const canAfford = player.cash >= tip.cost;
-
-                  return (
-                    <div
-                      key={tip.id}
-                      className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${
-                        tip.purchased
-                          ? 'bg-slate-950/90 border-orange-500/60 shadow-lg shadow-orange-950/20'
-                          : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 text-[10px] font-bold">
-                            📡 {tip.source}
-                          </span>
-                          <span
-                            className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                              isToday
-                                ? 'bg-amber-950 text-amber-300 border border-amber-700 animate-pulse'
-                                : 'bg-slate-900 text-slate-300 border border-slate-800'
-                            }`}
-                          >
-                            {isToday ? '🎯 Expected TODAY (Day ' + tip.targetDay + ')' : `Hits Day ${tip.targetDay} (In ${daysAway}d)`}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base font-black text-slate-100">{drug?.name ?? tip.drugName}</span>
-                            <span className="text-xs text-slate-400 font-bold">in {city?.name ?? tip.cityName}</span>
-                          </div>
-                          <span className="text-xs font-black text-orange-400 font-mono">
-                            ${tip.cost.toLocaleString()}
-                          </span>
-                        </div>
-
-                        {tip.purchased ? (
-                          <div className="p-3 rounded-xl bg-orange-950/20 border border-orange-800/50 space-y-2">
-                            <div className="text-xs font-bold text-orange-300 leading-relaxed">
-                              "{tip.headline}"
-                            </div>
-
-                            <div className="flex items-center gap-2 text-[11px] font-bold">
-                              {tip.eventType === 'surge_spike' ? (
-                                <span className="text-amber-400 flex items-center gap-1">
-                                  <TrendingUp className="w-3.5 h-3.5" /> Projected Spike: +{Math.round((tip.multiplier - 1) * 100)}% Price Surge
-                                </span>
-                              ) : tip.eventType === 'market_glut' ? (
-                                <span className="text-rose-400 flex items-center gap-1">
-                                  <TrendingDown className="w-3.5 h-3.5" /> Projected Crash: -{Math.round((1 - tip.multiplier) * 100)}% Supply Flood
-                                </span>
-                              ) : (
-                                <span className="text-sky-400 flex items-center gap-1">
-                                  <Shield className="w-3.5 h-3.5" /> Police Task Force Crackdown (+{Math.round((tip.multiplier - 1) * 100)}% Shortage)
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="text-[10px] text-slate-400 leading-relaxed border-t border-slate-800/80 pt-2">
-                              {tip.eventType === 'surge_spike'
-                                ? `💡 Strategy: Stockpile ${drug?.name} now or courier it to ${city?.name} ahead of Day ${tip.targetDay} to dump at massive profits!`
-                                : tip.eventType === 'market_glut'
-                                ? `💡 Strategy: Liquidate ${drug?.name} holdings in ${city?.name} before Day ${tip.targetDay}, then buy the bottom when the street crashes!`
-                                : `💡 Strategy: High police presence expected in ${city?.name}. Avoid traveling heavily loaded without safehouse protection.`}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-                            <div className="text-xs text-slate-400 italic">
-                              [CLASSIFIED ENCRYPTED INTERCEPT] Inside intelligence detected regarding an upcoming market shock for {drug?.name} in {city?.name}.
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-mono">
-                              Security clearance required: ${tip.cost.toLocaleString()} Underworld Wire Fee.
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-slate-800/80">
-                        {tip.purchased ? (
-                          <div className="py-2 text-center text-xs font-bold text-emerald-400 flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span>Dossier Decrypted & Verified</span>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleBuyIntel(tip.id)}
-                            disabled={!canAfford}
-                            className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
-                          >
-                            <Unlock className="w-3.5 h-3.5" />
-                            <span>Decrypt Intelligence Dossier (${tip.cost.toLocaleString()})</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
+        {/* CORRUPTION, INFORMANTS & FEDERAL WIRETAPS */}
+        {placesSubTab === 'informant' && <CorruptionView />}
 
         {/* MONEY LAUNDERING & SHELL BUSINESSES TAB */}
         {placesSubTab === 'laundering' && (

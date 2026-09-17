@@ -3,6 +3,7 @@ import { CITY_MAP, DRUG_MAP } from './constants';
 import { PlayerState } from './types';
 import { soundEngine, SoundEffect } from '../utils/audio';
 import { PRECURSORS } from './production';
+import { CORRUPT_MAP, CorruptOfficialId, emergencyExtraditionEscape } from './corruption';
 
 export interface CheatExecutionResult {
   success: boolean;
@@ -53,6 +54,9 @@ export function executeCheat(
           '• rig <drug> <price>       : Rig street market commodity price\n' +
           '• noscent <count>          : Grant No-Scent spray cans\n' +
           '• wire                     : Inspect active informant market tips\n' +
+          '• rico <0-100>             : Set Federal Grand Jury RICO Indictment Meter\n' +
+          '• corrupt <official_id>    : Instantly recruit corrupt official onto payroll\n' +
+          '• escape <sanctuary_id>   : Execute emergency sovereign extradition escape\n' +
           '• vault                    : Inspect multi-city safehouse vaults\n' +
           '• shipments                : Inspect in-transit courier shipments\n' +
           '• vault_give <city> <d> <n>: Stash contraband directly in vault\n' +
@@ -302,6 +306,62 @@ export function executeCheat(
         };
       }
       return { success: true, message: `Injected ${units} counterfeit/adulterated units of ${drug.name} into your stash.` };
+    }
+
+    case 'rico': {
+      if (!arg1) return { success: false, message: 'Usage: rico <0-100> (e.g. "rico 100" to trigger asset freeze or "rico 0" to clear)' };
+      const val = parseInt(arg1, 10);
+      if (isNaN(val) || val < 0 || val > 100) return { success: false, message: 'RICO meter value must be an integer between 0 and 100' };
+      state.player.ricoMeter = val;
+      state.player.isBankFrozen = val >= 100;
+      return {
+        success: true,
+        message: `Set Federal Grand Jury RICO Indictment Meter to ${val}%. ${val >= 100 ? '🚨 Bank assets FROZEN by federal injunction!' : 'Bank assets unfrozen.'}`,
+      };
+    }
+
+    case 'corrupt': {
+      if (!arg1) {
+        return {
+          success: false,
+          message:
+            'Usage: corrupt <official_id>\n' +
+            'Available IDs: airport_baggage_handler, police_dispatcher, fincen_auditor',
+        };
+      }
+      const official = CORRUPT_MAP.get(arg1 as CorruptOfficialId);
+      if (!official) {
+        return {
+          success: false,
+          message: `Unknown corrupt official ID "${arg1}". Valid IDs: airport_baggage_handler, police_dispatcher, fincen_auditor`,
+        };
+      }
+      if (!state.player.corruptOfficials) state.player.corruptOfficials = {};
+      state.player.corruptOfficials[official.id] = {
+        id: official.id,
+        hiredDay: state.player.currentDay,
+        active: true,
+        totalBribesPaid: 0,
+      };
+      return {
+        success: true,
+        message: `Recruited ${official.name} onto underworld payroll (Active: ${official.perkTitle}).`,
+      };
+    }
+
+    case 'escape': {
+      const destination = arg1 || 'dubai';
+      // Emergency escape needs GameEngineState
+      const engineState = {
+        player: state.player,
+        market: state.market as any,
+        logs: [] as any[],
+      };
+      const res = emergencyExtraditionEscape(engineState, destination);
+      return {
+        success: res.success,
+        message: res.message,
+      };
     }
 
     default:

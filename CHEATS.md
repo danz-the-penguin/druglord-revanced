@@ -75,6 +75,14 @@ Type any of the following commands into the terminal prompt (`>`) and press **`E
 | `finish_cook` | `finish_cook` | Instantly advances all active cook & synthesis batches in your clandestine labs to 100% ready for immediate harvest. |
 | `fake <drug_id> <qty>` | `fake cocaine 20` | Injects counterfeit / adulterated contraband into your personal stash to test buyer confiscation and penalties. |
 
+### 🕵️ Corruption, Retainers & Federal Wiretaps (Phase 2)
+
+| Command Syntax | Example | Description |
+| :--- | :--- | :--- |
+| `rico <0-100>` | `rico 100` | Sets the Federal Grand Jury RICO Indictment Meter (`0` clears surveillance; `100` triggers sealed indictment and asset freeze). |
+| `corrupt <official_id>` | `corrupt airport_baggage_handler` | Instantly recruits a corrupt official onto underworld payroll (`airport_baggage_handler`, `police_dispatcher`, `fincen_auditor`). |
+| `escape <sanctuary_id>` | `escape dubai` | Executes an emergency sovereign extradition escape flight to a non-extradition haven (`dubai`, `panama_city`, `zurich`, `singapore`, `istanbul`). |
+
 ### 📡 Intelligence & Audio Synthesis
 
 | Command Syntax | Example | Description |

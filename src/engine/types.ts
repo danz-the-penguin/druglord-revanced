@@ -169,6 +169,9 @@ export interface PlayerStats {
   totalCleanMoneyLaundered?: number;
   fakeDrugsDiscovered?: number;
   fakeDrugsFlushed?: number;
+  corruptOfficialsBribed?: number;
+  ricoIndictmentsEvaded?: number;
+  extraditionEscapesCount?: number;
 }
 
 export type SyndicateId = 'medellin' | 'golden_triangle' | 'synthetic_chem' | 'designer_ring' | 'balkan';
@@ -338,6 +341,10 @@ export interface PlayerState {
   installedLabs?: Record<string, import('./productionTypes').LabType[]>;
   activeCookBatches?: import('./productionTypes').ActiveCookBatch[];
   precursorInventory?: Record<string, number>;
+  corruptOfficials?: Record<string, import('./corruptionTypes').CorruptOfficialState>;
+  ricoMeter?: number;
+  isBankFrozen?: boolean;
+  pendingRaidWarning?: import('./corruptionTypes').RaidWarning | null;
   stats?: PlayerStats;
   cheats: {
     godMode: boolean;
@@ -348,7 +355,7 @@ export interface PlayerState {
 export interface GameLogEntry {
   day: number;
   city: string;
-  type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system' | 'cheat' | 'production';
+  type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system' | 'cheat' | 'production' | 'corruption';
   message: string;
   timestamp: number;
 }

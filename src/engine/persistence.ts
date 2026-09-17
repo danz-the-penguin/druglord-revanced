@@ -258,6 +258,10 @@ export function parseAndValidateSave(rawInput: string): { success: true; data: D
   p.installedLabs = p.installedLabs || {};
   p.activeCookBatches = Array.isArray(p.activeCookBatches) ? p.activeCookBatches : [];
   p.precursorInventory = p.precursorInventory || {};
+  p.corruptOfficials = p.corruptOfficials || {};
+  p.ricoMeter = typeof p.ricoMeter === 'number' ? p.ricoMeter : 0;
+  p.isBankFrozen = typeof p.isBankFrozen === 'boolean' ? p.isBankFrozen : false;
+  p.pendingRaidWarning = p.pendingRaidWarning || null;
   p.stats = p.stats || {
     combatWins: 0,
     bribesCount: 0,

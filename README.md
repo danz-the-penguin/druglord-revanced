@@ -17,15 +17,15 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Vitest-125%2F125%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-145%2F145%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 <p align="center">
   A ground-up modern reimagination of Fred Bulback's legendary Windows shareware classic <b>Drug Lord 2.2 (1999–2003)</b>.<br>
-  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
+  Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, corrupt officials on retainer, federal RICO grand jury wiretaps, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
 </p>
 
-[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
+[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [⚖️ Corruption & RICO](#-corruption-informants--federal-rico-engine) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
 
 ---
 
@@ -39,6 +39,7 @@
 | **Commodities** | 10 fixed legacy street drugs | **25 Commodities** (Classics + Fentanyl, Carfentanil, DMT, Compound-Z) |
 | **World Locations** | 8 basic text locations | **21 Real-World Global Metropolises** with dynamic flight routes & distance |
 | **Manufacturing** | None (pure broker trading) | **4 Modular Clandestine Labs** + 6 chemical precursors & 30% seaport discounts |
+| **Corruption & Law** | Basic cop bribe prompt | **Corrupt Officials on Retainer** + Federal RICO Grand Jury & Extradition Asylum |
 | **Aviation System** | None (instant text travel) | **4 Private Aircraft Tiers** with cargo bonus, customs shielding & fuel logistics |
 | **Stash Vaults** | Single local locker | **Multi-City Distributed Vaults** + international logistics courier networks |
 | **Banking & Finance** | Basic bank interest & loan shark | **8 Corporate Shell Laundering Fronts** + forensic CPAs & Swiss banking stakes |
@@ -101,12 +102,27 @@ Vertical integration layer allowing players to produce their own contraband:
 * **Precursor Chemical Logistics**: Purchase 6 industrial precursors (`ephedrine`, `acetic_anhydride`, `pill_binder`, `ergot_solvents`, `bio_precursor_z`, `hydro_nutrients`) from major seaports (e.g. Amsterdam, Singapore, Dubai, Hong Kong, Tokyo) at an automatic **30% maritime shipping discount**.
 * **Zero Cost-Basis Profit Margins**: Cook batches over 1 to 5 calendar days, trading storage and hold time for 70% to 85%+ net profit margins over spot market buying.
 
-### 🧺 5. Underworld Fintech & Money Laundering
+### ⚖️ 5. Corruption, Informants & Federal RICO Engine
+Infiltrate law enforcement, subvert federal surveillance, and evade sealed indictments:
+* **Corrupt Officials on Retainer**:
+  * **Airport Baggage Handler** ($15,000 upfront, $350/day) — 100% bypass of airport customs inspections and K-9 drug sniffer dogs on commercial flights.
+  * **Police Dispatcher** ($35,000 upfront, $750/day) — 24-hour advance tactical raid warnings (`pendingRaidWarning`), -70% DEA ambush danger, and enables guaranteed fleeing (`canFlee: true`).
+  * **FinCEN Regulatory Auditor** ($75,000 upfront, $1,500/day) — 100% audit shield on shell laundering fronts, -60% daily RICO meter growth suppression, and -2%/day passive decay.
+* **Federal Grand Jury RICO Indictment Meter (0%–100%)**:
+  * Driven by high municipal heat (≥70% heat adds +4% to +6%/day), unlaundered millions (> $1M without shell capacity adds +3%/day), and raw deposits (≥ $50k adds +2% to +8%).
+  * Decays naturally (-2%/day) in cold heat (<30%) or Sovereign Sanctuaries.
+  * Pay off the Lead Prosecutor ($50,000) to knock off -20% from the meter.
+  * **100% Indictment Asset Freeze**: Sealed indictment freezes all bank accounts (`isBankFrozen: true`), blocking all deposits and withdrawals until quashed.
+* **Emergency Sovereign Extradition Escape Flights**:
+  * Charter emergency flights to Non-Extradition Sanctuaries (*Dubai, Panama City, Zurich, Singapore, Istanbul*) or owned sovereign airfields.
+  * Asylum quashes the federal warrant, resets RICO meter to 10%, unfreezes bank accounts (levying a 15% DOJ forfeiture penalty), and logs an extradition escape.
+
+### 🧺 6. Underworld Fintech & Money Laundering
 Avoid FinCEN asset forfeiture by structuring and layering illicit street profits:
 * **8 Shell Business Fronts**: Coin Laundromats, Express Car Washes, VIP Nightclubs, Fine Art Galleries, Customs Brokerages, Panama Bearer Holding Trusts, ASIC Crypto Mining Pools, and Swiss Private Banking Subsidiaries.
 * **Corporate Legal Upgrades**: Retain forensic CPAs, offshore defense attorneys, and automated micro-smurfing mule networks to suppress audit risks.
 
-### 🤝 6. Cartel Syndicates & Black Market Diplomacy
+### 🤝 7. Cartel Syndicates & Black Market Diplomacy
 Manage diplomatic relations with 5 international crime syndicates:
 * **Medellín Cartel** (*Los Extraditables*) — Cocaine & Crack Cocaine
 * **Golden Triangle Triads** (*The Black Lotus Triad*) — Raw Opium & Refined Heroin
@@ -117,16 +133,16 @@ Manage diplomatic relations with 5 international crime syndicates:
 * **Peace Tributes**: Wire tribute cash to cartel bosses to call off hit squads.
 * **Supply Contracts**: Deliver required contraband parcels to target cities within strict deadlines for massive cash bonuses and syndicate standing.
 
-### ⚔️ 7. Tactical Turn-Based Combat
+### ⚔️ 8. Tactical Turn-Based Combat
 Encounter local street cops, DEA federal task forces, tactical SWAT squads, and armed loan shark enforcers.
 * **Weapons**: Combat Knives, 9mm Pistols, 12-Gauge Shotguns, SMGs, Dynamite, Hand Grenades, Flamethrowers, and Anti-SWAT Rocket Launchers.
 * **Tactical Gear**: M84 Stun Flashbangs (forces enemy miss), Tactical Smoke Screens (+50% escape probability), Military Combat Medkits (+40 HP), and No-Scent Chemical Sprays (masks cargo from airport sniffer dogs).
 
-### 👑 8. Dealer Hierarchy & Demotion Radar
+### 👑 9. Dealer Hierarchy & Demotion Radar
 * Rise through 6 underworld standing ranks: **Wannabe ➔ Small-time Operator ➔ Dealer ➔ Big-Time Dealer ➔ Distributor ➔ Drug Lord**.
 * **Live Solvency Checker**: Hover the dealer badge to track promotion requirements and 3-day hold milestones. If your net worth drops below the rank threshold, a 3-day insolvency timer warns you before stripping status.
 
-### 💾 9. Hall of Fame & Career Dossiers
+### 💾 10. Hall of Fame & Career Dossiers
 * **Data Vault**: Multi-slot browser local storage persistence with JSON import/export.
 * **Hall of Fame**: Persistent leaderboard archiving your greatest criminal empires with shareable career dossiers and score calculations.
 * **Endless Mode**: Play fixed 30, 60, 90-day campaigns, or rule the world indefinitely.
@@ -197,6 +213,9 @@ The live state is mapped to an internal 32-bit linear memory mirror:
 * `rig <drug_id> <price>` — Rig the local street price of any commodity (e.g. `rig cocaine 50000`).
 * `vault_give <city_id> <drug_id> <qty>` — Stash contraband directly in safehouse vaults.
 * `noscent <count>` — Spawn DEA K-9 No-Scent masking spray cans.
+* `rico <0-100>` — Set Federal Grand Jury RICO Indictment Meter percentage (100 = bank freeze).
+* `corrupt <official_id>` — Put corrupt official on retainer (`airport_baggage_handler`, `police_dispatcher`, `fincen_auditor`).
+* `escape <sanctuary_id>` — Emergency extradition flight to sovereign haven (`dubai`, `panama_city`, `zurich`, `singapore`, `istanbul`).
 * `wire` — Intercept upcoming market surge intel and police wiretaps.
 * `sfx <name>` — Test retro Web Audio sound synthesis (e.g. `sfx pager`).
 
@@ -255,7 +274,7 @@ npm run dev
 Open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
 ### Test Suites
-Run the comprehensive 125-test engine test suite:
+Run the comprehensive 145-test engine test suite:
 ```bash
 npm test
 ```

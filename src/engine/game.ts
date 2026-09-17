@@ -26,6 +26,35 @@ import {
 } from './laundering';
 import { AIRCRAFT_MAP, calculateAircraftFlightCost } from './aviation';
 import { advanceCookBatches } from './production';
+import {
+  hasActiveOfficial,
+  processCorruptionAndRicoDaily,
+  hireOfficial,
+  fireOfficial,
+  bribeGrandJury,
+  emergencyExtraditionEscape,
+  isSovereignSanctuary,
+  getRicoThreatLevel,
+  CORRUPT_OFFICIALS,
+  CORRUPT_MAP,
+  SOVEREIGN_SANCTUARIES,
+  SANCTUARY_MAP,
+} from './corruption';
+
+export {
+  hasActiveOfficial,
+  processCorruptionAndRicoDaily,
+  hireOfficial,
+  fireOfficial,
+  bribeGrandJury,
+  emergencyExtraditionEscape,
+  isSovereignSanctuary,
+  getRicoThreatLevel,
+  CORRUPT_OFFICIALS,
+  CORRUPT_MAP,
+  SOVEREIGN_SANCTUARIES,
+  SANCTUARY_MAP,
+};
 
 export interface GameEngineState {
   player: PlayerState;
@@ -170,6 +199,13 @@ export function createInitialState(durationMode: GameDurationMode = 'classic'): 
     },
     ownedAircraft: [],
     selectedAircraftId: null,
+    installedLabs: {},
+    activeCookBatches: [],
+    precursorInventory: {},
+    corruptOfficials: {},
+    ricoMeter: 0,
+    isBankFrozen: false,
+    pendingRaidWarning: null,
     stats: {
       combatWins: 0,
       bribesCount: 0,
@@ -182,6 +218,11 @@ export function createInitialState(durationMode: GameDurationMode = 'classic'): 
       contractsCompletedCount: 0,
       businessesAcquiredCount: 0,
       totalCleanMoneyLaundered: 0,
+      fakeDrugsDiscovered: 0,
+      fakeDrugsFlushed: 0,
+      corruptOfficialsBribed: 0,
+      ricoIndictmentsEvaded: 0,
+      extraditionEscapesCount: 0,
     },
     cheats: {
       godMode: false,
@@ -1088,24 +1129,48 @@ export function purchaseIntelTip(state: GameEngineState, tipId: string): ActionR
 }
 
 export function depositBank(state: GameEngineState, amount: number): ActionResult {
+  if (state.player.isBankFrozen) {
+    return {
+      success: false,
+      message: 'BANK ASSETS FROZEN: US Federal Grand Jury RICO injunction has locked all accounts! Escape to a Sovereign Sanctuary to restore offshore access.',
+    };
+  }
   if (amount <= 0) return { success: false, message: 'Invalid amount' };
   if (state.player.cash < amount) return { success: false, message: 'Not enough cash on hand' };
 
   state.player.cash -= amount;
   state.player.bank += amount;
 
+  // Unlaundered raw cash deposits into bank trigger FinCEN scrutiny if substantial
+  let fincenAlert = '';
+  const hasFincenAuditor = hasActiveOfficial(state.player, 'fincen_auditor');
+  if (amount >= 50000 && !hasFincenAuditor) {
+    const ricoIncrease = Math.min(8, Math.max(2, Math.round(amount / 50000)));
+    state.player.ricoMeter = Math.min(100, (state.player.ricoMeter || 0) + ricoIncrease);
+    fincenAlert = ` (⚠️ CTR Flag: +${ricoIncrease}% RICO Indictment Meter, now ${state.player.ricoMeter}%)`;
+    if (state.player.ricoMeter >= 100) {
+      state.player.isBankFrozen = true;
+    }
+  }
+
   state.logs.unshift({
     day: state.player.currentDay,
     city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
     type: 'finance',
-    message: `Deposited $${amount.toLocaleString()} into your offshore bank account.`,
+    message: `Deposited $${amount.toLocaleString()} into your offshore bank account.${fincenAlert}`,
     timestamp: Date.now(),
   });
 
-  return { success: true, message: 'Deposit successful' };
+  return { success: true, message: `Deposit successful.${fincenAlert}` };
 }
 
 export function withdrawBank(state: GameEngineState, amount: number): ActionResult {
+  if (state.player.isBankFrozen) {
+    return {
+      success: false,
+      message: 'BANK ASSETS FROZEN: US Federal Grand Jury RICO injunction has locked all accounts! Escape to a Sovereign Sanctuary to restore offshore access.',
+    };
+  }
   if (amount <= 0) return { success: false, message: 'Invalid amount' };
   if (state.player.bank < amount) return { success: false, message: 'Insufficient bank balance' };
 
@@ -1507,6 +1572,9 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
   // 5e. Advance active clandestine lab cook batches
   advanceCookBatches(state);
 
+  // 5f. Process corruption payroll retainers & Grand Jury RICO Indictment Meter
+  processCorruptionAndRicoDaily(state, isTravel);
+
   // Check game over by calendar (only in timed modes, not Endless)
   if (!state.player.isEndless && state.player.currentDay > state.player.maxDays) {
     state.player.isGameOver = true;
@@ -1557,16 +1625,19 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
   const currentHeat = getCityHeat(state.player, state.player.currentCityId);
   const contrabandUnits = getInventoryTotalUnits(state.player);
   if (!state.player.activeEncounter && !isTravel && currentHeat >= 70 && contrabandUnits > 0) {
-    const raidChance = ((currentHeat - 65) / 100) * (1 - heatReduction);
+    const hasDispatcher = hasActiveOfficial(state.player, 'police_dispatcher');
+    // Dispatcher intercepts tactical communications, cutting raid ambush probability by 70%
+    const dispatcherFactor = hasDispatcher ? 0.3 : 1.0;
+    const raidChance = ((currentHeat - 65) / 100) * (1 - heatReduction) * dispatcherFactor;
     if (Math.random() < raidChance) {
       state.player.activeEncounter = {
         id: `dea_${Date.now()}`,
         enemyId: 'dea_tactical',
         enemyName: 'DEA Federal Strike Force',
-        count: 5,
-        danger: 8,
+        count: hasDispatcher ? 3 : 5,
+        danger: hasDispatcher ? 6 : 8,
         bribeCost: Math.max(5000, Math.round(state.player.cash * 0.45)),
-        canFlee: false,
+        canFlee: hasDispatcher, // Dispatcher gave early warning so escape corridors are open!
         canBribe: true,
         status: 'active',
       };
@@ -1574,7 +1645,9 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
         day: state.player.currentDay,
         city: currentCity,
         type: 'combat',
-        message: `🚨 FEDERAL RAID! DEA strike team kicked in the door! Your local heat was ${currentHeat}%. Defend yourself or negotiate!`,
+        message: hasDispatcher
+          ? `🚨 FEDERAL RAID (EARLY WARNING): DEA strike team breached the perimeter! Because of your Police Dispatcher's early warning, you prepared tactical defense (fleeing enabled, reduced tactical count)!`
+          : `🚨 FEDERAL RAID! DEA strike team kicked in the door! Your local heat was ${currentHeat}%. Defend yourself or negotiate!`,
         timestamp: Date.now(),
       });
     }
@@ -1693,18 +1766,29 @@ export function travelToCity(
 
   // Check airport customs & sniffer dogs
   const totalDrugs = getInventoryTotalUnits(state.player);
+  const hasBaggageHandler = hasActiveOfficial(state.player, 'airport_baggage_handler');
+
   if (totalDrugs > 0) {
-    const maskedUnits = state.player.noScentCans * 100;
-    const unmasked = Math.max(0, totalDrugs - maskedUnits);
+    if (!activeAircraft && hasBaggageHandler) {
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: targetCity.name,
+        type: 'corruption',
+        message: `🧳 BAGGAGE HANDLER BYPASS: Corrupt baggage handler shuttled your luggage through tarmac service tunnels in ${targetCity.name}. Customs checkpoints and sniffer dogs bypassed completely!`,
+        timestamp: Date.now(),
+      });
+    } else {
+      const maskedUnits = state.player.noScentCans * 100;
+      const unmasked = Math.max(0, totalDrugs - maskedUnits);
 
-    if (unmasked > 0) {
-      // Base risk from target city + departure city heat penalty
-      const heatPenalty = (originHeat / 100) * 0.35; // up to +35% risk
-      const corporateBonus = calculateCustomsBonusFromBusinesses(state.player.ownedBusinesses);
-      const riskReduction = customsReduction + corporateBonus;
-      const effectiveCustomsRisk = Math.max(0.02, Math.min(0.85, (targetCity.dogRisk + heatPenalty) * (1 - riskReduction)));
+      if (unmasked > 0) {
+        // Base risk from target city + departure city heat penalty
+        const heatPenalty = (originHeat / 100) * 0.35; // up to +35% risk
+        const corporateBonus = calculateCustomsBonusFromBusinesses(state.player.ownedBusinesses);
+        const riskReduction = customsReduction + corporateBonus;
+        const effectiveCustomsRisk = Math.max(0.02, Math.min(0.85, (targetCity.dogRisk + heatPenalty) * (1 - riskReduction)));
 
-      const dogRoll = Math.random();
+        const dogRoll = Math.random();
       if (dogRoll < effectiveCustomsRisk) {
         const isHighHeat = originHeat >= 60;
         state.player.activeEncounter = {
@@ -1731,6 +1815,7 @@ export function travelToCity(
         });
       }
     }
+  }
 
     // Consume 1 can of No-Scent during international flight
     if (state.player.noScentCans > 0) {
@@ -1878,7 +1963,8 @@ export function executeBusinessLaundering(
 
   // IRS / FinCEN Audit check
   const hasOffshoreLegal = state.player.corporateUpgrades?.includes('offshore_legal');
-  if (!hasOffshoreLegal && business.auditRisk > 0 && Math.random() < business.auditRisk) {
+  const hasFincenAuditor = hasActiveOfficial(state.player, 'fincen_auditor');
+  if (!hasOffshoreLegal && !hasFincenAuditor && business.auditRisk > 0 && Math.random() < business.auditRisk) {
     const penalty = Math.round(cleanAmount * 0.25);
     state.player.bank = Math.max(0, state.player.bank - penalty);
     state.logs.unshift({
@@ -1886,6 +1972,14 @@ export function executeBusinessLaundering(
       city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
       type: 'event',
       message: `🚨 IRS AUDIT NOTICE: FinCEN flagged unusual cash flow at ${business.name}! Disgorgement fine of $${penalty.toLocaleString()} deducted from offshore bank.`,
+      timestamp: Date.now(),
+    });
+  } else if (hasFincenAuditor && business.auditRisk > 0) {
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+      type: 'corruption',
+      message: `🏛️ FINCEN AUDITOR SHIELD: Senior regulatory auditor quashed Suspicious Activity Reports (SARs) for ${business.name}. 100% audit immunity verified.`,
       timestamp: Date.now(),
     });
   }

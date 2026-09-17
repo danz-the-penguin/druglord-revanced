@@ -67,6 +67,13 @@ import {
   collectCookBatch,
   cancelCookBatch,
 } from '../engine/production';
+import { CorruptOfficialId } from '../engine/corruptionTypes';
+import {
+  hireOfficial,
+  fireOfficial,
+  bribeGrandJury,
+  emergencyExtraditionEscape,
+} from '../engine/corruption';
 
 export interface GameStore extends GameEngineState {
   // Modal / View Controls
@@ -137,6 +144,12 @@ export interface GameStore extends GameEngineState {
   startCookBatchAction: (propertyId: string, recipeId: string, batchCount?: number) => { success: boolean; message: string };
   collectCookBatchAction: (batchId: string, destination?: 'pocket' | 'vault') => { success: boolean; message: string };
   cancelCookBatchAction: (batchId: string) => { success: boolean; message: string };
+
+  // Corruption & Federal Grand Jury RICO Indictment Actions
+  hireOfficialAction: (officialId: CorruptOfficialId, assignedBusinessId?: string) => { success: boolean; message: string };
+  fireOfficialAction: (officialId: CorruptOfficialId) => { success: boolean; message: string };
+  bribeGrandJuryAction: (amount?: number) => { success: boolean; message: string };
+  emergencyExtraditionEscapeAction: (destinationCityId: string) => { success: boolean; message: string };
 
   // Tactical Firefight Duel Combat
   tacticalCombatRound: number;
@@ -1541,6 +1554,70 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (result.success) {
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    hireOfficialAction: (officialId: CorruptOfficialId, assignedBusinessId?: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = hireOfficial(state, officialId, assignedBusinessId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bribe');
+      }
+      return result;
+    },
+
+    fireOfficialAction: (officialId: CorruptOfficialId) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = fireOfficial(state, officialId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    bribeGrandJuryAction: (amount = 50000) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = bribeGrandJury(state, amount);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bribe');
+      }
+      return result;
+    },
+
+    emergencyExtraditionEscapeAction: (destinationCityId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = emergencyExtraditionEscape(state, destinationCityId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('travel');
       }
       return result;
     },

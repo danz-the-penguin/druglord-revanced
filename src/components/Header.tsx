@@ -29,6 +29,7 @@ import {
   Globe,
   Plane,
   Handshake,
+  Scale,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -96,6 +97,31 @@ export const Header: React.FC = () => {
                 <Flame className={`w-3 h-3 ${currentCityHeat >= 70 ? 'text-red-400' : currentCityHeat >= 30 ? 'text-amber-400' : 'text-emerald-400'}`} />
                 <span>Heat {currentCityHeat}%</span>
               </span>
+
+              {/* Federal RICO Meter Indicator */}
+              {((typeof player.ricoMeter === 'number' && player.ricoMeter > 0) || player.isBankFrozen) && (
+                <button
+                  onClick={() => {
+                    useGameStore.getState().setActiveTab('places');
+                    useGameStore.getState().setPlacesSubTab('informant');
+                  }}
+                  className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 transition-all cursor-pointer ${
+                    player.isBankFrozen || (player.ricoMeter && player.ricoMeter >= 75)
+                      ? 'bg-rose-950/90 text-rose-300 border-rose-500 animate-pulse font-black'
+                      : (player.ricoMeter && player.ricoMeter >= 45)
+                      ? 'bg-amber-950/70 text-amber-300 border-amber-600'
+                      : 'bg-slate-900 text-slate-400 border-slate-700'
+                  }`}
+                  title={
+                    player.isBankFrozen
+                      ? '🚨 BANK ASSETS FROZEN: US Federal Grand Jury RICO Indictment! Click to open Corruption & Extradition Sanctuary command.'
+                      : `Federal Grand Jury RICO Indictment Meter: ${player.ricoMeter}%. Reaching 100% triggers bank asset freezes and emergency extradition warrants.`
+                  }
+                >
+                  <Scale className="w-3 h-3 text-rose-400" />
+                  <span>{player.isBankFrozen ? 'RICO 100% [FROZEN]' : `RICO ${player.ricoMeter}%`}</span>
+                </button>
+              )}
 
               <span className="text-slate-600">•</span>
               <span className="flex items-center gap-1 text-amber-400">
