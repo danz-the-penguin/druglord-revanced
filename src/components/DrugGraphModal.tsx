@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUGS, DRUG_MAP, CITIES, CITY_MAP } from '../engine/constants';
 import { DrugImage } from './DrugImage';
@@ -10,7 +10,17 @@ import {
   Globe,
   ShoppingCart,
   Calendar,
+  Play,
+  Pause,
+  RotateCcw,
+  Plus,
+  Minus,
+  Repeat,
+  Activity,
 } from 'lucide-react';
+import { DEFAULT_SPEEDS, stepPlaybackSpeed } from '../utils/graphAnimation';
+
+const SPEEDS = DEFAULT_SPEEDS;
 
 export const DrugGraphModal: React.FC = () => {
   const {
@@ -27,6 +37,17 @@ export const DrugGraphModal: React.FC = () => {
 
   const [selectedCityId, setSelectedCityId] = useState<string>(player.currentCityId);
   const [hoveredPoint, setHoveredPoint] = useState<{ day: number; price: number; index: number; x: number; y: number } | null>(null);
+
+  // Animation & Playback Engine State
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [speed, setSpeed] = useState<number>(1.0);
+  const [playbackProgress, setPlaybackProgress] = useState<number>(0);
+  const [isLooping, setIsLooping] = useState<boolean>(true);
+  const [animationMode, setAnimationMode] = useState<'timeline' | 'live_pulse'>('timeline');
+  const [liveWavePhase, setLiveWavePhase] = useState<number>(0);
+
+  const animFrameRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(performance.now());
 
   const activeDrugId = selectedGraphDrugId || 'cocaine';
   const drug = DRUG_MAP.get(activeDrugId) || DRUGS[0];
@@ -54,11 +75,105 @@ export const DrugGraphModal: React.FC = () => {
   const atl = useMemo(() => Math.min(...rawSeries, currentPrice), [rawSeries, currentPrice]);
   const avg = useMemo(() => Math.round(rawSeries.reduce((a, b) => a + b, 0) / rawSeries.length), [rawSeries]);
 
-  const prevPrice = rawSeries.length > 1 ? rawSeries[rawSeries.length - 2] : currentPrice;
-  const delta = currentPrice - prevPrice;
-  const deltaPct = prevPrice > 0 ? (delta / prevPrice) * 100 : 0;
-
   const baseRatio = drug.basePrice > 0 ? ((currentPrice - drug.basePrice) / drug.basePrice) * 100 : 0;
+
+  // Reset playback to start whenever drug or city changes
+  useEffect(() => {
+    setPlaybackProgress(0);
+    setIsPlaying(true);
+  }, [drug.id, selectedCityId]);
+
+  // Animation frame update loop
+  useEffect(() => {
+    lastTimeRef.current = performance.now();
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.1, (now - lastTimeRef.current) / 1000);
+      lastTimeRef.current = now;
+
+      if (isPlaying) {
+        if (animationMode === 'timeline') {
+          const maxIdx = Math.max(1, rawSeries.length - 1);
+          const stepRate = 1.25 * speed; // 1.25 data points per second at 1x
+          setPlaybackProgress((prev) => {
+            const next = prev + dt * stepRate;
+            if (next >= maxIdx) {
+              if (isLooping) {
+                return 0; // seamless loop back to Day 1
+              } else {
+                setIsPlaying(false);
+                return maxIdx;
+              }
+            }
+            return next;
+          });
+        } else {
+          // Live pulse sinusoidal oscillation
+          setLiveWavePhase((prev) => prev + dt * 2.8 * speed);
+        }
+      }
+
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [isPlaying, speed, isLooping, animationMode, rawSeries.length]);
+
+  // Speed Handlers
+  const handleDecreaseSpeed = () => {
+    setSpeed((prev) => stepPlaybackSpeed(prev, 'decrease', SPEEDS));
+  };
+
+  const handleIncreaseSpeed = () => {
+    setSpeed((prev) => stepPlaybackSpeed(prev, 'increase', SPEEDS));
+  };
+
+  const handleRestart = () => {
+    setPlaybackProgress(0);
+    setIsPlaying(true);
+  };
+
+  const togglePlay = () => {
+    if (!isPlaying && playbackProgress >= rawSeries.length - 1 && animationMode === 'timeline') {
+      setPlaybackProgress(0);
+    }
+    setIsPlaying((prev) => !prev);
+  };
+
+  // Keyboard shortcut listener (Spacebar = Play/Pause, Arrows = Scrub, +/- = Speed)
+  useEffect(() => {
+    if (!isDrugGraphOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        setPlaybackProgress((prev) => Math.min(rawSeries.length - 1, prev + 0.5));
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        setPlaybackProgress((prev) => Math.max(0, prev - 0.5));
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        handleIncreaseSpeed();
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        handleDecreaseSpeed();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrugGraphOpen, playbackProgress, rawSeries.length, animationMode, speed, isPlaying]);
 
   if (!isDrugGraphOpen) return null;
 
@@ -85,15 +200,85 @@ export const DrugGraphModal: React.FC = () => {
     return paddingTop + chartHeight - ((val - minVal) / valRange) * chartHeight;
   };
 
-  // Generate SVG path
+  // Interpolation & Physics Calculations
+  const maxSeriesIdx = Math.max(1, rawSeries.length - 1);
+  const clampedProgress = Math.max(0, Math.min(maxSeriesIdx, playbackProgress));
+  const currIdx = Math.floor(clampedProgress);
+  const frac = clampedProgress - currIdx;
+  const nextIdx = Math.min(rawSeries.length - 1, currIdx + 1);
+
+  // Timeline values
+  const p1 = rawSeries[currIdx] ?? drug.basePrice;
+  const p2 = rawSeries[nextIdx] ?? p1;
+  const timelinePrice = Math.round(p1 + (p2 - p1) * frac);
+  const timelineSlope = p2 - p1;
+
+  // Live Pulse harmonic wave
+  const livePulseSine = Math.sin(liveWavePhase);
+  const livePulseAmp = Math.max(10, drug.basePrice * Math.min(0.35, Math.max(0.08, drug.volatility * 0.25)));
+  const livePulsePrice = Math.round(currentPrice + livePulseSine * livePulseAmp);
+  const livePulseSlope = Math.cos(liveWavePhase);
+
+  // Active display values
+  const activePrice = animationMode === 'timeline' ? timelinePrice : livePulsePrice;
+  const activeSlope = animationMode === 'timeline' ? timelineSlope : livePulseSlope;
+  const isRising = activeSlope > 0.001;
+  const isFalling = activeSlope < -0.001;
+
+  const currentAnimatedDay = Math.max(1, player.currentDay - (rawSeries.length - 1 - currIdx));
+  const totalDaysRecorded = rawSeries.length;
+
+  // Visual Theme Colors
+  const themeColor = isRising ? '#10b981' : isFalling ? '#f43f5e' : '#38bdf8';
+  const haloColor = isRising ? '#34d399' : isFalling ? '#fb7185' : '#7dd3fc';
+  const textClass = isRising ? 'text-emerald-400' : isFalling ? 'text-rose-400' : 'text-sky-400';
+
+  // SVG Paths
   const points = rawSeries.map((val, idx) => ({ x: getX(idx), y: getY(val), val, idx }));
-  const pathData = points.reduce((acc, pt, idx) => {
+
+  const ghostPathData = points.reduce((acc, pt, idx) => {
     return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
   }, '');
 
-  const areaPath = points.length > 0
-    ? `${pathData} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight} Z`
+  // Active Timeline Path
+  const headX = getX(clampedProgress);
+  const headY = getY(activePrice);
+
+  const activePoints = points.slice(0, currIdx + 1).map((pt) => ({ ...pt }));
+  if (frac > 0.001 || activePoints.length === 0) {
+    activePoints.push({ x: headX, y: headY, val: activePrice, idx: clampedProgress });
+  }
+
+  const activePathData = activePoints.reduce((acc, pt, idx) => {
+    return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+  }, '');
+
+  const activeAreaPath = activePoints.length > 0
+    ? `${activePathData} L ${headX} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight} Z`
     : '';
+
+  // Live Pulse Path
+  const livePoints = points.map((pt, idx) => {
+    if (idx === points.length - 1) {
+      return { ...pt, y: getY(livePulsePrice), val: livePulsePrice };
+    }
+    return pt;
+  });
+  const liveHeadX = livePoints[livePoints.length - 1].x;
+  const liveHeadY = livePoints[livePoints.length - 1].y;
+
+  const livePathData = livePoints.reduce((acc, pt, idx) => {
+    return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+  }, '');
+
+  const liveAreaPath = livePoints.length > 0
+    ? `${livePathData} L ${liveHeadX} ${paddingTop + chartHeight} L ${livePoints[0].x} ${paddingTop + chartHeight} Z`
+    : '';
+
+  const renderedHeadX = animationMode === 'timeline' ? headX : liveHeadX;
+  const renderedHeadY = animationMode === 'timeline' ? headY : liveHeadY;
+  const renderedPathData = animationMode === 'timeline' ? activePathData : livePathData;
+  const renderedAreaPath = animationMode === 'timeline' ? activeAreaPath : liveAreaPath;
 
   const yTicks = [
     minVal,
@@ -136,7 +321,7 @@ export const DrugGraphModal: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => openGlobalAnalytics(drug.id)}
-              className="px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Open Global Multi-Country Arbitrage Radar"
             >
               <Globe className="w-3.5 h-3.5 text-cyan-400" />
@@ -144,14 +329,14 @@ export const DrugGraphModal: React.FC = () => {
             </button>
             <button
               onClick={closeDrugGraph}
-              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition-colors"
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Toolbar: City Selector & Drug Tabs */}
+        {/* Toolbar: City Selector & Dynamic Spot Readout */}
         <div className="px-6 py-2.5 bg-slate-900/60 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="text-slate-400 uppercase font-bold text-[11px] flex items-center gap-1">
@@ -172,16 +357,16 @@ export const DrugGraphModal: React.FC = () => {
 
           <div className="flex items-center gap-4 text-xs">
             <div>
-              <span className="text-slate-500 uppercase text-[10px] block">Spot Price ({city.name})</span>
-              <span className="text-base font-black text-slate-100">
-                ${currentPrice.toLocaleString()}
+              <span className="text-slate-500 uppercase text-[10px] block">Animated Spot Price</span>
+              <span className={`text-base font-black ${textClass}`}>
+                ${activePrice.toLocaleString()}
               </span>
             </div>
             <div className="text-right">
-              <span className="text-slate-500 uppercase text-[10px] block">24H Velocity</span>
-              <span className={`font-bold inline-flex items-center gap-0.5 ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {delta >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                {delta >= 0 ? '+' : ''}{deltaPct.toFixed(1)}% (${Math.abs(delta).toLocaleString()})
+              <span className="text-slate-500 uppercase text-[10px] block">Momentum State</span>
+              <span className={`font-bold inline-flex items-center gap-0.5 ${textClass}`}>
+                {isRising ? <TrendingUp className="w-3.5 h-3.5 animate-pulse" /> : isFalling ? <TrendingDown className="w-3.5 h-3.5 animate-pulse" /> : null}
+                {isRising ? `▲ RISING` : isFalling ? `▼ FALLING` : 'STEADY'}
               </span>
             </div>
           </div>
@@ -194,8 +379,8 @@ export const DrugGraphModal: React.FC = () => {
             {/* Legend & Indicator Pills */}
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2 text-[11px]">
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-500" /> Spot Trend
+                <span className={`flex items-center gap-1 font-bold ${textClass}`}>
+                  <span className="w-2.5 h-2.5 rounded-full shadow-sm shadow-emerald-500" style={{ backgroundColor: themeColor }} /> Spot Trend
                 </span>
                 <span className="flex items-center gap-1 text-amber-400 font-bold">
                   <span className="w-2 h-0.5 bg-amber-400 border-t border-dashed" /> ATH (${ath.toLocaleString()})
@@ -220,8 +405,8 @@ export const DrugGraphModal: React.FC = () => {
               >
                 <defs>
                   <linearGradient id="drugGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor={themeColor} stopOpacity="0.38" />
+                    <stop offset="100%" stopColor={themeColor} stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
@@ -263,7 +448,7 @@ export const DrugGraphModal: React.FC = () => {
                   stroke="#f59e0b"
                   strokeWidth="1"
                   strokeDasharray="4 2"
-                  strokeOpacity="0.7"
+                  strokeOpacity="0.65"
                 />
                 {/* ATL */}
                 <line
@@ -274,7 +459,7 @@ export const DrugGraphModal: React.FC = () => {
                   stroke="#38bdf8"
                   strokeWidth="1"
                   strokeDasharray="4 2"
-                  strokeOpacity="0.7"
+                  strokeOpacity="0.65"
                 />
                 {/* Moving Avg */}
                 <line
@@ -285,39 +470,68 @@ export const DrugGraphModal: React.FC = () => {
                   stroke="#a855f7"
                   strokeWidth="1"
                   strokeDasharray="2 2"
-                  strokeOpacity="0.6"
+                  strokeOpacity="0.55"
                 />
 
-                {/* Gradient Fill Area */}
-                {areaPath && <path d={areaPath} fill="url(#drugGradient)" />}
-
-                {/* Price Stroke Line */}
-                {pathData && (
+                {/* Ghost Trajectory Outline in Timeline Mode */}
+                {animationMode === 'timeline' && (
                   <path
-                    d={pathData}
+                    d={ghostPathData}
                     fill="none"
-                    stroke="#10b981"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    filter="drop-shadow(0 2px 6px rgba(16, 185, 129, 0.4))"
+                    stroke="#334155"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3"
+                    opacity="0.4"
                   />
                 )}
 
-                {/* Interactive Points */}
+                {/* Gradient Fill Area */}
+                {renderedAreaPath && <path d={renderedAreaPath} fill="url(#drugGradient)" />}
+
+                {/* Active Dynamic Price Stroke Line */}
+                {renderedPathData && (
+                  <path
+                    d={renderedPathData}
+                    fill="none"
+                    stroke={themeColor}
+                    strokeWidth="2.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7))"
+                  />
+                )}
+
+                {/* Vertical Scanning Laser Guide */}
+                <line
+                  x1={renderedHeadX}
+                  y1={paddingTop}
+                  x2={renderedHeadX}
+                  y2={paddingTop + chartHeight}
+                  stroke={themeColor}
+                  strokeWidth="1.25"
+                  strokeDasharray="3 2"
+                  strokeOpacity="0.8"
+                />
+
+                {/* Interactive Points on X-axis */}
                 {points.map((pt) => {
                   const isLast = pt.idx === points.length - 1;
                   const isHovered = hoveredPoint?.index === pt.idx;
+                  const isPast = pt.idx <= currIdx;
                   return (
                     <g key={pt.idx}>
                       <circle
                         cx={pt.x}
                         cy={pt.y}
                         r={isHovered ? 6 : isLast ? 4.5 : 3}
-                        fill={isLast ? '#34d399' : '#10b981'}
+                        fill={isPast ? themeColor : '#334155'}
                         stroke="#05080e"
                         strokeWidth="2"
-                        className="transition-all cursor-pointer"
+                        className="transition-all cursor-pointer hover:scale-125"
+                        onClick={() => {
+                          setPlaybackProgress(pt.idx);
+                          setIsPlaying(false);
+                        }}
                         onMouseEnter={() =>
                           setHoveredPoint({
                             day: Math.max(1, player.currentDay - (points.length - 1 - pt.idx)),
@@ -333,16 +547,71 @@ export const DrugGraphModal: React.FC = () => {
                       <text
                         x={pt.x}
                         y={svgHeight - 10}
-                        fill="#64748b"
+                        fill={isPast ? '#94a3b8' : '#475569'}
                         fontSize="9"
                         textAnchor="middle"
                         fontFamily="monospace"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          setPlaybackProgress(pt.idx);
+                          setIsPlaying(false);
+                        }}
                       >
                         D{Math.max(1, player.currentDay - (points.length - 1 - pt.idx))}
                       </text>
                     </g>
                   );
                 })}
+
+                {/* Animated Pulsing Radar Beacon on the Head */}
+                {isPlaying && (
+                  <circle
+                    cx={renderedHeadX}
+                    cy={renderedHeadY}
+                    r="11"
+                    fill="none"
+                    stroke={themeColor}
+                    strokeWidth="1.5"
+                    className="animate-ping opacity-75"
+                  />
+                )}
+
+                {/* Prominent Head Dot */}
+                <circle
+                  cx={renderedHeadX}
+                  cy={renderedHeadY}
+                  r="5.5"
+                  fill={haloColor}
+                  stroke="#05080e"
+                  strokeWidth="2.5"
+                />
+
+                {/* Floating Head Price Tag */}
+                <g transform={`translate(${renderedHeadX}, ${Math.max(paddingTop + 14, renderedHeadY - 20)})`}>
+                  <rect
+                    x="-36"
+                    y="-13"
+                    width="72"
+                    height="18"
+                    rx="4"
+                    fill="#0f172a"
+                    stroke={themeColor}
+                    strokeWidth="1"
+                    fillOpacity="0.95"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.5))"
+                  />
+                  <text
+                    x="0"
+                    y="-1"
+                    fill={themeColor}
+                    fontSize="9.5"
+                    fontWeight="900"
+                    textAnchor="middle"
+                    fontFamily="monospace"
+                  >
+                    ${activePrice.toLocaleString()}
+                  </text>
+                </g>
 
                 {/* Hover Tooltip inside SVG */}
                 {hoveredPoint && (
@@ -372,6 +641,181 @@ export const DrugGraphModal: React.FC = () => {
                 )}
               </svg>
             </div>
+          </div>
+
+          {/* Interactive Graph Animation & Playback Engine */}
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col gap-3 font-mono shadow-md">
+            {/* Row 1: Primary Playback Controls & Mode Toggles */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+              {/* Left: Play/Pause, Rewind, Status */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={togglePlay}
+                  className={`px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-sm ${
+                    isPlaying
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30'
+                      : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-black shadow-emerald-950/50'
+                  }`}
+                  title={isPlaying ? 'Pause graph animation (Spacebar)' : 'Play graph animation (Spacebar)'}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-4 h-4 fill-current" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  )}
+                  <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
+                </button>
+
+                <button
+                  onClick={handleRestart}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer active:scale-95"
+                  title="Rewind animation to Day 1"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+
+                {/* Animation Status Beacon */}
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold uppercase tracking-wider ${
+                  isPlaying
+                    ? isRising
+                      ? 'bg-emerald-950/80 border-emerald-700/80 text-emerald-400'
+                      : isFalling
+                      ? 'bg-rose-950/80 border-rose-700/80 text-rose-400'
+                      : 'bg-slate-900 border-slate-700 text-slate-300'
+                    : 'bg-slate-950 border-slate-800 text-slate-500'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    isPlaying
+                      ? isRising
+                        ? 'bg-emerald-400 animate-pulse'
+                        : isFalling
+                        ? 'bg-rose-400 animate-pulse'
+                        : 'bg-slate-400'
+                      : 'bg-slate-600'
+                  }`} />
+                  <span>
+                    {isPlaying
+                      ? isRising
+                        ? `▲ RISING (${speed}x)`
+                        : isFalling
+                        ? `▼ FALLING (${speed}x)`
+                        : `STEADY (${speed}x)`
+                      : 'PAUSED'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: Speed Controls & Mode Selection */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-slate-500 text-[11px] font-bold uppercase mr-1 hidden sm:inline">
+                  Speed:
+                </span>
+                <button
+                  onClick={handleDecreaseSpeed}
+                  disabled={speed <= SPEEDS[0]}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 border border-slate-700 text-slate-300 transition-all cursor-pointer active:scale-95"
+                  title="Decrease Speed (-)"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  {SPEEDS.map((spd) => (
+                    <button
+                      key={spd}
+                      onClick={() => setSpeed(spd)}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        speed === spd
+                          ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                      }`}
+                      title={`Set playback speed to ${spd}x`}
+                    >
+                      {spd}x
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleIncreaseSpeed}
+                  disabled={speed >= SPEEDS[SPEEDS.length - 1]}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 border border-slate-700 text-slate-300 transition-all cursor-pointer active:scale-95"
+                  title="Increase Speed (+)"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Mode Toggle Pills */}
+                <div className="flex items-center gap-1 ml-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setAnimationMode('timeline')}
+                    className={`px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                      animationMode === 'timeline'
+                        ? 'bg-cyan-500 text-slate-950 font-black shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                    title="Timeline Replay: Animates historical rise & fall day by day"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    <span>Timeline</span>
+                  </button>
+
+                  <button
+                    onClick={() => setAnimationMode('live_pulse')}
+                    className={`px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                      animationMode === 'live_pulse'
+                        ? 'bg-cyan-500 text-slate-950 font-black shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                    title="Live Waves: Real-time rising and falling market oscillation"
+                  >
+                    <Activity className="w-3 h-3" />
+                    <span>Live Waves</span>
+                  </button>
+                </div>
+
+                {/* Loop toggle in Timeline mode */}
+                {animationMode === 'timeline' && (
+                  <button
+                    onClick={() => setIsLooping(!isLooping)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ml-1 ${
+                      isLooping
+                        ? 'bg-indigo-950/80 border-indigo-600 text-indigo-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+                    }`}
+                    title={isLooping ? 'Continuous loop enabled' : 'Loop disabled'}
+                  >
+                    <Repeat className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Loop</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: Interactive Scrubber Slider (only in timeline mode) */}
+            {animationMode === 'timeline' && (
+              <div className="flex items-center gap-3 pt-1 border-t border-slate-800/60">
+                <span className="text-[11px] text-slate-400 font-bold shrink-0">
+                  Day {currentAnimatedDay} / {totalDaysRecorded}
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max={Math.max(1, rawSeries.length - 1)}
+                  step="0.01"
+                  value={playbackProgress}
+                  onChange={(e) => {
+                    setPlaybackProgress(parseFloat(e.target.value));
+                    setIsPlaying(false);
+                  }}
+                  className="w-full accent-emerald-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                  title="Drag scrubber to inspect historical prices"
+                />
+                <span className={`text-[11px] font-black shrink-0 ${textClass}`}>
+                  ${activePrice.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Key Financial Indicators Bar */}

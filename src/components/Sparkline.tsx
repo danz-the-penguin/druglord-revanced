@@ -44,14 +44,25 @@ export const Sparkline: React.FC<SparklineProps> = ({
         strokeLinejoin="round"
         points={points}
       />
-      {/* Current price endpoint dot */}
+      {/* Current price endpoint dot with animated radar pulse */}
       {data.length > 0 && (
-        <circle
-          cx={width}
-          cy={height - ((data[data.length - 1] - min) / range) * (height - 6) - 3}
-          r="2.5"
-          fill={strokeColor}
-        />
+        <>
+          <circle
+            cx={width}
+            cy={height - ((data[data.length - 1] - min) / range) * (height - 6) - 3}
+            r="4.5"
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth="1"
+            className="animate-ping opacity-60"
+          />
+          <circle
+            cx={width}
+            cy={height - ((data[data.length - 1] - min) / range) * (height - 6) - 3}
+            r="2.5"
+            fill={strokeColor}
+          />
+        </>
       )}
     </svg>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUGS, DRUG_MAP, CITIES, CITY_MAP } from '../engine/constants';
 import { getDrugDetails } from '../engine/drugDetails';
@@ -7,7 +7,15 @@ import {
   X,
   Plane,
   Compass,
+  Play,
+  Pause,
+  RotateCcw,
+  Plus,
+  Minus,
 } from 'lucide-react';
+import { stepPlaybackSpeed } from '../utils/graphAnimation';
+
+const SPEED_PRESETS = [0.5, 1, 2, 4];
 
 const CITY_PALETTE: Record<string, string> = {
   new_york: '#f59e0b', // amber
@@ -49,6 +57,14 @@ export const GlobalAnalyticsModal: React.FC = () => {
   } = useGameStore();
 
   const [activeCities, setActiveCities] = useState<string[]>(DEFAULT_ACTIVE_CITIES);
+
+  // Playback & Animation State
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [speed, setSpeed] = useState<number>(1.0);
+  const [playbackProgress, setPlaybackProgress] = useState<number>(0);
+
+  const animFrameRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(performance.now());
 
   const activeDrugId = selectedAnalyticsDrugId || 'cocaine';
   const drug = DRUG_MAP.get(activeDrugId) || DRUGS[0];
@@ -141,6 +157,58 @@ export const GlobalAnalyticsModal: React.FC = () => {
     Math.round(minVal + valRange * 0.75),
     maxVal,
   ];
+
+  // Reset on drug change
+  useEffect(() => {
+    setPlaybackProgress(0);
+    setIsPlaying(true);
+  }, [drug.id]);
+
+  useEffect(() => {
+    lastTimeRef.current = performance.now();
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.1, (now - lastTimeRef.current) / 1000);
+      lastTimeRef.current = now;
+
+      if (isPlaying) {
+        const maxIdx = Math.max(1, maxSeriesLength - 1);
+        const stepRate = 1.25 * speed;
+        setPlaybackProgress((prev) => {
+          const next = prev + dt * stepRate;
+          if (next >= maxIdx) {
+            return 0; // continuous loop
+          }
+          return next;
+        });
+      }
+
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [isPlaying, speed, maxSeriesLength]);
+
+  const handleDecreaseSpeed = () => {
+    setSpeed((prev) => stepPlaybackSpeed(prev, 'decrease', SPEED_PRESETS));
+  };
+
+  const handleIncreaseSpeed = () => {
+    setSpeed((prev) => stepPlaybackSpeed(prev, 'increase', SPEED_PRESETS));
+  };
+
+  const togglePlay = () => {
+    if (!isPlaying && playbackProgress >= maxSeriesLength - 1) {
+      setPlaybackProgress(0);
+    }
+    setIsPlaying((prev) => !prev);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 font-mono select-none animate-in fade-in duration-200">
@@ -314,43 +382,84 @@ export const GlobalAnalyticsModal: React.FC = () => {
                   const color = CITY_PALETTE[cId] || '#38bdf8';
                   if (series.length === 0) return null;
 
-                  const pts = series.map((val, idx) => ({
+                  const clamped = Math.max(0, Math.min(series.length - 1, playbackProgress));
+                  const currIdx = Math.floor(clamped);
+                  const frac = clamped - currIdx;
+                  const nextIdx = Math.min(series.length - 1, currIdx + 1);
+
+                  const p1 = series[currIdx] ?? series[0];
+                  const p2 = series[nextIdx] ?? p1;
+                  const interpVal = p1 + (p2 - p1) * frac;
+
+                  const pts = series.slice(0, currIdx + 1).map((val, idx) => ({
                     x: getX(idx),
                     y: getY(val),
                     val,
                     idx,
                   }));
 
+                  const headX = getX(clamped);
+                  const headY = getY(interpVal);
+                  if (frac > 0.001 || pts.length === 0) {
+                    pts.push({ x: headX, y: headY, val: interpVal, idx: clamped });
+                  }
+
                   const d = pts.reduce((acc, pt, idx) => {
+                    return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+                  }, '');
+
+                  // Ghost full line
+                  const ghostPts = series.map((val, idx) => ({ x: getX(idx), y: getY(val) }));
+                  const ghostD = ghostPts.reduce((acc, pt, idx) => {
                     return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
                   }, '');
 
                   return (
                     <g key={cId}>
+                      {/* Ghost line */}
+                      <path
+                        d={ghostD}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="1.2"
+                        strokeDasharray="3 3"
+                        opacity="0.3"
+                      />
+                      {/* Active animated line */}
                       <path
                         d={d}
                         fill="none"
                         stroke={color}
-                        strokeWidth="2"
+                        strokeWidth="2.2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        opacity="0.9"
+                        opacity="0.95"
+                        filter="drop-shadow(0 1px 4px rgba(0,0,0,0.6))"
                       />
-                      {pts.map((pt) => (
-                        <circle
-                          key={pt.idx}
-                          cx={pt.x}
-                          cy={pt.y}
-                          r="3"
-                          fill={color}
-                          stroke="#05080e"
-                          strokeWidth="1.5"
-                          className="hover:r-5 transition-all cursor-pointer"
-                        />
-                      ))}
+                      {/* Animated head dot */}
+                      <circle
+                        cx={headX}
+                        cy={headY}
+                        r="4"
+                        fill={color}
+                        stroke="#05080e"
+                        strokeWidth="1.5"
+                      />
                     </g>
                   );
                 })}
+
+                {/* Vertical Scanning Laser */}
+                <line
+                  x1={getX(Math.min(maxSeriesLength - 1, playbackProgress))}
+                  y1={paddingTop}
+                  x2={getX(Math.min(maxSeriesLength - 1, playbackProgress))}
+                  y2={paddingTop + chartHeight}
+                  stroke="#06b6d4"
+                  strokeWidth="1.2"
+                  strokeDasharray="3 2"
+                  strokeOpacity="0.8"
+                />
 
                 {/* X-axis Day Labels */}
                 {Array.from({ length: maxSeriesLength }).map((_, idx) => {
@@ -371,6 +480,92 @@ export const GlobalAnalyticsModal: React.FC = () => {
                   );
                 })}
               </svg>
+            </div>
+
+            {/* Playback Controls Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={togglePlay}
+                  className={`px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
+                    isPlaying
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30'
+                      : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400 font-black'
+                  }`}
+                  title={isPlaying ? 'Pause radar animation' : 'Play radar animation'}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-3.5 h-3.5 fill-current" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                  )}
+                  <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
+                </button>
+
+                <button
+                  onClick={() => { setPlaybackProgress(0); setIsPlaying(true); }}
+                  className="p-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all cursor-pointer"
+                  title="Rewind radar animation"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px] font-bold text-cyan-400">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-cyan-400 animate-pulse' : 'bg-slate-600'}`} />
+                  <span>{isPlaying ? `RADAR ACTIVE (${speed}x)` : 'PAUSED'}</span>
+                </div>
+              </div>
+
+              {/* Speed Controls & Scrubber */}
+              <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
+                <button
+                  onClick={handleDecreaseSpeed}
+                  disabled={speed <= SPEED_PRESETS[0]}
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 border border-slate-700 text-slate-300 cursor-pointer"
+                  title="Decrease Speed (-)"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+
+                <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                  {SPEED_PRESETS.map((spd) => (
+                    <button
+                      key={spd}
+                      onClick={() => setSpeed(spd)}
+                      className={`px-1.5 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
+                        speed === spd
+                          ? 'bg-cyan-500 text-slate-950 font-black'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {spd}x
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleIncreaseSpeed}
+                  disabled={speed >= SPEED_PRESETS[SPEED_PRESETS.length - 1]}
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 border border-slate-700 text-slate-300 cursor-pointer"
+                  title="Increase Speed (+)"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+
+                <input
+                  type="range"
+                  min="0"
+                  max={Math.max(1, maxSeriesLength - 1)}
+                  step="0.01"
+                  value={playbackProgress}
+                  onChange={(e) => {
+                    setPlaybackProgress(parseFloat(e.target.value));
+                    setIsPlaying(false);
+                  }}
+                  className="w-28 sm:w-40 accent-cyan-400 h-1 bg-slate-800 rounded cursor-pointer"
+                  title="Scrub timeline"
+                />
+              </div>
             </div>
           </div>
 
