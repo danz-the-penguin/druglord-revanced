@@ -1,0 +1,80 @@
+{
+  "priceSurges": [
+    "Prices are astronomical!",
+    "Prices are insanely high!",
+    "Prices are outrageous!",
+    "Prices go through the roof!",
+    "Prices are higher than the people who use your goods!"
+  ],
+  "priceCrashes": [
+    "Prices are lower than the Marianas Trench!",
+    "Prices nose dive!",
+    "Prices plummet!",
+    "Prices drop like lead balloons!",
+    "Prices are rock bottom!"
+  ],
+  "shortageReasons": [
+    "Gang warfare is keeping {drug} off the streets.",
+    "Raccoons broke into a crate of {drug}, eating some and dying on the rest.",
+    "Cops burst into a {city} warehouse, seizing everything.",
+    "The smuggler of some {drug} was killed by a rival dealer.",
+    "The pilot of a {drug} shipment fell asleep and crashed."
+  ],
+  "floodReasons": [
+    "A boatload of {drug} arrives in the harbor.",
+    "A police warehouse is broken into and {drug} is stolen.",
+    "A new source of {drug} is found.",
+    "A new {drug} dealer has arrived in town.",
+    "Crates of {drug} were discovered floating in the ocean."
+  ],
+  "randomEncounters": [
+    {
+      "type": "find_cash",
+      "template": "You find a wallet with ${amount} in it!",
+      "min": 100,
+      "max": 800
+    },
+    {
+      "type": "find_cash_purse",
+      "template": "You find a woman's purse in a trash can. Inside is ${amount}!",
+      "min": 250,
+      "max": 1500
+    },
+    {
+      "type": "find_drug_body",
+      "template": "You stumble across a dead body and find {amount} units of {drug}!"
+    },
+    {
+      "type": "subway_theft",
+      "template": "You get off the subway and find ${amount} has been lifted from you!"
+    },
+    {
+      "type": "mugging",
+      "template": "You have been mugged! A thug takes {amount} units of {drug} and runs!"
+    },
+    {
+      "type": "addict_ambush",
+      "template": "A {drug} addict jumps you and demands all your {drug}! You have no choice but to hand it over."
+    },
+    {
+      "type": "rat_infestation",
+      "template": "Your home is infested with rats! You have to pay an exterminator ${amount} to get rid of them!"
+    },
+    {
+      "type": "weapon_broken",
+      "template": "OH MAN! You are cleaning your {weapon} and it falls apart!"
+    }
+  ],
+  "enemies": [
+    { "id": "rats", "name": "a pack of sewer rats", "danger": 1, "fleeChance": 0.9 },
+    { "id": "dogs", "name": "a group of wild dogs", "danger": 2, "fleeChance": 0.8 },
+    { "id": "citizens", "name": "a group of concerned citizens", "danger": 2, "bribeChance": 0.2, "fleeChance": 0.75 },
+    { "id": "youth_gang", "name": "a youth gang", "danger": 3, "bribeChance": 0.6, "fleeChance": 0.7 },
+    { "id": "street_troughs", "name": "some street toughs", "danger": 4, "bribeChance": 0.5, "fleeChance": 0.6 },
+    { "id": "police", "name": "the police", "danger": 5, "bribeChance": 0.35, "fleeChance": 0.5 },
+    { "id": "drug_force", "name": "the drug force (DEA)", "danger": 7, "bribeChance": 0.15, "fleeChance": 0.4 },
+    { "id": "atf", "name": "ATF agents", "danger": 8, "bribeChance": 0.1, "fleeChance": 0.35 },
+    { "id": "swat", "name": "the SWAT team", "danger": 9, "bribeChance": 0.05, "fleeChance": 0.25 },
+    { "id": "airport_security", "name": "airport security", "danger": 6, "bribeChance": 0.25, "fleeChance": 0.3 }
+  ]
+}

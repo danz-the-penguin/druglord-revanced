@@ -1,0 +1,56 @@
+[
+  {
+    "id": "wannabe",
+    "name": "Wannabe",
+    "cashRequired": 0,
+    "capacity": 10,
+    "container": "Pants Pocket",
+    "bonusDays": 0,
+    "description": "Just starting out on the corner with empty pockets and big dreams."
+  },
+  {
+    "id": "small_time_operator",
+    "name": "Small-time Operator",
+    "cashRequired": 5000,
+    "capacity": 25,
+    "container": "Heavy Trench Coat",
+    "bonusDays": 5,
+    "description": "Upgraded to a deep-pocket trench coat. Moving slightly larger parcels."
+  },
+  {
+    "id": "dealer",
+    "name": "Dealer",
+    "cashRequired": 40000,
+    "capacity": 100,
+    "container": "Black Trans Am",
+    "bonusDays": 5,
+    "description": "Cruising in a sleek black Trans Am with a trunk full of contraband."
+  },
+  {
+    "id": "big_time_dealer",
+    "name": "Big-Time Dealer",
+    "cashRequired": 300000,
+    "capacity": 600,
+    "container": "Converted Milk Truck",
+    "bonusDays": 5,
+    "description": "Running commercial-grade distribution hidden inside a converted delivery truck."
+  },
+  {
+    "id": "distributor",
+    "name": "Distributor",
+    "cashRequired": 2500000,
+    "capacity": 3500,
+    "container": "Industrial Warehouse",
+    "bonusDays": 5,
+    "description": "Operating high-security regional warehouses with wholesale logistics."
+  },
+  {
+    "id": "drug_lord",
+    "name": "Drug Lord",
+    "cashRequired": 15000000,
+    "capacity": 20000,
+    "container": "Private Island Paradise",
+    "bonusDays": 5,
+    "description": "Untouchable cartel kingpin commanding an offshore syndicate."
+  }
+]

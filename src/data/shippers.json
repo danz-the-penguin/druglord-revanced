@@ -1,0 +1,30 @@
+[
+  {
+    "id": "quicker_shipper",
+    "name": "Quicker Shipper",
+    "costPercent": 0.10,
+    "reliability": 0.50,
+    "description": "Bargain courier operating out of unmarked vans. High bust and seizure rate."
+  },
+  {
+    "id": "courier_stan",
+    "name": "Courier Stan",
+    "costPercent": 0.20,
+    "reliability": 0.75,
+    "description": "Veteran independent smuggler. Mostly reliable, occasionally misses deadlines."
+  },
+  {
+    "id": "sharp_ship",
+    "name": "Sharp Ship",
+    "costPercent": 0.50,
+    "reliability": 0.90,
+    "description": "Professional freight forwarding network with bribed customs contacts."
+  },
+  {
+    "id": "international_couriers",
+    "name": "International Couriers",
+    "costPercent": 1.00,
+    "reliability": 0.99,
+    "description": "Elite diplomatic pouch service. Extremely expensive, near-zero seizure risk."
+  }
+]

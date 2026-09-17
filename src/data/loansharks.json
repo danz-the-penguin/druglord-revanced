@@ -1,0 +1,47 @@
+[
+  {
+    "id": "buddles",
+    "name": "Buddles",
+    "interestRate": 0.10,
+    "multiplier": 1.0,
+    "maxLoan": 5000,
+    "repayDays": 14,
+    "description": "Neighborhood loanshark. Friendly until you miss a payment."
+  },
+  {
+    "id": "strange_ear_leonard",
+    "name": "Strange-ear Leonard",
+    "interestRate": 0.20,
+    "multiplier": 1.5,
+    "maxLoan": 20000,
+    "repayDays": 10,
+    "description": "Twitchy back-alley financier with an ear for good collateral."
+  },
+  {
+    "id": "one_eyed_wilbur",
+    "name": "One-eyed Wilbur",
+    "interestRate": 0.30,
+    "multiplier": 2.0,
+    "maxLoan": 75000,
+    "repayDays": 8,
+    "description": "Cynical underground moneylender. Will lend big, but expects fast returns."
+  },
+  {
+    "id": "odd_lenny",
+    "name": "Odd Lenny",
+    "interestRate": 0.40,
+    "multiplier": 2.5,
+    "maxLoan": 250000,
+    "repayDays": 7,
+    "description": "Erratic cartel lender. Commands vicious muscle if payments lag."
+  },
+  {
+    "id": "laughing_max",
+    "name": "Laughing Max",
+    "interestRate": 0.50,
+    "multiplier": 3.0,
+    "maxLoan": 1000000,
+    "repayDays": 5,
+    "description": "Chirpy psychopath who lends up to 3x your cash at 50% daily compounding interest."
+  }
+]

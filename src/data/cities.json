@@ -1,0 +1,121 @@
+[
+  {
+    "id": "new_york",
+    "name": "New York",
+    "country": "USA",
+    "flightCost": 350,
+    "policeRisk": 0.25,
+    "dogRisk": 0.20,
+    "drugModifiers": {
+      "cocaine": 1.25,
+      "heroin": 1.30,
+      "crack": 1.20,
+      "pot": 1.05
+    },
+    "description": "Dense metropolis with sky-high demand and relentless NYPD presence."
+  },
+  {
+    "id": "miami",
+    "name": "Miami",
+    "country": "USA",
+    "flightCost": 300,
+    "policeRisk": 0.20,
+    "dogRisk": 0.25,
+    "drugModifiers": {
+      "cocaine": 0.70,
+      "crack": 0.80,
+      "pot": 0.85,
+      "mda": 1.15
+    },
+    "description": "Sun, speedboats, and coastal supply corridors. Cheap cocaine straight off the water."
+  },
+  {
+    "id": "los_angeles",
+    "name": "Los Angeles",
+    "country": "USA",
+    "flightCost": 400,
+    "policeRisk": 0.22,
+    "dogRisk": 0.18,
+    "drugModifiers": {
+      "ice": 0.80,
+      "speed": 0.85,
+      "pot": 0.90,
+      "pcp": 0.85
+    },
+    "description": "Sprawling West Coast hub with active street gangs and meth laboratories."
+  },
+  {
+    "id": "detroit",
+    "name": "Detroit",
+    "country": "USA",
+    "flightCost": 250,
+    "policeRisk": 0.15,
+    "dogRisk": 0.10,
+    "drugModifiers": {
+      "crack": 0.90,
+      "heroin": 1.10,
+      "ice": 1.15,
+      "pot": 0.95
+    },
+    "description": "Gritty Rust Belt market with lower security but aggressive street toughs."
+  },
+  {
+    "id": "london",
+    "name": "London",
+    "country": "UK",
+    "flightCost": 900,
+    "policeRisk": 0.30,
+    "dogRisk": 0.35,
+    "drugModifiers": {
+      "ecstasy": 1.45,
+      "special_k": 1.50,
+      "cocaine": 1.60,
+      "hashish": 1.10
+    },
+    "description": "High-end European club scene. Immense margins on club drugs, but strict customs."
+  },
+  {
+    "id": "paris",
+    "name": "Paris",
+    "country": "France",
+    "flightCost": 950,
+    "policeRisk": 0.28,
+    "dogRisk": 0.30,
+    "drugModifiers": {
+      "heroin": 1.35,
+      "cocaine": 1.50,
+      "ecstasy": 1.30,
+      "opium": 1.40
+    },
+    "description": "Fashionable European hub with premium prices for exotic psychedelics and powder."
+  },
+  {
+    "id": "sydney",
+    "name": "Sydney",
+    "country": "Australia",
+    "flightCost": 1500,
+    "policeRisk": 0.40,
+    "dogRisk": 0.45,
+    "drugModifiers": {
+      "cocaine": 2.20,
+      "ice": 2.10,
+      "heroin": 1.90,
+      "ecstasy": 1.80
+    },
+    "description": "Isolated island continent. Border security is brutal, but street prices are astronomical."
+  },
+  {
+    "id": "bogota",
+    "name": "Bogota",
+    "country": "Colombia",
+    "flightCost": 600,
+    "policeRisk": 0.35,
+    "dogRisk": 0.25,
+    "drugModifiers": {
+      "cocaine": 0.35,
+      "pot": 0.40,
+      "hashish": 0.50
+    },
+    "description": "Source market at the heart of the trade. Cocaine is practically free, but cartel wars are lethal."
+  }
+]

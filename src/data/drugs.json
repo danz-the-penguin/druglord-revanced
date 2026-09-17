@@ -1,0 +1,155 @@
+[
+  {
+    "id": "cocaine",
+    "name": "Cocaine",
+    "minPrice": 15000,
+    "maxPrice": 32000,
+    "basePrice": 22000,
+    "volatility": 0.35,
+    "description": "High-purity white powder. Enormous profit margins, but draws heavy DEA attention."
+  },
+  {
+    "id": "heroin",
+    "name": "Heroin",
+    "minPrice": 5000,
+    "maxPrice": 14000,
+    "basePrice": 9000,
+    "volatility": 0.3,
+    "description": "Dark brown tar or refined powder. Consistently high demand in metropolitan cities."
+  },
+  {
+    "id": "crack",
+    "name": "Crack",
+    "minPrice": 1200,
+    "maxPrice": 4200,
+    "basePrice": 2400,
+    "volatility": 0.35,
+    "description": "Cheap, fast-moving street rock with volatile price swings."
+  },
+  {
+    "id": "ice",
+    "name": "Ice",
+    "minPrice": 900,
+    "maxPrice": 3200,
+    "basePrice": 1800,
+    "volatility": 0.25,
+    "description": "Crystal methamphetamine. High street prevalence and volatile local supply."
+  },
+  {
+    "id": "pcp",
+    "name": "PCP",
+    "minPrice": 500,
+    "maxPrice": 2200,
+    "basePrice": 1100,
+    "volatility": 0.25,
+    "description": "Angel dust. Unpredictable street commodity with moderate margins."
+  },
+  {
+    "id": "opium",
+    "name": "Opium",
+    "minPrice": 400,
+    "maxPrice": 1300,
+    "basePrice": 800,
+    "volatility": 0.2,
+    "description": "Raw unrefined poppy resin. High international markup in western capitals."
+  },
+  {
+    "id": "hashish",
+    "name": "Hashish",
+    "minPrice": 450,
+    "maxPrice": 1400,
+    "basePrice": 750,
+    "volatility": 0.2,
+    "description": "Pressed cannabis resin with steady European and international demand."
+  },
+  {
+    "id": "lsd",
+    "name": "LSD",
+    "minPrice": 180,
+    "maxPrice": 550,
+    "basePrice": 320,
+    "volatility": 0.3,
+    "description": "Blotter acid sheets. Compact and virtually odorless to airport dogs."
+  },
+  {
+    "id": "morphine",
+    "name": "Morphine",
+    "minPrice": 120,
+    "maxPrice": 450,
+    "basePrice": 260,
+    "volatility": 0.25,
+    "description": "Pharmaceutical-grade vials stolen from hospitals and clinics."
+  },
+  {
+    "id": "peyote",
+    "name": "Peyote",
+    "minPrice": 100,
+    "maxPrice": 380,
+    "basePrice": 220,
+    "volatility": 0.2,
+    "description": "Desert cactus buttons. Niche psychedelic with regional scarcity."
+  },
+  {
+    "id": "speed",
+    "name": "Speed",
+    "minPrice": 60,
+    "maxPrice": 280,
+    "basePrice": 150,
+    "volatility": 0.25,
+    "description": "Amphetamine pills. Fast turnover, ideal for early-game cash flow."
+  },
+  {
+    "id": "mda",
+    "name": "MDA",
+    "minPrice": 50,
+    "maxPrice": 180,
+    "basePrice": 110,
+    "volatility": 0.25,
+    "description": "Synthetic empathogen popular in the nightclub circuit."
+  },
+  {
+    "id": "mushrooms",
+    "name": "Mushrooms",
+    "minPrice": 40,
+    "maxPrice": 150,
+    "basePrice": 90,
+    "volatility": 0.2,
+    "description": "Psilocybin shrooms. Cheap to acquire, popular with college demographics."
+  },
+  {
+    "id": "ecstasy",
+    "name": "Ecstacy",
+    "minPrice": 20,
+    "maxPrice": 75,
+    "basePrice": 45,
+    "volatility": 0.3,
+    "description": "Rave party staple. Extremely profitable in European club capitals."
+  },
+  {
+    "id": "special_k",
+    "name": "Special K",
+    "minPrice": 25,
+    "maxPrice": 95,
+    "basePrice": 55,
+    "volatility": 0.25,
+    "description": "Ketamine powder. High demand among late-night underground circles."
+  },
+  {
+    "id": "pot",
+    "name": "Pot",
+    "minPrice": 20,
+    "maxPrice": 110,
+    "basePrice": 60,
+    "volatility": 0.2,
+    "description": "Classic weed. Bulk commodity with low entry price for beginners."
+  },
+  {
+    "id": "kat",
+    "name": "Kat",
+    "minPrice": 5,
+    "maxPrice": 25,
+    "basePrice": 12,
+    "volatility": 0.2,
+    "description": "Chewable stimulant leaves. The cheapest commodity on the market."
+  }
+]

@@ -1,0 +1,133 @@
+[
+  {
+    "id": "knife",
+    "name": "Combat Knife",
+    "type": "weapon",
+    "price": 150,
+    "damage": 15,
+    "accuracy": 0.55,
+    "ammoRequired": null,
+    "aoe": false,
+    "description": "Silent and disposable close-quarters steel blade. No ammo required."
+  },
+  {
+    "id": "pistol",
+    "name": "9mm Pistol",
+    "type": "weapon",
+    "price": 850,
+    "damage": 35,
+    "accuracy": 0.75,
+    "ammoRequired": "pistol_bullet",
+    "ammoCost": 5,
+    "aoe": false,
+    "description": "Reliable concealable handgun. Essential personal protection."
+  },
+  {
+    "id": "shotgun",
+    "name": "12-Gauge Shotgun",
+    "type": "weapon",
+    "price": 2200,
+    "damage": 75,
+    "accuracy": 0.80,
+    "ammoRequired": "shotgun_shell",
+    "ammoCost": 15,
+    "aoe": false,
+    "description": "Brutal stopping power for close encounters. Clears rooms fast."
+  },
+  {
+    "id": "machine_gun",
+    "name": "Submachine Gun",
+    "type": "weapon",
+    "price": 6500,
+    "damage": 110,
+    "accuracy": 0.70,
+    "ammoRequired": "mg_bullet",
+    "ammoCost": 25,
+    "aoe": true,
+    "description": "High rate-of-fire tactical firearm capable of suppressing multiple attackers."
+  },
+  {
+    "id": "dynamite",
+    "name": "Sticks of Dynamite",
+    "type": "weapon",
+    "price": 3200,
+    "damage": 160,
+    "accuracy": 0.65,
+    "ammoRequired": null,
+    "consumable": true,
+    "aoe": true,
+    "description": "Mining explosives. Crude, loud, and devastates entire groups."
+  },
+  {
+    "id": "hand_grenade",
+    "name": "Hand Grenade",
+    "type": "weapon",
+    "price": 2800,
+    "damage": 180,
+    "accuracy": 0.80,
+    "ammoRequired": null,
+    "consumable": true,
+    "aoe": true,
+    "description": "Military fragmentation grenade. Highly effective against tactical squads."
+  },
+  {
+    "id": "flame_thrower",
+    "name": "Flame Thrower",
+    "type": "weapon",
+    "price": 16000,
+    "damage": 220,
+    "accuracy": 0.90,
+    "ammoRequired": "gas_canister",
+    "ammoCost": 120,
+    "aoe": true,
+    "description": "Terrifying military-grade flamethrower. Eliminates crowd resistance."
+  },
+  {
+    "id": "rocket_launcher",
+    "name": "Rocket Launcher",
+    "type": "weapon",
+    "price": 42000,
+    "damage": 450,
+    "accuracy": 0.85,
+    "ammoRequired": "rocket",
+    "ammoCost": 500,
+    "aoe": true,
+    "description": "Anti-vehicle ordnance for taking out armored SWAT and federal convoys."
+  },
+  {
+    "id": "heavy_leather_coat",
+    "name": "Heavy Leather Coat",
+    "type": "armor",
+    "price": 450,
+    "defense": 0.20,
+    "durability": 100,
+    "description": "Tough reinforced leather. Blunts knives and glancing rounds."
+  },
+  {
+    "id": "bullet_proof_vest",
+    "name": "Bullet-Proof Kevlar Vest",
+    "type": "armor",
+    "price": 3800,
+    "defense": 0.60,
+    "durability": 250,
+    "description": "Tactical ballistic vest capable of stopping heavy caliber handgun and shotgun fire."
+  },
+  {
+    "id": "energy_globe",
+    "name": "Area Disrupter / Energy Globe",
+    "type": "armor",
+    "price": 75000,
+    "defense": 0.85,
+    "durability": 1000,
+    "description": "Experimental defensive aura device providing near-invulnerability."
+  },
+  {
+    "id": "no_scent",
+    "name": "No-Scent Chemical Spray",
+    "type": "utility",
+    "price": 100,
+    "maxHold": 10,
+    "maskUnits": 100,
+    "description": "Aerosol masking agent. Each can masks 100 units of drugs from airport sniffer dogs."
+  }
+]
