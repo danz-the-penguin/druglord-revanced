@@ -1,0 +1,62 @@
+[
+  {
+    "id": "skid_row_shack",
+    "name": "Skid Row Tenement",
+    "tier": 1,
+    "price": 5000,
+    "storageUnits": 50,
+    "heatReduction": 0.0,
+    "image": "/assets/properties/skid_row_shack.png",
+    "description": "Cramped corner walk-up with steel deadbolts. Provides 50 units of off-street emergency stash."
+  },
+  {
+    "id": "suburban_safehouse",
+    "name": "Suburban Split-Level Safehouse",
+    "tier": 2,
+    "price": 45000,
+    "storageUnits": 250,
+    "heatReduction": 0.15,
+    "image": "/assets/properties/suburban_safehouse.png",
+    "description": "Inconspicuous cul-de-sac residence with reinforced basement vault. Reduces local police heat by 15%."
+  },
+  {
+    "id": "penthouse_suite",
+    "name": "Downtown Luxury Penthouse",
+    "tier": 3,
+    "price": 350000,
+    "storageUnits": 1000,
+    "heatReduction": 0.30,
+    "image": "/assets/properties/penthouse_suite.png",
+    "description": "High-rise penthouse with biometric elevator access. 1,000 unit vault capacity and private security."
+  },
+  {
+    "id": "fortified_compound",
+    "name": "Fortified Border Ranch Compound",
+    "tier": 4,
+    "price": 1500000,
+    "storageUnits": 5000,
+    "heatReduction": 0.50,
+    "image": "/assets/properties/fortified_compound.png",
+    "description": "Walled desert ranch with armed guards, underground tunnels, and 5,000 unit distribution bunker."
+  },
+  {
+    "id": "industrial_warehouse",
+    "name": "Commercial Logistics Warehouse",
+    "tier": 5,
+    "price": 5000000,
+    "storageUnits": 25000,
+    "heatReduction": 0.65,
+    "image": "/assets/properties/industrial_warehouse.png",
+    "description": "Multi-dock freight depot capable of holding 25,000 units. Conceals large-scale regional shipping."
+  },
+  {
+    "id": "island_paradise",
+    "name": "Sovereign Island Paradise",
+    "tier": 6,
+    "price": 25000000,
+    "storageUnits": 100000,
+    "heatReduction": 0.85,
+    "image": "/assets/properties/island_paradise.png",
+    "description": "Offshore private island fortress with private airstrip and radar jamming. Untouchable sovereign sanctuary."
+  }
+]

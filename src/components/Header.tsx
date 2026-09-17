@@ -25,6 +25,8 @@ import {
 export const Header: React.FC = () => {
   const player = useGameStore((s) => s.player);
   const toggleTerminal = useGameStore((s) => s.toggleTerminal);
+  const fontScale = useGameStore((s) => s.fontScale);
+  const setFontScale = useGameStore((s) => s.setFontScale);
   const city = CITY_MAP.get(player.currentCityId);
   const rank = RANK_MAP.get(player.currentRankId);
 
@@ -130,6 +132,43 @@ export const Header: React.FC = () => {
             <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]">
               {rank?.container}
             </div>
+          </div>
+
+          {/* Font Scale Switcher */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-1 flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setFontScale('normal')}
+              className={`px-2 py-0.5 rounded font-bold transition-colors ${
+                fontScale === 'normal'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Standard Font Size (100%)"
+            >
+              A-
+            </button>
+            <button
+              onClick={() => setFontScale('large')}
+              className={`px-2 py-0.5 rounded font-bold transition-colors ${
+                fontScale === 'large'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Large Font Size (115%)"
+            >
+              A
+            </button>
+            <button
+              onClick={() => setFontScale('xl')}
+              className={`px-2 py-0.5 rounded font-bold transition-colors ${
+                fontScale === 'xl'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Extra Large Font Size (130%)"
+            >
+              A+
+            </button>
           </div>
 
           {/* Dev Mode Terminal Button */}

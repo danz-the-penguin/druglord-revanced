@@ -2,154 +2,222 @@
   {
     "id": "cocaine",
     "name": "Cocaine",
+    "scientificName": "Benzoylmethylecgonine",
+    "chemicalFormula": "C17H21NO4",
+    "molecularWeight": "303.35 g/mol",
+    "image": "/assets/drugs/cocaine.png",
     "minPrice": 15000,
     "maxPrice": 32000,
     "basePrice": 22000,
     "volatility": 0.35,
-    "description": "High-purity white powder. Enormous profit margins, but draws heavy DEA attention."
+    "description": "High-purity crystalline alkaloid. Massive margins, heavy DEA focus."
   },
   {
     "id": "heroin",
     "name": "Heroin",
+    "scientificName": "Diacetylmorphine",
+    "chemicalFormula": "C21H23NO5",
+    "molecularWeight": "369.41 g/mol",
+    "image": "/assets/drugs/heroin.png",
     "minPrice": 5000,
     "maxPrice": 14000,
     "basePrice": 9000,
     "volatility": 0.3,
-    "description": "Dark brown tar or refined powder. Consistently high demand in metropolitan cities."
+    "description": "Semi-synthetic opioid synthesized from morphine. Consistently high urban demand."
   },
   {
     "id": "crack",
     "name": "Crack",
+    "scientificName": "Freebase Cocaine",
+    "chemicalFormula": "C17H21NO4",
+    "molecularWeight": "303.35 g/mol",
+    "image": "/assets/drugs/crack.png",
     "minPrice": 1200,
     "maxPrice": 4200,
     "basePrice": 2400,
     "volatility": 0.35,
-    "description": "Cheap, fast-moving street rock with volatile price swings."
+    "description": "Smokable freebase rock form. Volatile price swings, fast turnover."
   },
   {
     "id": "ice",
     "name": "Ice",
+    "scientificName": "d-Methamphetamine HCl",
+    "chemicalFormula": "C10H15N",
+    "molecularWeight": "149.23 g/mol",
+    "image": "/assets/drugs/ice.png",
     "minPrice": 900,
     "maxPrice": 3200,
     "basePrice": 1800,
     "volatility": 0.25,
-    "description": "Crystal methamphetamine. High street prevalence and volatile local supply."
+    "description": "Potent synthetic central nervous system stimulant crystal shards."
   },
   {
     "id": "pcp",
     "name": "PCP",
+    "scientificName": "Phencyclidine",
+    "chemicalFormula": "C17H25N",
+    "molecularWeight": "243.39 g/mol",
+    "image": "/assets/drugs/pcp.png",
     "minPrice": 500,
     "maxPrice": 2200,
     "basePrice": 1100,
     "volatility": 0.25,
-    "description": "Angel dust. Unpredictable street commodity with moderate margins."
+    "description": "Dissociative anesthetic known as Angel Dust. Unpredictable street demand."
   },
   {
     "id": "opium",
     "name": "Opium",
+    "scientificName": "Papaver Somniferum Latex",
+    "chemicalFormula": "C17H19NO3",
+    "molecularWeight": "285.34 g/mol",
+    "image": "/assets/drugs/opium.png",
     "minPrice": 400,
     "maxPrice": 1300,
     "basePrice": 800,
     "volatility": 0.2,
-    "description": "Raw unrefined poppy resin. High international markup in western capitals."
+    "description": "Raw unrefined poppy resin containing natural morphine and codeine alkaloids."
   },
   {
     "id": "hashish",
     "name": "Hashish",
+    "scientificName": "Cannabis Sativa Resin",
+    "chemicalFormula": "C21H30O2",
+    "molecularWeight": "314.46 g/mol",
+    "image": "/assets/drugs/hashish.png",
     "minPrice": 450,
     "maxPrice": 1400,
     "basePrice": 750,
     "volatility": 0.2,
-    "description": "Pressed cannabis resin with steady European and international demand."
+    "description": "Compressed cannabis trichomes. High stability and steady international markup."
   },
   {
     "id": "lsd",
     "name": "LSD",
+    "scientificName": "Lysergic Acid Diethylamide",
+    "chemicalFormula": "C20H25N3O",
+    "molecularWeight": "323.43 g/mol",
+    "image": "/assets/drugs/lsd.png",
     "minPrice": 180,
     "maxPrice": 550,
     "basePrice": 320,
     "volatility": 0.3,
-    "description": "Blotter acid sheets. Compact and virtually odorless to airport dogs."
+    "description": "Ergoline psychedelic sheets. Odorless to airport sniffer dogs."
   },
   {
     "id": "morphine",
     "name": "Morphine",
+    "scientificName": "Morphinan-3,6-diol",
+    "chemicalFormula": "C17H19NO3",
+    "molecularWeight": "285.34 g/mol",
+    "image": "/assets/drugs/morphine.png",
     "minPrice": 120,
     "maxPrice": 450,
     "basePrice": 260,
     "volatility": 0.25,
-    "description": "Pharmaceutical-grade vials stolen from hospitals and clinics."
+    "description": "Hospital-grade analgesic ampoules diverted from legal pharmaceutical supply chains."
   },
   {
     "id": "peyote",
     "name": "Peyote",
+    "scientificName": "3,4,5-Trimethoxyphenethylamine",
+    "chemicalFormula": "C11H17NO3",
+    "molecularWeight": "211.26 g/mol",
+    "image": "/assets/drugs/peyote.png",
     "minPrice": 100,
     "maxPrice": 380,
     "basePrice": 220,
     "volatility": 0.2,
-    "description": "Desert cactus buttons. Niche psychedelic with regional scarcity."
+    "description": "Dried spineless cactus buttons rich in mescaline alkaloid."
   },
   {
     "id": "speed",
     "name": "Speed",
+    "scientificName": "dl-Amphetamine Sulfate",
+    "chemicalFormula": "C9H13N",
+    "molecularWeight": "135.21 g/mol",
+    "image": "/assets/drugs/speed.png",
     "minPrice": 60,
     "maxPrice": 280,
     "basePrice": 150,
     "volatility": 0.25,
-    "description": "Amphetamine pills. Fast turnover, ideal for early-game cash flow."
+    "description": "Fast-acting synthetic phenethylamine. Reliable low-tier starter volume."
   },
   {
     "id": "mda",
     "name": "MDA",
+    "scientificName": "Tenamfetamine",
+    "chemicalFormula": "C10H13NO2",
+    "molecularWeight": "179.22 g/mol",
+    "image": "/assets/drugs/mda.png",
     "minPrice": 50,
     "maxPrice": 180,
     "basePrice": 110,
     "volatility": 0.25,
-    "description": "Synthetic empathogen popular in the nightclub circuit."
+    "description": "Empathogen-entactogen of the substituted amphetamine class popular in nightclubs."
   },
   {
     "id": "mushrooms",
     "name": "Mushrooms",
+    "scientificName": "Psilocybin",
+    "chemicalFormula": "C12H17N2O4P",
+    "molecularWeight": "284.25 g/mol",
+    "image": "/assets/drugs/mushrooms.png",
     "minPrice": 40,
     "maxPrice": 150,
     "basePrice": 90,
     "volatility": 0.2,
-    "description": "Psilocybin shrooms. Cheap to acquire, popular with college demographics."
+    "description": "Naturally occurring tryptamine alkaloid prodrug produced by psilocybe fungi."
   },
   {
     "id": "ecstasy",
     "name": "Ecstacy",
+    "scientificName": "3,4-Methylenedioxymethamphetamine",
+    "chemicalFormula": "C11H15NO2",
+    "molecularWeight": "193.25 g/mol",
+    "image": "/assets/drugs/ecstasy.png",
     "minPrice": 20,
     "maxPrice": 75,
     "basePrice": 45,
     "volatility": 0.3,
-    "description": "Rave party staple. Extremely profitable in European club capitals."
+    "description": "Press-stamped party tablets. Tremendous arbitrage margins in London and Paris."
   },
   {
     "id": "special_k",
     "name": "Special K",
+    "scientificName": "Ketamine Hydrochloride",
+    "chemicalFormula": "C13H16ClNO",
+    "molecularWeight": "237.73 g/mol",
+    "image": "/assets/drugs/special_k.png",
     "minPrice": 25,
     "maxPrice": 95,
     "basePrice": 55,
     "volatility": 0.25,
-    "description": "Ketamine powder. High demand among late-night underground circles."
+    "description": "Dissociative arylcyclohexylamine powder diverted from veterinary anesthesia."
   },
   {
     "id": "pot",
     "name": "Pot",
+    "scientificName": "Tetrahydrocannabinol",
+    "chemicalFormula": "C21H30O2",
+    "molecularWeight": "314.46 g/mol",
+    "image": "/assets/drugs/pot.png",
     "minPrice": 20,
     "maxPrice": 110,
     "basePrice": 60,
     "volatility": 0.2,
-    "description": "Classic weed. Bulk commodity with low entry price for beginners."
+    "description": "Cured cannabis flowers. High volume, zero barrier to entry."
   },
   {
     "id": "kat",
     "name": "Kat",
+    "scientificName": "S-Cathinone",
+    "chemicalFormula": "C9H11NO",
+    "molecularWeight": "149.19 g/mol",
+    "image": "/assets/drugs/kat.png",
     "minPrice": 5,
     "maxPrice": 25,
     "basePrice": 12,
     "volatility": 0.2,
-    "description": "Chewable stimulant leaves. The cheapest commodity on the market."
+    "description": "Fresh Catha edulis leaves containing monoamine alkaloid cathinone."
   }
 ]

@@ -14,6 +14,8 @@ import {
   healAtHospital,
   syncStateToMemory,
   syncStateFromMemory,
+  buyProperty,
+  buyWeapon,
 } from '../engine/game';
 import { CITY_MAP, DRUGS } from '../engine/constants';
 import { executeCheat, registerWindowCheatApi } from '../engine/cheats';
@@ -21,8 +23,9 @@ import { executeCheat, registerWindowCheatApi } from '../engine/cheats';
 export interface GameStore extends GameEngineState {
   // Modal / View Controls
   activeTab: 'market' | 'places' | 'travel';
-  placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering';
+  placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties';
   isTerminalOpen: boolean;
+  fontScale: 'normal' | 'large' | 'xl';
   tradeModal: {
     isOpen: boolean;
     drugId: string | null;
@@ -34,7 +37,8 @@ export interface GameStore extends GameEngineState {
 
   // Actions
   setActiveTab: (tab: 'market' | 'places' | 'travel') => void;
-  setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering') => void;
+  setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties') => void;
+  setFontScale: (scale: 'normal' | 'large' | 'xl') => void;
   toggleTerminal: () => void;
   openTradeModal: (drugId: string, mode: 'buy' | 'sell' | 'dump') => void;
   closeTradeModal: () => void;
@@ -42,6 +46,8 @@ export interface GameStore extends GameEngineState {
   buy: (drugId: string, units: number) => { success: boolean; message: string };
   sell: (drugId: string, units: number) => { success: boolean; message: string };
   dump: (drugId: string, units: number) => { success: boolean; message: string };
+  buyPropertyAction: (propId: string) => { success: boolean; message: string };
+  buyWeaponAction: (weaponId: string) => { success: boolean; message: string };
   deposit: (amount: number) => { success: boolean; message: string };
   withdraw: (amount: number) => { success: boolean; message: string };
   repay: (amount: number) => { success: boolean; message: string };
@@ -81,6 +87,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     activeTab: 'market' as const,
     placesSubTab: 'bank' as const,
     isTerminalOpen: false,
+    fontScale: 'normal' as const,
     tradeModal: {
       isOpen: false,
       drugId: null,
@@ -89,8 +96,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     priceHistory: createInitialPriceHistory(initial.market),
 
     setActiveTab: (tab: 'market' | 'places' | 'travel') => set({ activeTab: tab }),
-    setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering') =>
+    setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties') =>
       set({ placesSubTab: subTab }),
+    setFontScale: (scale: 'normal' | 'large' | 'xl') => set({ fontScale: scale }),
     toggleTerminal: () => set((state) => ({ isTerminalOpen: !state.isTerminalOpen })),
 
     openTradeModal: (drugId: string, mode: 'buy' | 'sell' | 'dump') =>
@@ -154,6 +162,45 @@ export const useGameStore = create<GameStore>((set, get) => {
         logs: [...get().logs],
       };
       const result = dumpDrug(state, drugId, units);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+      }
+      return result;
+    },
+
+    buyPropertyAction: (propId: string) => {
+      const state = {
+        player: { ...get().player, ownedProperties: [...get().player.ownedProperties] },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyProperty(state, propId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+      }
+      return result;
+    },
+
+    buyWeaponAction: (weaponId: string) => {
+      const state = {
+        player: {
+          ...get().player,
+          weapons: { ...get().player.weapons },
+          ammo: { ...get().player.ammo },
+          armor: get().player.armor ? { ...get().player.armor! } : null,
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyWeapon(state, weaponId);
       if (result.success) {
         syncStateToMemory(state);
         set({

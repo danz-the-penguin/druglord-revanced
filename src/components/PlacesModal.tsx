@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { LOAN_SHARKS, SHARK_MAP, WEAPONS } from '../engine/constants';
-import { Building2, Skull, HeartPulse, Crosshair, Landmark, ArrowRight } from 'lucide-react';
+import { LOAN_SHARKS, SHARK_MAP, WEAPONS, PROPERTIES } from '../engine/constants';
+import { PropertyImage } from './PropertyImage';
+import { WeaponImage } from './WeaponImage';
+import {
+  Building2,
+  Skull,
+  HeartPulse,
+  Crosshair,
+  Landmark,
+  ArrowRight,
+  Home,
+  CheckCircle2,
+} from 'lucide-react';
 
 export const PlacesModal: React.FC = () => {
   const {
@@ -13,6 +24,8 @@ export const PlacesModal: React.FC = () => {
     repay,
     borrow,
     heal,
+    buyPropertyAction,
+    buyWeaponAction,
   } = useGameStore();
 
   const [bankAmount, setBankAmount] = useState<number>(0);
@@ -66,6 +79,18 @@ export const PlacesModal: React.FC = () => {
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
   };
 
+  const handleBuyProperty = (propertyId: string) => {
+    setFeedback(null);
+    const res = buyPropertyAction(propertyId);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleBuyWeapon = (weaponId: string) => {
+    setFeedback(null);
+    const res = buyWeaponAction(weaponId);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
   const handleLaunder = () => {
     setFeedback(null);
     if (launderAmount <= 0) {
@@ -98,12 +123,12 @@ export const PlacesModal: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-xl font-mono">
+    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl font-mono backdrop-blur-md">
       {/* Subtab navigation */}
       <div className="flex border-b border-slate-800 bg-slate-950/80 overflow-x-auto text-xs font-bold uppercase tracking-wider">
         <button
           onClick={() => setPlacesSubTab('bank')}
-          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'bank'
               ? 'border-cyan-400 text-cyan-400 bg-cyan-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -113,8 +138,19 @@ export const PlacesModal: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setPlacesSubTab('properties')}
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            placesSubTab === 'properties'
+              ? 'border-amber-400 text-amber-400 bg-amber-950/30'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Home className="w-4 h-4" /> Safehouses & Real Estate
+        </button>
+
+        <button
           onClick={() => setPlacesSubTab('laundering')}
-          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'laundering'
               ? 'border-emerald-400 text-emerald-400 bg-emerald-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -125,7 +161,7 @@ export const PlacesModal: React.FC = () => {
 
         <button
           onClick={() => setPlacesSubTab('loans')}
-          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'loans'
               ? 'border-rose-400 text-rose-400 bg-rose-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -136,9 +172,9 @@ export const PlacesModal: React.FC = () => {
 
         <button
           onClick={() => setPlacesSubTab('hospital')}
-          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'hospital'
-              ? 'border-amber-400 text-amber-400 bg-amber-950/30'
+              ? 'border-pink-400 text-pink-400 bg-pink-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -147,7 +183,7 @@ export const PlacesModal: React.FC = () => {
 
         <button
           onClick={() => setPlacesSubTab('armory')}
-          className={`py-3 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             placesSubTab === 'armory'
               ? 'border-indigo-400 text-indigo-400 bg-indigo-950/30'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -157,14 +193,14 @@ export const PlacesModal: React.FC = () => {
         </button>
       </div>
 
-      {/* Content Area */}
+      {/* Feedback Banner */}
       <div className="p-6">
         {feedback && (
           <div
-            className={`mb-4 p-3 rounded-lg text-xs font-bold border ${
+            className={`mb-5 p-3.5 rounded-xl text-sm font-bold border ${
               feedback.type === 'success'
-                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
-                : 'bg-rose-950/60 border-rose-800 text-rose-300'
+                ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300'
+                : 'bg-rose-950/60 border-rose-700 text-rose-300'
             }`}
           >
             {feedback.message}
@@ -174,21 +210,23 @@ export const PlacesModal: React.FC = () => {
         {/* BANK TAB */}
         {placesSubTab === 'bank' && (
           <div className="space-y-6 max-w-xl mx-auto">
-            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-center">
-              <div className="text-xs text-slate-400 uppercase">Offshore Private Account</div>
-              <div className="text-3xl font-black text-cyan-400 mt-1">
+            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                Offshore Private Account (Cayman Islands)
+              </div>
+              <div className="text-4xl font-black text-cyan-400 mt-2">
                 ${player.bank.toLocaleString()}
               </div>
-              <p className="text-[11px] text-slate-500 mt-2">
-                Offshore bank funds earn 0.1% daily interest and are completely immune to muggings and police confiscation.
+              <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
+                Offshore bank funds earn 0.1% daily compounding interest and are completely immune to street muggings and police confiscation.
               </p>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Amount:</span>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Transaction Amount:</span>
                 <span className="text-slate-300">
-                  Cash in hand: <strong className="text-emerald-400">${player.cash.toLocaleString()}</strong>
+                  Cash on Hand: <strong className="text-emerald-400 font-bold">${player.cash.toLocaleString()}</strong>
                 </span>
               </div>
               <input
@@ -197,21 +235,21 @@ export const PlacesModal: React.FC = () => {
                 value={bankAmount || ''}
                 onChange={(e) => setBankAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
                 placeholder="Enter dollar amount..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold focus:outline-none focus:border-cyan-500 text-sm"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 font-bold focus:outline-none focus:border-cyan-500 text-base"
               />
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   onClick={handleDeposit}
                   disabled={bankAmount <= 0 || player.cash < bankAmount}
-                  className="py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs transition-colors"
+                  className="py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-sm transition-all shadow-md active:scale-95"
                 >
                   Deposit Cash
                 </button>
                 <button
                   onClick={handleWithdraw}
                   disabled={bankAmount <= 0 || player.bank < bankAmount}
-                  className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 font-bold text-xs border border-slate-700 transition-colors"
+                  className="py-3 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 font-bold text-sm border border-slate-700 transition-colors"
                 >
                   Withdraw to Pocket
                 </button>
@@ -220,19 +258,110 @@ export const PlacesModal: React.FC = () => {
           </div>
         )}
 
+        {/* SAFETHOUSES & REAL ESTATE TAB */}
+        {placesSubTab === 'properties' && (
+          <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-sm uppercase">
+                  <Home className="w-5 h-5" /> Underworld Real Estate Empire
+                </div>
+                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                  Acquire fortified properties to permanently expand your drug stash carrying capacity and lower local police heat.
+                </p>
+              </div>
+              <div className="bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 text-right">
+                <div className="text-[11px] text-slate-400 uppercase">Owned Estates</div>
+                <div className="text-xl font-black text-amber-400">
+                  {player.ownedProperties?.length ?? 0} / {PROPERTIES.length}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {PROPERTIES.map((prop) => {
+                const isOwned = (player.ownedProperties || []).includes(prop.id);
+                const canAfford = player.cash >= prop.price;
+
+                return (
+                  <div
+                    key={prop.id}
+                    className={`bg-slate-950/70 border rounded-2xl p-4 flex flex-col justify-between transition-all group ${
+                      isOwned
+                        ? 'border-amber-500/80 bg-amber-950/20 shadow-lg shadow-amber-950/20'
+                        : 'border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div>
+                      {/* Property Image Render */}
+                      <PropertyImage property={prop} className="w-full h-36 mb-3" />
+
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="font-bold text-slate-100 text-base group-hover:text-amber-300 transition-colors">
+                          {prop.name}
+                        </h4>
+                        <span className="text-amber-400 font-black text-base shrink-0">
+                          ${prop.price.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                        {prop.description}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 text-center">
+                          <span className="text-[10px] text-slate-400 uppercase block">Vault Stash</span>
+                          <strong className="text-emerald-400 text-sm">+{prop.storageUnits.toLocaleString()}</strong>
+                        </div>
+                        <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 text-center">
+                          <span className="text-[10px] text-slate-400 uppercase block">Heat Shield</span>
+                          <strong className="text-sky-400 text-sm">
+                            {prop.heatReduction > 0 ? `-${Math.round(prop.heatReduction * 100)}%` : 'None'}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {isOwned ? (
+                        <button
+                          disabled
+                          className="w-full py-2.5 rounded-xl bg-amber-950/80 border border-amber-600 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-default"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                          <span>Title Deed Secured</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleBuyProperty(prop.id)}
+                          disabled={!canAfford}
+                          className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow-md active:scale-95"
+                        >
+                          {canAfford ? `Acquire Title Deed ($${prop.price.toLocaleString()})` : 'Insufficient Cash'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* MONEY LAUNDERING & SHELL BUSINESSES TAB */}
         {placesSubTab === 'laundering' && (
           <div className="space-y-6 max-w-xl mx-auto">
-            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase mb-1">
-                <Landmark className="w-4 h-4" /> Narco-Fintech Laundering Engine
+            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm uppercase mb-1">
+                <Landmark className="w-5 h-5" /> Narco-Fintech Laundering Engine
               </div>
-              <p className="text-[11px] text-slate-400">
-                Transform dirty street cash into clean offshore bank deposits through layered corporate structures.
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Transform dirty street cash into clean offshore bank deposits through layered corporate structures and privacy mixer pools.
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {[
                 { name: 'Suburban Laundromat & Car Wash', fee: 0.10, limit: 25000, desc: 'Small cash-intensive local business. Easy to hide small batches.' },
                 { name: 'Neon VIP Nightclub & Lounge', fee: 0.07, limit: 150000, desc: 'High-volume weekend ticket and bottle service cash flow.' },
@@ -242,18 +371,18 @@ export const PlacesModal: React.FC = () => {
                 <div
                   key={front.name}
                   onClick={() => setSelectedFront(front)}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
                     selectedFront.name === front.name
-                      ? 'bg-emerald-950/40 border-emerald-500 text-slate-100 ring-1 ring-emerald-500/30'
+                      ? 'bg-emerald-950/40 border-emerald-500 text-slate-100 ring-1 ring-emerald-500/40'
                       : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex justify-between items-center text-xs font-bold">
+                  <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-slate-200">{front.name}</span>
                     <span className="text-emerald-400">{Math.round(front.fee * 100)}% Fee</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">{front.desc}</p>
-                  <div className="text-[10px] text-slate-400 mt-1.5 flex justify-between font-mono">
+                  <p className="text-xs text-slate-500 mt-1">{front.desc}</p>
+                  <div className="text-xs text-slate-400 mt-2 flex justify-between font-mono">
                     <span>Batch Limit: ${front.limit.toLocaleString()}</span>
                     <span>Net Rate: {Math.round((1 - front.fee) * 100)}% to Bank</span>
                   </div>
@@ -262,11 +391,11 @@ export const PlacesModal: React.FC = () => {
             </div>
 
             <div className="space-y-3 pt-2">
-              <div className="flex justify-between items-center text-xs">
+              <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-300 font-semibold">Street Cash to Clean:</span>
                 <button
                   onClick={() => setLaunderAmount(Math.min(player.cash, selectedFront.limit))}
-                  className="text-emerald-400 hover:underline text-[11px]"
+                  className="text-emerald-400 hover:underline text-xs"
                 >
                   Max (${Math.min(player.cash, selectedFront.limit).toLocaleString()})
                 </button>
@@ -278,13 +407,13 @@ export const PlacesModal: React.FC = () => {
                 value={launderAmount || ''}
                 onChange={(e) => setLaunderAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
                 placeholder={`Max $${selectedFront.limit.toLocaleString()}...`}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-slate-100 font-bold focus:outline-none focus:border-emerald-500 text-sm"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold focus:outline-none focus:border-emerald-500 text-base"
               />
 
               {launderAmount > 0 && (
-                <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 text-xs flex justify-between">
+                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-sm flex justify-between">
                   <span className="text-slate-400">Net Clean Wire to Bank:</span>
-                  <strong className="text-emerald-400">
+                  <strong className="text-emerald-400 font-black">
                     ${Math.round(launderAmount * (1 - selectedFront.fee)).toLocaleString()}
                   </strong>
                 </div>
@@ -293,10 +422,10 @@ export const PlacesModal: React.FC = () => {
               <button
                 onClick={handleLaunder}
                 disabled={launderAmount <= 0 || player.cash < launderAmount}
-                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 font-bold text-slate-950 text-xs transition-colors shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1.5"
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 font-black text-slate-950 text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
               >
                 <span>Execute Corporate Wire</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -306,18 +435,18 @@ export const PlacesModal: React.FC = () => {
         {placesSubTab === 'loans' && (
           <div className="space-y-6 max-w-xl mx-auto">
             {player.debt > 0 ? (
-              <div className="bg-rose-950/40 p-4 rounded-xl border border-rose-800/80">
+              <div className="bg-rose-950/40 p-5 rounded-2xl border border-rose-800/80">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs text-rose-300 font-bold uppercase">Active Debt</div>
-                    <div className="text-2xl font-black text-rose-400 mt-1">
+                    <div className="text-xs text-rose-300 font-bold uppercase tracking-wider">Active Shark Debt</div>
+                    <div className="text-3xl font-black text-rose-400 mt-1">
                       ${player.debt.toLocaleString()}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-xs text-slate-400">Creditor: {activeShark?.name}</div>
                     <div
-                      className={`text-xs font-bold mt-1 ${
+                      className={`text-sm font-bold mt-1 ${
                         player.loanDaysLeft <= 1 ? 'text-red-400 animate-pulse' : 'text-amber-400'
                       }`}
                     >
@@ -327,11 +456,11 @@ export const PlacesModal: React.FC = () => {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-rose-900/60 space-y-3">
-                  <div className="flex justify-between items-center text-xs">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-300 font-semibold">Repayment Amount:</span>
                     <button
                       onClick={() => setLoanAmount(Math.min(player.cash, player.debt))}
-                      className="text-cyan-400 hover:underline text-[11px]"
+                      className="text-cyan-400 hover:underline text-xs"
                     >
                       Max (${Math.min(player.cash, player.debt).toLocaleString()})
                     </button>
@@ -342,12 +471,12 @@ export const PlacesModal: React.FC = () => {
                     max={player.debt}
                     value={loanAmount || ''}
                     onChange={(e) => setLoanAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-slate-100 font-bold focus:outline-none focus:border-rose-500 text-sm"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold focus:outline-none focus:border-rose-500 text-base"
                   />
                   <button
                     onClick={handleRepay}
                     disabled={loanAmount <= 0 || player.cash < loanAmount}
-                    className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 font-bold text-slate-950 text-xs transition-colors"
+                    className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 font-black text-slate-950 text-sm transition-all active:scale-95"
                   >
                     Pay Loan Shark
                   </button>
@@ -355,53 +484,53 @@ export const PlacesModal: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="text-xs text-slate-400">
-                  Select a loan shark to negotiate fresh capital:
+                <div className="text-sm text-slate-400">
+                  Select a loan shark syndicate to negotiate fresh working capital:
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {LOAN_SHARKS.map((shark) => {
                     const maxLoan = Math.min(shark.maxLoan, Math.max(1000, player.cash * shark.multiplier));
                     return (
                       <div
                         key={shark.id}
                         onClick={() => setSelectedSharkId(shark.id)}
-                        className={`p-3 rounded-xl border cursor-pointer transition-colors ${
+                        className={`p-4 rounded-xl border cursor-pointer transition-colors ${
                           selectedSharkId === shark.id
                             ? 'bg-rose-950/40 border-rose-500 text-slate-100'
                             : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700'
                         }`}
                       >
-                        <div className="flex justify-between items-center font-bold text-xs">
+                        <div className="flex justify-between items-center font-bold text-sm">
                           <span className="text-slate-200">{shark.name}</span>
                           <span className="text-rose-400">
                             {Math.round(shark.interestRate * 100)}% daily interest
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-1">{shark.description}</p>
-                        <div className="flex justify-between items-center text-[10px] text-slate-400 mt-2 font-mono">
+                        <p className="text-xs text-slate-500 mt-1">{shark.description}</p>
+                        <div className="flex justify-between items-center text-xs text-slate-400 mt-2 font-mono">
                           <span>Grace: {shark.repayDays} days</span>
-                          <span>Max: ${Math.round(maxLoan).toLocaleString()}</span>
+                          <span>Max Credit: ${Math.round(maxLoan).toLocaleString()}</span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="pt-2 space-y-2">
+                <div className="pt-2 space-y-2.5">
                   <input
                     type="number"
                     min={0}
                     value={loanAmount || ''}
                     onChange={(e) => setLoanAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
                     placeholder="Borrow amount..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-slate-100 font-bold text-sm"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold text-base"
                   />
                   <button
                     onClick={handleBorrow}
                     disabled={loanAmount <= 0}
-                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-bold text-slate-950 text-xs transition-colors"
+                    className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-black text-slate-950 text-sm transition-all active:scale-95"
                   >
-                    Accept Loan Terms
+                    Accept Syndicate Loan
                   </button>
                 </div>
               </div>
@@ -412,19 +541,20 @@ export const PlacesModal: React.FC = () => {
         {/* CLINIC / HOSPITAL TAB */}
         {placesSubTab === 'hospital' && (
           <div className="space-y-6 max-w-xl mx-auto text-center">
-            <div className="bg-slate-950/80 p-6 rounded-xl border border-slate-800">
-              <HeartPulse className="w-10 h-10 text-rose-500 mx-auto mb-2" />
-              <div className="text-xs text-slate-400 uppercase">Health Status</div>
-              <div className="text-3xl font-black text-slate-100 mt-1">{player.health}%</div>
+            <div className="bg-slate-950/80 p-8 rounded-2xl border border-slate-800">
+              <HeartPulse className="w-12 h-12 text-pink-500 mx-auto mb-3 animate-pulse" />
+              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Physical Condition</div>
+              <div className="text-4xl font-black text-slate-100 mt-1">{player.health}% HP</div>
 
-              <div className="mt-4 text-xs text-slate-400">
+              <div className="mt-4 text-sm text-slate-400">
                 {player.health === 100 ? (
-                  <span className="text-emerald-400">
-                    You are currently in peak physical condition. No treatment required.
+                  <span className="text-emerald-400 font-semibold">
+                    You are in peak physical shape. No medical intervention needed.
                   </span>
                 ) : (
                   <span>
-                    Medical bill to treat all gunshot wounds and fractures: <strong className="text-rose-400">${hospitalCost.toLocaleString()}</strong>
+                    Medical bill to treat bullet wounds and fractures:{' '}
+                    <strong className="text-rose-400 font-bold">${hospitalCost.toLocaleString()}</strong>
                   </span>
                 )}
               </div>
@@ -433,9 +563,9 @@ export const PlacesModal: React.FC = () => {
                 <button
                   onClick={handleHeal}
                   disabled={player.cash < hospitalCost}
-                  className="mt-6 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-bold text-xs transition-colors shadow-lg shadow-emerald-950/50"
+                  className="mt-6 px-8 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-sm transition-all shadow-lg active:scale-95"
                 >
-                  Pay Doctor & Restore Full Health
+                  Pay Clinic & Restore 100% HP
                 </button>
               )}
             </div>
@@ -444,42 +574,77 @@ export const PlacesModal: React.FC = () => {
 
         {/* ARMORY / GUN STORE TAB */}
         {placesSubTab === 'armory' && (
-          <div className="space-y-4 max-w-2xl mx-auto">
-            <div className="text-xs text-slate-400 mb-2">
-              Black market armory. Protect yourself from police raids, cartel hit squads, and loan shark enforcers.
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {WEAPONS.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="font-bold text-slate-200 text-xs">{item.name}</span>
-                      <span className="text-amber-400 font-bold text-xs">
-                        ${item.price.toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">{item.description}</p>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 capitalize">
-                      {item.type === 'weapon'
-                        ? `Damage: ${item.damage}`
-                        : item.type === 'armor'
-                        ? `Defense: +${Math.round((item.defense ?? 0) * 100)}%`
-                        : `Masks: ${item.maskUnits} units`}
-                    </span>
-                    <button
-                      disabled={player.cash < item.price}
-                      className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold text-[10px] border border-slate-700 transition-colors"
-                    >
-                      Purchase
-                    </button>
-                  </div>
+          <div className="space-y-5 max-w-4xl mx-auto">
+            {/* Loadout Status Bar */}
+            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs">
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-slate-500 uppercase block text-[10px]">Equipped Armor</span>
+                  <span className="font-bold text-cyan-400 text-sm">
+                    {player.armor?.id ? WEAPONS.find((w) => w.id === player.armor?.id)?.name : 'None'}
+                  </span>
                 </div>
-              ))}
+                <div>
+                  <span className="text-slate-500 uppercase block text-[10px]">No-Scent Cans</span>
+                  <span className="font-bold text-emerald-400 text-sm">
+                    {player.noScentCans || 0} / 10
+                  </span>
+                </div>
+              </div>
+              <div className="text-slate-400 text-xs">
+                Firearms protect you against cartel hit squads and DEA raids.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {WEAPONS.map((item) => {
+                const isOwned =
+                  item.type === 'weapon'
+                    ? (player.weapons[item.id] || 0) > 0
+                    : item.type === 'armor'
+                    ? player.armor?.id === item.id
+                    : false;
+
+                const count = player.weapons[item.id] || 0;
+                const canAfford = player.cash >= item.price;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition-colors"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <WeaponImage item={item} size="md" />
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-slate-100 text-sm">{item.name}</span>
+                          <span className="text-amber-400 font-black text-sm">
+                            ${item.price.toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{item.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-800/70 flex items-center justify-between text-xs">
+                      <span className="text-slate-300 font-semibold capitalize">
+                        {item.type === 'weapon'
+                          ? `Damage: ${item.damage} ${count > 0 ? `(Owned: ${count})` : ''}`
+                          : item.type === 'armor'
+                          ? `Defense: +${Math.round((item.defense ?? 0) * 100)}%`
+                          : `Masks: ${item.maskUnits} units`}
+                      </span>
+                      <button
+                        onClick={() => handleBuyWeapon(item.id)}
+                        disabled={!canAfford}
+                        className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-bold text-xs transition-colors shadow-sm"
+                      >
+                        {isOwned && item.type === 'armor' ? 'Equipped' : 'Purchase'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

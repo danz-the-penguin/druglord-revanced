@@ -24,3 +24,16 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Dynamic Font Scaling Modes */
+.font-scale-normal {
+  zoom: 1;
+}
+
+.font-scale-large {
+  zoom: 1.12;
+}
+
+.font-scale-xl {
+  zoom: 1.25;
+}

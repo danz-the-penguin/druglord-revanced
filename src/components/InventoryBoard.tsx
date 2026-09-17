@@ -1,7 +1,8 @@
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUG_MAP } from '../engine/constants';
-import { Briefcase, Trash2 } from 'lucide-react';
+import { DrugImage } from './DrugImage';
+import { Briefcase, Trash2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 export const InventoryBoard: React.FC = () => {
   const player = useGameStore((s) => s.player);
@@ -10,38 +11,50 @@ export const InventoryBoard: React.FC = () => {
 
   const inventoryEntries = Object.values(player.inventory).filter((item) => item.units > 0);
 
+  // Format chemical formula with true subscripts
+  const formatFormula = (formula?: string) => {
+    if (!formula) return '';
+    return formula.replace(/(\d+)/g, (match) => {
+      const subMap: Record<string, string> = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+      };
+      return match.split('').map((c) => subMap[c] || c).join('');
+    });
+  };
+
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-      <div className="px-4 py-3 bg-slate-800/60 border-b border-slate-700/60 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Briefcase className="w-4 h-4 text-indigo-400" />
-          <h2 className="text-sm font-bold uppercase tracking-wider font-mono text-slate-200">
-            Player Stash Holdings
+    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+      <div className="px-5 py-4 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Briefcase className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-base font-bold uppercase tracking-wider font-mono text-slate-100">
+            Player Stash Holdings & Portfolio
           </h2>
         </div>
-        <span className="text-xs text-slate-400 font-mono">
-          {inventoryEntries.length} Items in Trench Coat / Trunk
+        <span className="text-sm text-slate-300 font-mono">
+          {inventoryEntries.length} Active Positions
         </span>
       </div>
 
       {inventoryEntries.length === 0 ? (
-        <div className="p-8 text-center text-slate-500 font-mono text-xs">
-          Your pockets are completely empty. Buy commodities from the Street Market to start trading.
+        <div className="p-10 text-center text-slate-500 font-mono text-sm">
+          Your trench coat and trunk are completely empty. Acquire commodities from the Order Book to start arbitrage trading.
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800 uppercase text-[11px]">
+          <table className="w-full text-left text-sm font-mono">
+            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-xs">
               <tr>
-                <th className="py-2.5 px-4 font-semibold">Commodity</th>
-                <th className="py-2.5 px-3 font-semibold text-right">Units</th>
-                <th className="py-2.5 px-3 font-semibold text-right">Avg Cost</th>
-                <th className="py-2.5 px-3 font-semibold text-right">Current Value</th>
-                <th className="py-2.5 px-3 font-semibold text-right">Unrealized P&L</th>
-                <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
+                <th className="py-3 px-4 font-semibold">Commodity & Formula</th>
+                <th className="py-3 px-3 font-semibold text-right">Units</th>
+                <th className="py-3 px-3 font-semibold text-right">Avg Cost</th>
+                <th className="py-3 px-3 font-semibold text-right">Mkt Value</th>
+                <th className="py-3 px-3 font-semibold text-right">Unrealized P&L</th>
+                <th className="py-3 px-4 font-semibold text-right">Execution</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-800/80">
               {inventoryEntries.map((item) => {
                 const drug = DRUG_MAP.get(item.drugId);
                 const currentPrice = market[item.drugId]?.price ?? item.avgCost;
@@ -53,47 +66,80 @@ export const InventoryBoard: React.FC = () => {
                 return (
                   <tr
                     key={item.drugId}
-                    className="hover:bg-slate-800/40 transition-colors"
+                    className="hover:bg-slate-800/50 transition-colors group"
                   >
-                    <td className="py-2.5 px-4 font-bold text-slate-200">
-                      {drug?.name ?? item.drugId}
+                    {/* Commodity Thumbnail, Name & Formula */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        {drug && <DrugImage drug={drug} size="sm" />}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-100 text-base group-hover:text-indigo-300 transition-colors">
+                              {drug?.name ?? item.drugId}
+                            </span>
+                            {drug?.chemicalFormula && (
+                              <span className="px-1.5 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold border border-indigo-900/60 text-[11px] tracking-tight">
+                                {formatFormula(drug.chemicalFormula)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-400 truncate max-w-[220px] mt-0.5">
+                            {drug?.scientificName ? `${drug.scientificName}` : drug?.description}
+                          </div>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-2.5 px-3 text-right text-indigo-300 font-bold">
+
+                    {/* Units */}
+                    <td className="py-3.5 px-3 text-right text-indigo-300 font-black text-base">
                       {item.units}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-slate-400">
+
+                    {/* Avg Cost */}
+                    <td className="py-3.5 px-3 text-right text-slate-400 text-sm">
                       ${item.avgCost.toLocaleString()}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-slate-200 font-semibold">
+
+                    {/* Current Value */}
+                    <td className="py-3.5 px-3 text-right text-slate-100 font-black text-sm lg:text-base">
                       ${totalValue.toLocaleString()}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-bold">
+
+                    {/* Unrealized P&L */}
+                    <td className="py-3.5 px-3 text-right font-black text-sm">
                       <span
-                        className={
+                        className={`inline-flex items-center gap-1 ${
                           profit > 0
                             ? 'text-emerald-400'
                             : profit < 0
                             ? 'text-rose-400'
                             : 'text-slate-400'
-                        }
+                        }`}
                       >
+                        {profit > 0 ? (
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        ) : profit < 0 ? (
+                          <ArrowDownRight className="w-3.5 h-3.5" />
+                        ) : null}
                         {profit >= 0 ? '+' : ''}${profit.toLocaleString()} ({profitPercent}%)
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+
+                    {/* Actions */}
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openTradeModal(item.drugId, 'sell')}
-                          className="px-2.5 py-1 rounded text-xs font-bold bg-sky-600 hover:bg-sky-500 text-slate-950 transition-colors"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all shadow-sm active:scale-95"
                         >
-                          Sell
+                          Liquidate
                         </button>
                         <button
                           onClick={() => openTradeModal(item.drugId, 'dump')}
-                          className="p-1 rounded text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-slate-700/60 transition-colors"
-                          title="Dump into sewer"
+                          className="p-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-950/60 border border-slate-700/60 transition-colors"
+                          title="Dump into sewer to avoid DEA detection"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

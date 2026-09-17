@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUG_MAP } from '../engine/constants';
 import { getInventoryTotalUnits, getCarryingCapacity } from '../engine/game';
-import { X, ShoppingBag } from 'lucide-react';
+import { DrugImage } from './DrugImage';
+import { X } from 'lucide-react';
 
 export const TradeModal: React.FC = () => {
   const { tradeModal, closeTradeModal, player, market, buy, sell, dump } = useGameStore();
@@ -74,65 +75,79 @@ export const TradeModal: React.FC = () => {
     setQuantity(Math.max(1, Math.min(limit, calculated)));
   };
 
+  const formatFormula = (formula?: string) => {
+    if (!formula) return '';
+    return formula.replace(/(\d+)/g, (match) => {
+      const subMap: Record<string, string> = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+      };
+      return match.split('').map((c) => subMap[c] || c).join('');
+    });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl font-mono animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="px-5 py-4 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`p-2 rounded-lg ${
-                mode === 'buy'
-                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                  : mode === 'sell'
-                  ? 'bg-sky-950 text-sky-400 border border-sky-800'
-                  : 'bg-rose-950 text-rose-400 border border-rose-800'
-              }`}
-            >
-              <ShoppingBag className="w-5 h-5" />
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl font-mono animate-in fade-in zoom-in-95 duration-200">
+        {/* Header with Drug Image, Formula, and Title */}
+        <div className="p-5 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <DrugImage drug={drug} size="md" />
             <div>
-              <h3 className="font-bold text-slate-100 uppercase tracking-wide text-base">
-                {mode === 'buy' ? 'Purchase' : mode === 'sell' ? 'Liquidate' : 'Dump'} {drug.name}
-              </h3>
-              <p className="text-xs text-slate-400">
-                ${price.toLocaleString()} per unit on street
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-slate-100 uppercase tracking-wide text-lg">
+                  {mode === 'buy' ? 'Acquire' : mode === 'sell' ? 'Liquidate' : 'Dump'} {drug.name}
+                </h3>
+                {drug.chemicalFormula && (
+                  <span className="px-2 py-0.5 rounded bg-slate-950 text-emerald-400 font-bold border border-emerald-900 text-xs">
+                    {formatFormula(drug.chemicalFormula)}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                {drug.scientificName ? `${drug.scientificName} • ` : ''}
+                ${price.toLocaleString()}/unit spot
               </p>
+              {drug.molecularWeight && (
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Mol. Wt: {drug.molecularWeight}
+                </span>
+              )}
             </div>
           </div>
           <button
             onClick={closeTradeModal}
-            className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-slate-200 p-2 rounded-xl hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-6 space-y-5 text-sm">
           {/* Status summary */}
-          <div className="grid grid-cols-2 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+          <div className="grid grid-cols-2 gap-4 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
             <div>
-              <div className="text-slate-500 uppercase text-[10px]">Cash Available</div>
-              <div className="text-emerald-400 font-bold text-sm">
+              <div className="text-slate-400 uppercase text-xs font-semibold">Liquid Cash</div>
+              <div className="text-emerald-400 font-black text-lg mt-0.5">
                 ${player.cash.toLocaleString()}
               </div>
             </div>
             <div>
-              <div className="text-slate-500 uppercase text-[10px]">
-                {mode === 'buy' ? 'Free Capacity' : 'Currently Holding'}
+              <div className="text-slate-400 uppercase text-xs font-semibold">
+                {mode === 'buy' ? 'Free Capacity' : 'Current Stash'}
               </div>
-              <div className="text-indigo-400 font-bold text-sm">
+              <div className="text-indigo-400 font-black text-lg mt-0.5">
                 {mode === 'buy' ? `${remainingCapacity} units` : `${currentHeld} units`}
               </div>
             </div>
           </div>
 
           {/* Slider & numeric input */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <label className="text-slate-300 font-semibold uppercase text-[11px]">
-                Quantity to {mode}:
+              <label className="text-slate-200 font-bold uppercase text-xs">
+                Order Quantity ({mode}):
               </label>
               <input
                 type="number"
@@ -143,7 +158,7 @@ export const TradeModal: React.FC = () => {
                   const val = parseInt(e.target.value, 10);
                   setQuantity(isNaN(val) ? 0 : Math.min(limit, Math.max(0, val)));
                 }}
-                className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-right text-slate-100 font-bold focus:outline-none focus:border-emerald-500"
+                className="w-28 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-right text-slate-100 font-bold text-base focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -154,7 +169,7 @@ export const TradeModal: React.FC = () => {
               value={quantity}
               disabled={limit <= 0}
               onChange={(e) => setQuantity(parseInt(e.target.value, 10))}
-              className="w-full accent-emerald-500 cursor-pointer"
+              className="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
             />
 
             {/* Quick buttons */}
@@ -165,7 +180,7 @@ export const TradeModal: React.FC = () => {
                   type="button"
                   disabled={limit <= 0}
                   onClick={() => setPercent(pct)}
-                  className="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 font-bold text-[11px] transition-colors border border-slate-700/60"
+                  className="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold text-xs transition-colors border border-slate-700"
                 >
                   {pct === 1.0 ? 'MAX' : `${pct * 100}%`}
                 </button>
@@ -175,12 +190,12 @@ export const TradeModal: React.FC = () => {
 
           {/* Calculation summary */}
           {mode !== 'dump' && (
-            <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-sm">
-              <span className="text-slate-400">
-                {mode === 'buy' ? 'Total Cost:' : 'Estimated Proceeds:'}
+            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex justify-between items-center text-sm">
+              <span className="text-slate-300 font-semibold">
+                {mode === 'buy' ? 'Total Settlement Cost:' : 'Estimated Gross Proceeds:'}
               </span>
               <span
-                className={`font-black text-base ${
+                className={`font-black text-xl tracking-tight ${
                   mode === 'buy' ? 'text-rose-400' : 'text-emerald-400'
                 }`}
               >
@@ -190,30 +205,30 @@ export const TradeModal: React.FC = () => {
           )}
 
           {error && (
-            <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">
+            <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-semibold">
               {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 bg-slate-800/80 border-t border-slate-700 flex justify-end gap-2.5">
+        <div className="px-6 py-4 bg-slate-800/90 border-t border-slate-700 flex justify-end gap-3">
           <button
             onClick={closeTradeModal}
-            className="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 font-bold transition-colors"
+            className="px-5 py-2.5 rounded-xl text-slate-300 hover:text-slate-100 hover:bg-slate-800 font-bold transition-colors text-sm"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={quantity <= 0 || limit <= 0}
-            className={`px-6 py-2 rounded-xl font-bold transition-all text-slate-950 ${
+            className={`px-7 py-2.5 rounded-xl font-black transition-all text-slate-950 text-sm ${
               mode === 'buy'
-                ? 'bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-900/30'
+                ? 'bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-950/60'
                 : mode === 'sell'
-                ? 'bg-sky-500 hover:bg-sky-400 shadow-lg shadow-sky-900/30'
-                : 'bg-rose-500 hover:bg-rose-400 shadow-lg shadow-rose-900/30'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                ? 'bg-sky-500 hover:bg-sky-400 shadow-lg shadow-sky-950/60'
+                : 'bg-rose-500 hover:bg-rose-400 shadow-lg shadow-rose-950/60'
+            } disabled:opacity-40 disabled:cursor-not-allowed active:scale-95`}
           >
             Confirm {mode === 'buy' ? 'Purchase' : mode === 'sell' ? 'Liquidation' : 'Dump'}
           </button>

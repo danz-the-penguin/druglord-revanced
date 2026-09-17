@@ -1,10 +1,25 @@
 export interface Drug {
   id: string;
   name: string;
+  scientificName?: string;
+  chemicalFormula?: string;
+  molecularWeight?: string;
+  image?: string;
   minPrice: number;
   maxPrice: number;
   basePrice: number;
   volatility: number;
+  description: string;
+}
+
+export interface Property {
+  id: string;
+  name: string;
+  tier: number;
+  price: number;
+  storageUnits: number;
+  heatReduction: number;
+  image: string;
   description: string;
 }
 
@@ -119,6 +134,7 @@ export interface PlayerState {
   activeEncounter: ActiveEncounter | null;
   isGameOver: boolean;
   gameOverReason?: string;
+  ownedProperties: string[];
   cheats: {
     godMode: boolean;
     extraCapacity: number;

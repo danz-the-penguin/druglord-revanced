@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { Terminal, X, Zap, Shield, DollarSign, Calendar, RefreshCw, Cpu } from 'lucide-react';
+import { Terminal, X, Zap, Shield, DollarSign, Calendar, RefreshCw, Cpu, Download } from 'lucide-react';
 import { memoryMirror } from '../engine/memoryBuffer';
 
 export const CartelDebugTerminal: React.FC = () => {
@@ -43,6 +43,79 @@ export const CartelDebugTerminal: React.FC = () => {
     setHistory((prev) => [...prev, { cmd, res: res.message, ok: res.success }]);
   };
 
+  const handleDownloadCheatTable = () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="45">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>0</ID>
+      <Description>"Drug Lord 2: Cash on Hand [Offset 0x00]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+00</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>1</ID>
+      <Description>"Drug Lord 2: Offshore Bank [Offset 0x04]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+04</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>2</ID>
+      <Description>"Drug Lord 2: Shark Debt [Offset 0x08]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+08</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>3</ID>
+      <Description>"Drug Lord 2: Player HP [Offset 0x0C]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+0C</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>4</ID>
+      <Description>"Drug Lord 2: Current Day [Offset 0x10]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+10</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>5</ID>
+      <Description>"Drug Lord 2: Max Days [Offset 0x14]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+14</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>6</ID>
+      <Description>"Drug Lord 2: God Mode (1=On, 0=Off) [Offset 0x18]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+18</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>7</ID>
+      <Description>"Drug Lord 2: Extra Stash Capacity [Offset 0x1C]"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"druglord2_mem"+1C</Address>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+</CheatTable>`;
+
+    const blob = new Blob([xml], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'DrugLord2_Fintech.CT';
+    a.click();
+    URL.revokeObjectURL(url);
+    setHistory((prev) => [
+      ...prev,
+      {
+        cmd: 'export_ct',
+        res: 'Exported DrugLord2_Fintech.CT with all 8 static 4-byte memory offsets mapped.',
+        ok: true,
+      },
+    ]);
+  };
+
   const currentMem = memoryMirror.readMemory();
 
   return (
@@ -57,7 +130,15 @@ export const CartelDebugTerminal: React.FC = () => {
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+            <button
+              onClick={handleDownloadCheatTable}
+              className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 flex items-center gap-1.5 transition-colors font-bold"
+              title="Download official Cheat Engine .CT table file"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Get .CT File</span>
+            </button>
+            <span className="text-[10px] px-2 py-1 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 hidden sm:inline">
               CheatEngine Buffer: ONLINE
             </span>
             <button

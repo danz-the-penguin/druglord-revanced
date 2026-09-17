@@ -14,13 +14,16 @@ import { useKonamiCode } from './hooks/useKonamiCode';
 import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { activeTab, setActiveTab, nextDay, restartGame, toggleTerminal } = useGameStore();
+  const { activeTab, setActiveTab, nextDay, restartGame, toggleTerminal, fontScale } = useGameStore();
 
   // Activate keyboard hotkeys: ~ (Terminal), Konami Code, and memory polling
   useKonamiCode();
 
+  const fontScaleClass =
+    fontScale === 'xl' ? 'font-scale-xl' : fontScale === 'large' ? 'font-scale-large' : 'font-scale-normal';
+
   return (
-    <div className="min-h-screen bg-[#070a0f] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className={`min-h-screen bg-[#070a0f] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 transition-all ${fontScaleClass}`}>
       {/* Live Ticker Marquee at the very top */}
       <TickerMarquee />
 

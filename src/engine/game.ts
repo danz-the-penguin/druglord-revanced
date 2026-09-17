@@ -1,4 +1,4 @@
-import { RANKS, RANK_MAP, SHARK_MAP, CITY_MAP } from './constants';
+import { RANKS, RANK_MAP, SHARK_MAP, CITY_MAP, PROPERTY_MAP, WEAPON_MAP } from './constants';
 import { generateCityMarket } from './economy';
 import { PlayerState, GameLogEntry, MarketItem } from './types';
 import { memoryMirror } from './memoryBuffer';
@@ -37,6 +37,7 @@ export function createInitialState(): GameEngineState {
     shipments: [],
     activeEncounter: null,
     isGameOver: false,
+    ownedProperties: [],
     cheats: {
       godMode: false,
       extraCapacity: 0,
@@ -116,10 +117,18 @@ export function getInventoryTotalUnits(player: PlayerState): number {
   return Object.values(player.inventory).reduce((sum, item) => sum + item.units, 0);
 }
 
+export function getPropertyBonusCapacity(player: PlayerState): number {
+  return (player.ownedProperties || []).reduce((sum, propId) => {
+    const prop = PROPERTY_MAP.get(propId);
+    return sum + (prop ? prop.storageUnits : 0);
+  }, 0);
+}
+
 export function getCarryingCapacity(player: PlayerState): number {
   const rank = RANK_MAP.get(player.currentRankId);
   const base = rank ? rank.capacity : 10;
-  return base + (player.cheats?.extraCapacity ?? 0);
+  const propBonus = getPropertyBonusCapacity(player);
+  return base + propBonus + (player.cheats?.extraCapacity ?? 0);
 }
 
 export function getTotalWealth(player: PlayerState): number {
@@ -137,6 +146,60 @@ export function getNextRank(player: PlayerState) {
 export interface ActionResult {
   success: boolean;
   message: string;
+}
+
+export function buyProperty(state: GameEngineState, propertyId: string): ActionResult {
+  const prop = PROPERTY_MAP.get(propertyId);
+  if (!prop) return { success: false, message: 'Property not found' };
+  if (state.player.ownedProperties.includes(propertyId)) {
+    return { success: false, message: 'You already own this safehouse / property' };
+  }
+  if (state.player.cash < prop.price) {
+    return { success: false, message: `Insufficient cash. Need $${prop.price.toLocaleString()}` };
+  }
+
+  state.player.cash -= prop.price;
+  state.player.ownedProperties.push(propertyId);
+
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+    type: 'finance',
+    message: `ACQUISITION: Purchased ${prop.name} for $${prop.price.toLocaleString()} (+${prop.storageUnits.toLocaleString()} stash capacity)!`,
+    timestamp: Date.now(),
+  });
+
+  return { success: true, message: `Successfully acquired ${prop.name}!` };
+}
+
+export function buyWeapon(state: GameEngineState, weaponId: string): ActionResult {
+  const item = WEAPON_MAP.get(weaponId);
+  if (!item) return { success: false, message: 'Item not found in armory' };
+  if (state.player.cash < item.price) {
+    return { success: false, message: `Insufficient cash. Need $${item.price.toLocaleString()}` };
+  }
+
+  state.player.cash -= item.price;
+
+  if (item.type === 'weapon') {
+    state.player.weapons[item.id] = (state.player.weapons[item.id] || 0) + 1;
+  } else if (item.type === 'armor') {
+    state.player.armor = { id: item.id, durability: item.durability ?? 100 };
+  } else if (item.type === 'utility') {
+    if (item.id === 'no_scent') {
+      state.player.noScentCans = Math.min(10, (state.player.noScentCans || 0) + 1);
+    }
+  }
+
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+    type: 'combat',
+    message: `ARMORY: Acquired ${item.name} for $${item.price.toLocaleString()}.`,
+    timestamp: Date.now(),
+  });
+
+  return { success: true, message: `Acquired ${item.name}!` };
 }
 
 export function buyDrug(
