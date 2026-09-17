@@ -52,4 +52,15 @@ describe('Cheats & Cheat Engine Memory Mirror', () => {
     expect(state.player.maxDays).toBe(500);
     expect(state.player.cheats.godMode).toBe(true);
   });
+
+  it('supports sfx palette inspection and playback via sfx cheat command', () => {
+    const state = createInitialState();
+    const listRes = executeCheat('sfx', state);
+    expect(listRes.success).toBe(true);
+    expect(listRes.message).toContain('Sound Synthesizer Palette');
+
+    const playRes = executeCheat('sfx pager', state);
+    expect(playRes.success).toBe(true);
+    expect(playRes.message).toContain('Synthesized Web Audio SFX: "pager"');
+  });
 });

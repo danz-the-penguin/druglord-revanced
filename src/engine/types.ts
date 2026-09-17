@@ -65,6 +65,29 @@ export interface LoanShark {
   description: string;
 }
 
+export interface Shipper {
+  id: string;
+  name: string;
+  costPercent: number;
+  reliability: number;
+  description: string;
+}
+
+export interface MarketIntelTip {
+  id: string;
+  cityId: string;
+  cityName: string;
+  drugId: string;
+  drugName: string;
+  eventType: 'surge_spike' | 'market_glut' | 'police_crackdown';
+  targetDay: number;
+  multiplier: number;
+  cost: number;
+  purchased: boolean;
+  headline: string;
+  source: string;
+}
+
 export interface Rank {
   id: string;
   name: string;
@@ -113,6 +136,162 @@ export interface ActiveShipment {
   status: 'in_transit' | 'delivered' | 'lost' | 'seized';
 }
 
+export type GameDurationMode = 'classic' | 'quarter' | 'year' | 'endless';
+
+export interface DurationModeConfig {
+  id: GameDurationMode;
+  label: string;
+  days: number;
+  isEndless: boolean;
+  badge: string;
+  desc: string;
+}
+
+export const DURATION_MODES: DurationModeConfig[] = [
+  { id: 'classic', label: 'Classic Street Hustle', days: 30, isEndless: false, badge: '30 Days', desc: 'Fast-paced high-score sprint' },
+  { id: 'quarter', label: 'Syndicate Quarter', days: 90, isEndless: false, badge: '90 Days', desc: 'Medium strategic market cycle' },
+  { id: 'year', label: 'The Kingpin Year', days: 365, isEndless: false, badge: '365 Days', desc: 'Full year empire building' },
+  { id: 'endless', label: 'Endless Sandbox', days: 999999, isEndless: true, badge: '∞ Endless', desc: 'No time limit • Retire whenever you choose' },
+];
+
+export interface PlayerStats {
+  combatWins?: number;
+  bribesCount?: number;
+  surrendersCount?: number;
+  totalTrades?: number;
+  maxSingleBuyUnits?: number;
+  citiesVisited?: string[];
+  intelPurchasedCount?: number;
+  couriersDispatchedCount?: number;
+  contractsCompletedCount?: number;
+  businessesAcquiredCount?: number;
+  totalCleanMoneyLaundered?: number;
+}
+
+export type SyndicateId = 'medellin' | 'golden_triangle' | 'synthetic_chem' | 'designer_ring' | 'balkan';
+
+export interface Syndicate {
+  id: SyndicateId;
+  name: string;
+  moniker: string;
+  leader: string;
+  headquarters: string;
+  primaryCommodity: string;
+  specialtyDrugs: string[];
+  bannerColor: string;
+  emblem: string;
+  description: string;
+}
+
+export interface SyndicateContract {
+  id: string;
+  syndicateId: SyndicateId;
+  title: string;
+  drugId: string;
+  unitsRequired: number;
+  originCityId: string;
+  destinationCityId: string;
+  payoutCash: number;
+  repReward: number;
+  repPenalty: number;
+  daysRemaining: number;
+  status: 'available' | 'active' | 'completed' | 'failed';
+}
+
+export type SyndicateStandingTier = 'Nemesis' | 'Hostile' | 'Neutral' | 'Associate' | 'Allied Don';
+
+export type FlightSeatClass = 'economy' | 'business' | 'private_narco';
+
+export interface AirportInfo {
+  cityId: string;
+  iata: string;
+  airportName: string;
+  terminals: number;
+  coordinates: { lat: number; lng: number };
+  hubTier: 'mega_global' | 'major_regional' | 'specialized';
+  directDestinations: string[];
+}
+
+export interface RealFlightSchedule {
+  flightId: string;
+  flightNumber: string;
+  airline: string;
+  originCityId: string;
+  originIata: string;
+  originAirport: string;
+  destinationCityId: string;
+  destinationIata: string;
+  destinationAirport: string;
+  destinationCityName: string;
+  departureTime: string;
+  durationMinutes: number;
+  gate: string;
+  terminal: string;
+  status: 'On Time' | 'Boarding' | 'Gate Open' | 'Delayed' | 'Customs Alert';
+  ticketCost: number;
+  isDirect: boolean;
+  transitCityId?: string;
+  transitCityName?: string;
+  policeAlertRisk: number;
+}
+
+export interface ShellBusiness {
+  id: string;
+  name: string;
+  tier: number;
+  purchaseCost: number;
+  dailyCleanCapacity: number;
+  feeRate: number;
+  passiveDailyProfit: number;
+  auditRisk: number;
+  heatShield: number;
+  customsBonus: number;
+  icon: string;
+  description: string;
+  specialPerk?: string;
+}
+
+export interface CorporateUpgrade {
+  id: string;
+  name: string;
+  cost: number;
+  feeDiscount: number;
+  capacityMultiplier: number;
+  auditRiskReduction: number;
+  description: string;
+}
+
+export type CombatDuelAction =
+  | 'snap_fire'
+  | 'aim_fire'
+  | 'suppress'
+  | 'take_cover'
+  | 'use_flashbang'
+  | 'use_smoke'
+  | 'use_medkit'
+  | 'flee'
+  | 'bribe'
+  | 'surrender';
+
+export interface PlayerCombatConsumables {
+  flashbangs: number;
+  smokeGrenades: number;
+  medkits: number;
+}
+
+export interface Aircraft {
+  id: string;
+  name: string;
+  model: string;
+  price: number;
+  fuelCost: number;
+  cargoBonus: number;
+  customsReduction: number;
+  icon: string;
+  image: string;
+  description: string;
+}
+
 export interface PlayerState {
   cash: number;
   bank: number;
@@ -124,8 +303,12 @@ export interface PlayerState {
   currentCityId: string;
   currentDay: number;
   maxDays: number;
+  isEndless?: boolean;
+  gameDurationMode?: GameDurationMode;
   currentRankId: string;
   daysHoldingRankCash: number;
+  daysInsolvent?: number;
+  cleanIdentityRenewals?: number;
   inventory: Record<string, PlayerInventoryItem>;
   weapons: Record<string, number>;
   ammo: Record<string, number>;
@@ -138,6 +321,18 @@ export interface PlayerState {
   isGameOver: boolean;
   gameOverReason?: string;
   ownedProperties: string[];
+  cityHeat?: Record<string, number>;
+  activeIntel?: MarketIntelTip[];
+  unlockedAchievements?: string[];
+  syndicateReputations?: Record<string, number>;
+  syndicateContracts?: SyndicateContract[];
+  ownedBusinesses?: string[];
+  corporateUpgrades?: string[];
+  launderedToday?: number;
+  combatConsumables?: PlayerCombatConsumables;
+  ownedAircraft?: string[];
+  selectedAircraftId?: string | null;
+  stats?: PlayerStats;
   cheats: {
     godMode: boolean;
     extraCapacity: number;
@@ -151,3 +346,4 @@ export interface GameLogEntry {
   message: string;
   timestamp: number;
 }
+

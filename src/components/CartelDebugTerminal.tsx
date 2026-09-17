@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { Terminal, X, Zap, Shield, DollarSign, Calendar, RefreshCw, Cpu, Download } from 'lucide-react';
+import { Terminal, X, Zap, Shield, DollarSign, Calendar, RefreshCw, Cpu, Download, Radio, Package, Truck, Volume2 } from 'lucide-react';
 import { memoryMirror } from '../engine/memoryBuffer';
 
 export const CartelDebugTerminal: React.FC = () => {
@@ -49,49 +49,49 @@ export const CartelDebugTerminal: React.FC = () => {
   <CheatEntries>
     <CheatEntry>
       <ID>0</ID>
-      <Description>"Drug Lord 2: Cash on Hand [Offset 0x00]"</Description>
+      <Description>"Drug Lord: ReVanced: Cash on Hand [Offset 0x00]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+00</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>1</ID>
-      <Description>"Drug Lord 2: Offshore Bank [Offset 0x04]"</Description>
+      <Description>"Drug Lord: ReVanced: Offshore Bank [Offset 0x04]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+04</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>2</ID>
-      <Description>"Drug Lord 2: Shark Debt [Offset 0x08]"</Description>
+      <Description>"Drug Lord: ReVanced: Shark Debt [Offset 0x08]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+08</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>3</ID>
-      <Description>"Drug Lord 2: Player HP [Offset 0x0C]"</Description>
+      <Description>"Drug Lord: ReVanced: Player HP [Offset 0x0C]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+0C</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>4</ID>
-      <Description>"Drug Lord 2: Current Day [Offset 0x10]"</Description>
+      <Description>"Drug Lord: ReVanced: Current Day [Offset 0x10]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+10</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>5</ID>
-      <Description>"Drug Lord 2: Max Days [Offset 0x14]"</Description>
+      <Description>"Drug Lord: ReVanced: Max Days [Offset 0x14]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+14</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>6</ID>
-      <Description>"Drug Lord 2: God Mode (1=On, 0=Off) [Offset 0x18]"</Description>
+      <Description>"Drug Lord: ReVanced: God Mode (1=On, 0=Off) [Offset 0x18]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+18</Address>
     </CheatEntry>
     <CheatEntry>
       <ID>7</ID>
-      <Description>"Drug Lord 2: Extra Stash Capacity [Offset 0x1C]"</Description>
+      <Description>"Drug Lord: ReVanced: Extra Stash Capacity [Offset 0x1C]"</Description>
       <VariableType>4 Bytes</VariableType>
       <Address>"druglord2_mem"+1C</Address>
     </CheatEntry>
@@ -227,6 +227,30 @@ export const CartelDebugTerminal: React.FC = () => {
             className="px-2.5 py-1 rounded bg-slate-800 hover:bg-rose-950 hover:border-rose-700 hover:text-rose-300 border border-slate-700 transition-colors font-bold text-slate-300 flex items-center gap-1"
           >
             Full Heal (100 HP)
+          </button>
+          <button
+            onClick={() => handleQuick('wire')}
+            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-orange-950 hover:border-orange-700 hover:text-orange-300 border border-slate-700 transition-colors font-bold text-slate-300 flex items-center gap-1"
+          >
+            <Radio className="w-3 h-3 text-orange-400" /> Informant Wire
+          </button>
+          <button
+            onClick={() => handleQuick('vault')}
+            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-teal-950 hover:border-teal-700 hover:text-teal-300 border border-slate-700 transition-colors font-bold text-slate-300 flex items-center gap-1"
+          >
+            <Package className="w-3 h-3 text-teal-400" /> Safehouse Vaults
+          </button>
+          <button
+            onClick={() => handleQuick('shipments')}
+            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-teal-950 hover:border-teal-700 hover:text-teal-300 border border-slate-700 transition-colors font-bold text-slate-300 flex items-center gap-1"
+          >
+            <Truck className="w-3 h-3 text-teal-400" /> Courier Radar
+          </button>
+          <button
+            onClick={() => handleQuick('sfx pager')}
+            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-sky-950 hover:border-sky-700 hover:text-sky-300 border border-slate-700 transition-colors font-bold text-slate-300 flex items-center gap-1"
+          >
+            <Volume2 className="w-3 h-3 text-sky-400" /> Test SFX
           </button>
         </div>
 

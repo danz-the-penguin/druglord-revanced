@@ -1,6 +1,7 @@
 import { PlayerState, GameLogEntry, MarketItem } from './types';
 import { CITY_MAP, RANK_MAP, DRUGS } from './constants';
 import { getTotalWealth } from './game';
+import { createInitialGlobalPriceHistory } from './economy';
 
 export const SAVE_SCHEMA_VERSION = 1;
 export const CURRENT_GAME_VERSION = '2.1.0';
@@ -21,8 +22,12 @@ export interface SaveSlotMetadata {
   gameVersion: string;
   playerDay: number;
   maxDays: number;
+  isEndless?: boolean;
+  gameDurationMode?: string;
+  daysInsolvent?: number;
   currentCityId: string;
   currentCityName: string;
+  cityHeat?: Record<string, number>;
   rankId: string;
   rankName: string;
   cash: number;
@@ -43,6 +48,7 @@ export interface DrugLordSaveFile {
     market: Record<string, MarketItem>;
     logs: GameLogEntry[];
     priceHistory: Record<string, number[]>;
+    globalPriceHistory?: Record<string, Record<string, number[]>>;
   };
 }
 
@@ -108,8 +114,12 @@ export function buildSaveMetadata(
     gameVersion: CURRENT_GAME_VERSION,
     playerDay: player.currentDay,
     maxDays: player.maxDays,
+    isEndless: !!player.isEndless,
+    gameDurationMode: player.gameDurationMode || 'classic',
+    daysInsolvent: player.daysInsolvent || 0,
     currentCityId: player.currentCityId,
     currentCityName: cityName,
+    cityHeat: player.cityHeat || {},
     rankId: player.currentRankId,
     rankName: rank,
     cash: player.cash,
@@ -129,6 +139,7 @@ export function createSaveFile(
     market: Record<string, MarketItem>;
     logs: GameLogEntry[];
     priceHistory: Record<string, number[]>;
+    globalPriceHistory?: Record<string, Record<string, number[]>>;
   },
   slotId: SaveSlotId,
   customTitle?: string
@@ -148,6 +159,7 @@ export function createSaveFile(
       market: JSON.parse(JSON.stringify(state.market)),
       logs: JSON.parse(JSON.stringify(state.logs)),
       priceHistory: JSON.parse(JSON.stringify(state.priceHistory || {})),
+      globalPriceHistory: JSON.parse(JSON.stringify(state.globalPriceHistory || {})),
     },
   };
 }
@@ -221,12 +233,38 @@ export function parseAndValidateSave(rawInput: string): { success: true; data: D
   p.weapons = p.weapons || {};
   p.ammo = p.ammo || {};
   p.vaults = p.vaults || {};
+  p.shipments = Array.isArray(p.shipments) ? p.shipments : [];
+  p.activeIntel = Array.isArray(p.activeIntel) ? p.activeIntel : [];
   p.ownedProperties = Array.isArray(p.ownedProperties) ? p.ownedProperties : [];
   p.cheats = p.cheats || { godMode: false, extraCapacity: 0 };
   p.maxHealth = p.maxHealth || 100;
   p.health = Math.min(p.maxHealth, Math.max(1, p.health ?? 100));
   p.currentCityId = p.currentCityId || 'new_york';
   p.currentRankId = p.currentRankId || 'wannabe';
+  p.cityHeat = p.cityHeat || {};
+  p.daysInsolvent = p.daysInsolvent || 0;
+  p.isEndless = typeof p.isEndless === 'boolean' ? p.isEndless : false;
+  p.gameDurationMode = p.gameDurationMode || 'classic';
+  p.cleanIdentityRenewals = p.cleanIdentityRenewals || 0;
+  p.unlockedAchievements = Array.isArray(p.unlockedAchievements) ? p.unlockedAchievements : [];
+  p.syndicateReputations = p.syndicateReputations || {};
+  p.syndicateContracts = Array.isArray(p.syndicateContracts) ? p.syndicateContracts : [];
+  p.ownedBusinesses = Array.isArray(p.ownedBusinesses) ? p.ownedBusinesses : [];
+  p.corporateUpgrades = Array.isArray(p.corporateUpgrades) ? p.corporateUpgrades : [];
+  p.launderedToday = p.launderedToday || 0;
+  p.combatConsumables = p.combatConsumables || { flashbangs: 0, smokeGrenades: 0, medkits: 0 };
+  p.ownedAircraft = Array.isArray(p.ownedAircraft) ? p.ownedAircraft : [];
+  p.selectedAircraftId = p.selectedAircraftId || null;
+  p.stats = p.stats || {
+    combatWins: 0,
+    bribesCount: 0,
+    surrendersCount: 0,
+    totalTrades: 0,
+    maxSingleBuyUnits: 0,
+    citiesVisited: [p.currentCityId || 'new_york'],
+    intelPurchasedCount: 0,
+    couriersDispatchedCount: 0,
+  };
 
   const market = statePayload.market || {};
   const logs = Array.isArray(statePayload.logs) ? statePayload.logs : [];
@@ -240,11 +278,17 @@ export function parseAndValidateSave(rawInput: string): { success: true; data: D
     }
   }
 
+  let globalPriceHistory = statePayload.globalPriceHistory || {};
+  if (Object.keys(globalPriceHistory).length === 0) {
+    globalPriceHistory = createInitialGlobalPriceHistory(p.currentCityId, market);
+  }
+
   const cleanState = {
     player: p,
     market,
     logs,
     priceHistory,
+    globalPriceHistory,
   };
 
   const metadata: SaveSlotMetadata = parsed.metadata || buildSaveMetadata(cleanState, 'slot_1');

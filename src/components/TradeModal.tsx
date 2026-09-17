@@ -104,14 +104,33 @@ export const TradeModal: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                {drug.scientificName ? `${drug.scientificName} • ` : ''}
-                ${price.toLocaleString()}/unit spot
-              </p>
-              {drug.molecularWeight && (
-                <span className="text-[11px] text-slate-400 font-mono">
-                  Mol. Wt: {drug.molecularWeight}
+              <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-mono">
+                <span className="text-emerald-400 font-bold">${price.toLocaleString()} Spot</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-slate-400">
+                  Base: <strong className="text-slate-200">${drug.basePrice.toLocaleString()}</strong>
                 </span>
+                {(() => {
+                  const diff = price - drug.basePrice;
+                  const pct = Math.round((diff / drug.basePrice) * 100);
+                  if (pct === 0) return null;
+                  return (
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                        diff > 0
+                          ? 'text-emerald-400 bg-emerald-950 border-emerald-800'
+                          : 'text-rose-400 bg-rose-950 border-rose-800'
+                      }`}
+                    >
+                      {diff > 0 ? `+${pct}%` : `${pct}%`} vs Base
+                    </span>
+                  );
+                })()}
+              </div>
+              {drug.scientificName && (
+                <p className="text-[11px] text-slate-400 mt-0.5 font-sans">
+                  {drug.scientificName} {drug.molecularWeight ? `• ${drug.molecularWeight}` : ''}
+                </p>
               )}
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { memoryMirror } from './memoryBuffer';
 import { CITY_MAP, DRUG_MAP } from './constants';
 import { PlayerState } from './types';
+import { soundEngine, SoundEffect } from '../utils/audio';
 
 export interface CheatExecutionResult {
   success: boolean;
@@ -24,6 +25,7 @@ export function executeCheat(
   const action = parts[0].toLowerCase();
   const arg1 = parts[1];
   const arg2 = parts[2];
+  const arg3 = parts[3];
 
   // Harmonize cheats reference on state or player
   if (!state.cheats && state.player.cheats) {
@@ -48,8 +50,27 @@ export function executeCheat(
           '• capacity <val>           : Set extra stash carrying capacity\n' +
           '• teleport <city>          : Travel immediately without cost or customs\n' +
           '• rig <drug> <price>       : Rig street market commodity price\n' +
-          '• noscent <count>          : Grant No-Scent spray cans',
+          '• noscent <count>          : Grant No-Scent spray cans\n' +
+          '• wire                     : Inspect active informant market tips\n' +
+          '• vault                    : Inspect multi-city safehouse vaults\n' +
+          '• shipments                : Inspect in-transit courier shipments\n' +
+          '• vault_give <city> <d> <n>: Stash contraband directly in vault\n' +
+          '• sfx <effect>             : Synthesize Web Audio sound effect',
       };
+
+    case 'sfx': {
+      if (!arg1) {
+        return {
+          success: true,
+          message:
+            'Sound Synthesizer Palette:\n' +
+            'Usage: sfx <name>\n' +
+            'Available: buy, sell, travel, police, gunshot, flee, pager, bribe, heal, bank, vault, courier, victory, defeat, demotion, click',
+        };
+      }
+      soundEngine.play(arg1 as SoundEffect);
+      return { success: true, message: `🎵 Synthesized Web Audio SFX: "${arg1}"` };
+    }
 
     case 'cash': {
       if (!arg1) return { success: false, message: 'Usage: cash <amount> or cash +<amount>' };
@@ -172,6 +193,60 @@ export function executeCheat(
       const count = parseInt(arg1 ?? '10', 10);
       state.player.noScentCans = Math.min(10, Math.max(1, isNaN(count) ? 10 : count));
       return { success: true, message: `Granted ${state.player.noScentCans} cans of No-Scent spray.` };
+    }
+
+    case 'wire':
+    case 'intel': {
+      const tips = state.player.activeIntel || [];
+      if (tips.length === 0) return { success: true, message: 'No active wiretaps or informant tips.' };
+      const lines = tips.map(
+        (t) => `• [${t.purchased ? 'DECRYPTED' : 'LOCKED'}] Day ${t.targetDay} | ${t.cityName} - ${t.drugName}: ${t.purchased ? t.headline : `Classified ($${t.cost})`}`
+      );
+      return { success: true, message: `Active Informant Wire:\n${lines.join('\n')}` };
+    }
+
+    case 'vault': {
+      const vaults = state.player.vaults || {};
+      const citiesWithVaults = Object.keys(vaults).filter((c) => Object.keys(vaults[c] || {}).length > 0);
+      if (citiesWithVaults.length === 0) return { success: true, message: 'All safehouse vaults are currently empty.' };
+      const summary = citiesWithVaults.map((c) => {
+        const cName = CITY_MAP.get(c)?.name ?? c;
+        const items = Object.entries(vaults[c])
+          .filter(([, u]) => u > 0)
+          .map(([d, u]) => `${u}x ${DRUG_MAP.get(d)?.name ?? d}`)
+          .join(', ');
+        return `• ${cName}: ${items || 'Empty'}`;
+      });
+      return { success: true, message: `Safehouse Vaults:\n${summary.join('\n')}` };
+    }
+
+    case 'shipments': {
+      const shipments = state.player.shipments || [];
+      const inTransit = shipments.filter((s) => s.status === 'in_transit');
+      if (inTransit.length === 0) return { success: true, message: 'No active courier shipments in transit.' };
+      const list = inTransit.map((s) => {
+        const o = CITY_MAP.get(s.originCityId)?.name ?? s.originCityId;
+        const t = CITY_MAP.get(s.targetCityId)?.name ?? s.targetCityId;
+        const d = DRUG_MAP.get(s.drugId)?.name ?? s.drugId;
+        return `• ${s.units}x ${d} [${o} -> ${t}] ETA: ${s.daysRemaining}d`;
+      });
+      return { success: true, message: `Active Courier Shipments:\n${list.join('\n')}` };
+    }
+
+    case 'vault_give': {
+      if (!arg1 || !arg2 || !arg3) return { success: false, message: 'Usage: vault_give <city_id> <drug_id> <units>' };
+      const city = CITY_MAP.get(arg1.toLowerCase());
+      if (!city) return { success: false, message: `Unknown city: "${arg1}"` };
+      const drug = DRUG_MAP.get(arg2.toLowerCase());
+      if (!drug) return { success: false, message: `Unknown drug: "${arg2}"` };
+      const units = parseInt(arg3, 10);
+      if (isNaN(units) || units <= 0) return { success: false, message: 'Invalid quantity' };
+
+      if (!state.player.vaults) state.player.vaults = {};
+      if (!state.player.vaults[city.id]) state.player.vaults[city.id] = {};
+      state.player.vaults[city.id][drug.id] = (state.player.vaults[city.id][drug.id] || 0) + units;
+
+      return { success: true, message: `Injected ${units} units of ${drug.name} into ${city.name} safehouse vault.` };
     }
 
     default:

@@ -313,9 +313,6 @@ export const InventoryBoard: React.FC = () => {
                           formatFormula={formatFormula}
                           theme="indigo"
                           containerRef={containerRef}
-                          extraFooter={
-                            <span>Avg Cost: <strong className="text-indigo-400 font-bold">${item.avgCost.toLocaleString()}</strong></span>
-                          }
                         />
                       </td>
 

@@ -129,5 +129,29 @@
     "maxHold": 10,
     "maskUnits": 100,
     "description": "Aerosol masking agent. Each can masks 100 units of drugs from airport sniffer dogs."
+  },
+  {
+    "id": "flashbang",
+    "name": "M84 Stun Flashbang",
+    "type": "utility",
+    "price": 350,
+    "maxHold": 10,
+    "description": "Disorients and blinds enemies during combat, causing their next attack to miss completely."
+  },
+  {
+    "id": "smoke_grenade",
+    "name": "Tactical Smoke Screen Grenade",
+    "type": "utility",
+    "price": 400,
+    "maxHold": 10,
+    "description": "Deploys thick impenetrable smoke screen (+50% escape probability during combat)."
+  },
+  {
+    "id": "combat_medkit",
+    "name": "Military Combat Medkit & Adrenaline Syringe",
+    "type": "utility",
+    "price": 800,
+    "maxHold": 10,
+    "description": "Emergency field trauma kit restoring 40 HP instantly in mid-firefight combat."
   }
 ]

@@ -401,5 +401,167 @@
     },
     "specialty": "West African Smuggling Super-Hub",
     "description": "Hyper-dynamic Atlantic trade capital linking Latin American cocaine flights to European container ships. High volume, bribery-friendly."
+  },
+  {
+    "id": "panama_city",
+    "name": "Panama City",
+    "country": "Panama",
+    "region": "Americas",
+    "flightCost": 450,
+    "policeRisk": 0.18,
+    "dogRisk": 0.22,
+    "drugModifiers": {
+      "cocaine": 0.65,
+      "crack": 0.75,
+      "heroin": 0.85,
+      "fentanyl": 0.90,
+      "pot": 0.80
+    },
+    "specialty": "Canal Free Zone & Offshore Banking (-35% Cocaine)",
+    "description": "Central America's premier transshipment nexus and tax haven. Speedboats and container ships transit billions uninspected."
+  },
+  {
+    "id": "singapore",
+    "name": "Singapore",
+    "country": "Singapore",
+    "region": "Asia-Pacific",
+    "flightCost": 1400,
+    "policeRisk": 0.40,
+    "dogRisk": 0.35,
+    "drugModifiers": {
+      "cocaine": 2.80,
+      "heroin": 2.50,
+      "ice": 2.40,
+      "ecstasy": 2.20,
+      "lsd": 2.10,
+      "special_k": 2.30
+    },
+    "specialty": "Ultra-Strict Customs & Maximum Margins (+180%)",
+    "description": "Gleaming Asian financial superpower with severe penalties. Smuggling cargo here commands astronomical underworld windfalls."
+  },
+  {
+    "id": "zurich",
+    "name": "Zurich",
+    "country": "Switzerland",
+    "region": "Europe",
+    "flightCost": 950,
+    "policeRisk": 0.20,
+    "dogRisk": 0.25,
+    "drugModifiers": {
+      "cocaine": 1.85,
+      "heroin": 1.70,
+      "ecstasy": 1.60,
+      "lsd": 1.50,
+      "fentanyl": 1.65,
+      "oxycodone": 1.75
+    },
+    "specialty": "Numbered Accounts & Wealth Secrecy (+85% Cocaine)",
+    "description": "Discreet banking capital nestled in the Alps. Elite private wealth fuels insatiable high-grade cocaine and pharmaceutical demand."
+  },
+  {
+    "id": "istanbul",
+    "name": "Istanbul",
+    "country": "Turkey",
+    "region": "Middle East & Africa",
+    "flightCost": 850,
+    "policeRisk": 0.26,
+    "dogRisk": 0.22,
+    "drugModifiers": {
+      "heroin": 0.60,
+      "opium": 0.55,
+      "kat": 0.70,
+      "speed": 0.80,
+      "cocaine": 1.35
+    },
+    "specialty": "Balkan Route & Golden Crescent Gateway (-40% Heroin)",
+    "description": "Historic transcontinental crossroads linking Asian poppy fields to Western European markets through the Bosporus straits."
+  },
+  {
+    "id": "mexico_city",
+    "name": "Mexico City",
+    "country": "Mexico",
+    "region": "Americas",
+    "flightCost": 400,
+    "policeRisk": 0.28,
+    "dogRisk": 0.20,
+    "drugModifiers": {
+      "cocaine": 0.75,
+      "ice": 0.65,
+      "fentanyl": 0.60,
+      "pot": 0.70,
+      "tranq": 0.80
+    },
+    "specialty": "Cartel Sovereign Command Post (-40% Fentanyl)",
+    "description": "Sprawling highland mega-capital coordinating trans-border trafficking operations and high-velocity synthetic logistics."
+  },
+  {
+    "id": "frankfurt",
+    "name": "Frankfurt",
+    "country": "Germany",
+    "region": "Europe",
+    "flightCost": 800,
+    "policeRisk": 0.24,
+    "dogRisk": 0.26,
+    "drugModifiers": {
+      "speed": 0.75,
+      "ecstasy": 0.80,
+      "cocaine": 1.40,
+      "heroin": 1.35,
+      "oxycodone": 1.30
+    },
+    "specialty": "Aviation Mega-Crossroads & ECB Capital",
+    "description": "Continental Europe's primary cargo aviation junction. High speed banking meets deep metropolitan nightlife demand."
+  },
+  {
+    "id": "sao_paulo",
+    "name": "São Paulo",
+    "country": "Brazil",
+    "region": "Americas",
+    "flightCost": 900,
+    "policeRisk": 0.25,
+    "dogRisk": 0.18,
+    "drugModifiers": {
+      "cocaine": 0.70,
+      "crack": 0.65,
+      "pot": 0.75,
+      "ecstasy": 1.45,
+      "lsd": 1.50
+    },
+    "specialty": "PCC Atlantic Transshipment Conduit (-35% Crack)",
+    "description": "South America's largest industrial megalopolis. Dominated by organized crime syndicates coordinating transatlantic container cargo."
+  },
+  {
+    "id": "madrid",
+    "name": "Madrid",
+    "country": "Spain",
+    "region": "Europe",
+    "flightCost": 850,
+    "policeRisk": 0.22,
+    "dogRisk": 0.24,
+    "drugModifiers": {
+      "cocaine": 1.15,
+      "pot": 0.70,
+      "ecstasy": 0.90
+    },
+    "specialty": "Iberian Contraband Gateway (-20% Pot)",
+    "description": "Sun-drenched European entry point for Moroccan shipments and Latin American couriers. Huge nightlife consumption."
+  },
+  {
+    "id": "toronto",
+    "name": "Toronto",
+    "country": "Canada",
+    "region": "Americas",
+    "flightCost": 500,
+    "policeRisk": 0.19,
+    "dogRisk": 0.20,
+    "drugModifiers": {
+      "fentanyl": 1.25,
+      "pot": 0.70,
+      "cocaine": 1.35,
+      "ice": 1.10,
+      "oxycodone": 1.30
+    },
+    "specialty": "Northern Border Exchange & Financial Bay St",
+    "description": "Prosperous multicultural center commanding high retail street prices and seamless cross-border freight conduits."
   }
 ]

@@ -16,9 +16,27 @@ import {
   syncStateFromMemory,
   buyProperty,
   buyWeapon,
+  retireEmpire,
+  purchaseCleanIdentity,
+  bribePolice,
+  modifyCityHeat,
+  depositToVault,
+  withdrawFromVault,
+  dispatchCourier,
+  purchaseIntelTip,
+  buyShellBusiness,
+  buyCorporateUpgrade,
+  executeBusinessLaundering,
+  acceptSyndicateContract,
+  deliverSyndicateContract,
+  paySyndicateTributeAction,
+  buyAircraft,
+  selectActiveAircraft,
 } from '../engine/game';
-import { CITY_MAP, DRUGS } from '../engine/constants';
+import { CITY_MAP, CITIES, DRUGS } from '../engine/constants';
+import { generateAllCitiesPrices, createInitialGlobalPriceHistory } from '../engine/economy';
 import { executeCheat, registerWindowCheatApi } from '../engine/cheats';
+import { GameDurationMode, DURATION_MODES, FlightSeatClass, SyndicateId, CombatDuelAction } from '../engine/types';
 import {
   SaveSlotId,
   DrugLordSaveFile,
@@ -29,13 +47,27 @@ import {
   clearAllLocalSaves,
   parseAndValidateSave,
 } from '../engine/persistence';
+import { soundEngine, SoundEffect } from '../utils/audio';
+import {
+  evaluateAchievements,
+  getGlobalAchievements,
+  Achievement,
+  AchievementEvaluationContext,
+} from '../engine/achievements';
+import {
+  recordHallOfFameEntry,
+  HallOfFameEntry,
+} from '../engine/hallOfFame';
 
 export interface GameStore extends GameEngineState {
   // Modal / View Controls
   activeTab: 'market' | 'places' | 'travel';
-  placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties';
+  placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation';
   isTerminalOpen: boolean;
   isSaveModalOpen: boolean;
+  isHallOfFameOpen: boolean;
+  hallOfFameTab: 'leaderboard' | 'achievements';
+  recentlyUnlockedAchievement: Achievement | null;
   fontScale: 'normal' | 'large' | 'xl';
   tradeModal: {
     isOpen: boolean;
@@ -45,6 +77,57 @@ export interface GameStore extends GameEngineState {
 
   // 14-Day Price History for Sparklines
   priceHistory: Record<string, number[]>;
+
+  // Multi-Country Price History across all 30 cities and 20 drugs
+  globalPriceHistory: Record<string, Record<string, number[]>>;
+
+  // Drug Graph Modal (Old Drug Lord Style)
+  isDrugGraphOpen: boolean;
+  selectedGraphDrugId: string | null;
+  openDrugGraph: (drugId: string) => void;
+  closeDrugGraph: () => void;
+
+  // Global Multi-Country Price Analytics & Arbitrage Modal
+  isGlobalAnalyticsOpen: boolean;
+  selectedAnalyticsDrugId: string;
+  openGlobalAnalytics: (drugId?: string) => void;
+  closeGlobalAnalytics: () => void;
+  setSelectedAnalyticsDrugId: (drugId: string) => void;
+
+  // Syndicate Cartels Diplomacy Modal
+  isSyndicateModalOpen: boolean;
+  openSyndicateModal: () => void;
+  closeSyndicateModal: () => void;
+  acceptContract: (contractId: string) => { success: boolean; message: string };
+  deliverContract: (contractId: string) => { success: boolean; message: string };
+  paySyndicateTribute: (syndicateId: SyndicateId) => { success: boolean; message: string };
+
+  // Airport Flights & Departures Board Modal
+  isFlightBoardOpen: boolean;
+  openFlightBoard: () => void;
+  closeFlightBoard: () => void;
+  bookFlightAction: (
+    targetCityId: string,
+    seatClass: FlightSeatClass,
+    ticketCostOverride?: number,
+    useOwnedAircraft?: boolean
+  ) => { success: boolean; message: string };
+
+  // Private Aircraft Fleet & Hangars
+  buyAircraftAction: (aircraftId: string) => { success: boolean; message: string };
+  selectActiveAircraftAction: (aircraftId: string | null) => { success: boolean; message: string };
+
+  // Shell Businesses & Corporate Laundering
+  buyShellBusinessAction: (businessId: string) => { success: boolean; message: string };
+  buyCorporateUpgradeAction: (upgradeId: string) => { success: boolean; message: string };
+  executeBusinessLaunderAction: (businessId: string, amount: number) => { success: boolean; message: string };
+
+  // Tactical Firefight Duel Combat
+  tacticalCombatRound: number;
+  combatCoverActive: boolean;
+  enemyBlindedRounds: number;
+  combatLogs: string[];
+  resolveTacticalCombatAction: (action: CombatDuelAction) => void;
 
   // Persistence & Save Manager
   lastSavedAt: number | null;
@@ -58,7 +141,7 @@ export interface GameStore extends GameEngineState {
 
   // Actions
   setActiveTab: (tab: 'market' | 'places' | 'travel') => void;
-  setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties') => void;
+  setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation') => void;
   setFontScale: (scale: 'normal' | 'large' | 'xl') => void;
   toggleTerminal: () => void;
   openTradeModal: (drugId: string, mode: 'buy' | 'sell' | 'dump') => void;
@@ -67,6 +150,17 @@ export interface GameStore extends GameEngineState {
   buy: (drugId: string, units: number) => { success: boolean; message: string };
   sell: (drugId: string, units: number) => { success: boolean; message: string };
   dump: (drugId: string, units: number) => { success: boolean; message: string };
+  depositToVaultAction: (drugId: string, units: number, cityId?: string) => { success: boolean; message: string };
+  withdrawFromVaultAction: (drugId: string, units: number, cityId?: string) => { success: boolean; message: string };
+  dispatchCourierAction: (params: {
+    shipperId: string;
+    originCityId?: string;
+    targetCityId: string;
+    drugId: string;
+    units: number;
+    source?: 'inventory' | 'vault';
+  }) => { success: boolean; message: string };
+  buyIntelAction: (tipId: string) => { success: boolean; message: string };
   buyPropertyAction: (propId: string) => { success: boolean; message: string };
   buyWeaponAction: (weaponId: string) => { success: boolean; message: string };
   deposit: (amount: number) => { success: boolean; message: string };
@@ -74,13 +168,30 @@ export interface GameStore extends GameEngineState {
   repay: (amount: number) => { success: boolean; message: string };
   borrow: (sharkId: string, amount: number) => { success: boolean; message: string };
   heal: (targetHp: number) => { success: boolean; message: string };
-  travel: (targetCityId: string) => { success: boolean; message: string };
+  travel: (targetCityId: string, seatClass?: FlightSeatClass, flightCostOverride?: number, useOwnedAircraft?: boolean) => { success: boolean; message: string };
   nextDay: () => void;
   resolveEncounterAction: (action: 'fight' | 'flee' | 'bribe' | 'surrender') => void;
   runCheat: (cmd: string) => { success: boolean; message: string };
   applyKonamiCode: () => void;
   checkMemoryUpdates: () => void;
-  restartGame: () => void;
+  retireEmpireAction: () => { success: boolean; message: string };
+  buyCleanIdentityAction: () => { success: boolean; message: string };
+  bribePoliceAction: () => { success: boolean; message: string };
+  setDurationMode: (mode: GameDurationMode) => void;
+  restartGame: (mode?: GameDurationMode) => void;
+
+  // Web Audio & Sound FX
+  audioVolume: number;
+  isAudioMuted: boolean;
+  setAudioVolume: (volume: number) => void;
+  toggleAudioMute: () => void;
+  playSfx: (effect: SoundEffect) => void;
+
+  // Hall of Fame & Achievements
+  openHallOfFame: (tab?: 'leaderboard' | 'achievements') => void;
+  closeHallOfFame: () => void;
+  dismissAchievementToast: () => void;
+  submitRunToHallOfFame: (alias: string) => HallOfFameEntry;
 }
 
 // Generate initial price history
@@ -113,6 +224,7 @@ function triggerAutoSave(get: () => GameStore, set: any) {
           market: current.market,
           logs: current.logs,
           priceHistory: current.priceHistory,
+          globalPriceHistory: current.globalPriceHistory,
         },
         'autosave'
       );
@@ -132,6 +244,7 @@ function getInitialStoreState() {
     return {
       state: fresh,
       priceHistory: createInitialPriceHistory(fresh.market),
+      globalPriceHistory: createInitialGlobalPriceHistory(fresh.player.currentCityId, fresh.market),
       lastSavedAt: null,
     };
   }
@@ -146,6 +259,10 @@ function getInitialStoreState() {
         logs: saved.state.logs,
       },
       priceHistory: saved.state.priceHistory || createInitialPriceHistory(saved.state.market),
+      globalPriceHistory:
+        saved.state.globalPriceHistory && Object.keys(saved.state.globalPriceHistory).length > 0
+          ? saved.state.globalPriceHistory
+          : createInitialGlobalPriceHistory(saved.state.player.currentCityId, saved.state.market),
       lastSavedAt: saved.savedAt || null,
     };
   }
@@ -153,19 +270,58 @@ function getInitialStoreState() {
   return {
     state: fresh,
     priceHistory: createInitialPriceHistory(fresh.market),
+    globalPriceHistory: createInitialGlobalPriceHistory(fresh.player.currentCityId, fresh.market),
     lastSavedAt: null,
   };
 }
 
-const initialPayload = getInitialStoreState();
+function checkAchievementsAndUpdate(
+  get: () => GameStore,
+  set: (partial: Partial<GameStore> | ((state: GameStore) => Partial<GameStore>)) => void,
+  context?: AchievementEvaluationContext
+) {
+  const current = get();
+  const globalUnlocked = getGlobalAchievements();
+  const runUnlocked = current.player.unlockedAchievements || [];
+  const merged = new Set([...globalUnlocked, ...runUnlocked]);
+
+  const { newlyUnlocked, allUnlocked } = evaluateAchievements(current.player, merged, context);
+
+  if (newlyUnlocked.length > 0) {
+    const updatedLogs = [...current.logs];
+    for (const ach of newlyUnlocked) {
+      updatedLogs.unshift({
+        day: current.player.currentDay,
+        city: CITY_MAP.get(current.player.currentCityId)?.name ?? 'Syndicate',
+        type: 'event',
+        message: `🎖️ ACHIEVEMENT UNLOCKED: "${ach.title}" — ${ach.description} (+${ach.prestigePoints} Prestige PTS)`,
+        timestamp: Date.now(),
+      });
+      soundEngine.play('victory');
+    }
+
+    set({
+      player: {
+        ...current.player,
+        unlockedAchievements: Array.from(allUnlocked),
+      },
+      logs: updatedLogs,
+      recentlyUnlockedAchievement: newlyUnlocked[0],
+    });
+  }
+}
 
 export const useGameStore = create<GameStore>((set, get) => {
+  const initialPayload = getInitialStoreState();
   const storeApi = {
     ...initialPayload.state,
     activeTab: 'market' as const,
     placesSubTab: 'bank' as const,
     isTerminalOpen: false,
     isSaveModalOpen: false,
+    isHallOfFameOpen: false,
+    hallOfFameTab: 'leaderboard' as const,
+    recentlyUnlockedAchievement: null,
     lastSavedAt: initialPayload.lastSavedAt,
     fontScale: 'normal' as const,
     tradeModal: {
@@ -174,6 +330,107 @@ export const useGameStore = create<GameStore>((set, get) => {
       mode: 'buy' as const,
     },
     priceHistory: initialPayload.priceHistory,
+    globalPriceHistory: initialPayload.globalPriceHistory,
+
+    // Drug Graph Modal
+    isDrugGraphOpen: false,
+    selectedGraphDrugId: null,
+    openDrugGraph: (drugId: string) => {
+      soundEngine.play('click');
+      set({ isDrugGraphOpen: true, selectedGraphDrugId: drugId });
+    },
+    closeDrugGraph: () => {
+      soundEngine.play('click');
+      set({ isDrugGraphOpen: false, selectedGraphDrugId: null });
+    },
+
+    // Global Analytics Modal
+    isGlobalAnalyticsOpen: false,
+    selectedAnalyticsDrugId: 'cocaine',
+    openGlobalAnalytics: (drugId?: string) => {
+      soundEngine.play('click');
+      set({
+        isGlobalAnalyticsOpen: true,
+        selectedAnalyticsDrugId: drugId || get().selectedAnalyticsDrugId || 'cocaine',
+      });
+    },
+    closeGlobalAnalytics: () => {
+      soundEngine.play('click');
+      set({ isGlobalAnalyticsOpen: false });
+    },
+    setSelectedAnalyticsDrugId: (drugId: string) => {
+      set({ selectedAnalyticsDrugId: drugId });
+    },
+
+    // Syndicate Cartels Diplomacy Modal
+    isSyndicateModalOpen: false,
+    openSyndicateModal: () => {
+      soundEngine.play('click');
+      set({ isSyndicateModalOpen: true });
+    },
+    closeSyndicateModal: () => {
+      soundEngine.play('click');
+      set({ isSyndicateModalOpen: false });
+    },
+
+    // Airport Flights & Departures Board Modal
+    isFlightBoardOpen: false,
+    openFlightBoard: () => {
+      soundEngine.play('click');
+      set({ isFlightBoardOpen: true });
+    },
+    closeFlightBoard: () => {
+      soundEngine.play('click');
+      set({ isFlightBoardOpen: false });
+    },
+
+    // Tactical Firefight Duel Combat State
+    tacticalCombatRound: 1,
+    combatCoverActive: false,
+    enemyBlindedRounds: 0,
+    combatLogs: [],
+
+    // Web Audio & Sound FX
+    audioVolume: soundEngine.getVolume(),
+    isAudioMuted: soundEngine.isMuted(),
+
+    setAudioVolume: (volume: number) => {
+      soundEngine.setVolume(volume);
+      set({ audioVolume: soundEngine.getVolume() });
+      soundEngine.play('click');
+    },
+
+    toggleAudioMute: () => {
+      const muted = soundEngine.toggleMute();
+      set({ isAudioMuted: muted });
+      if (!muted) {
+        soundEngine.play('click');
+      }
+    },
+
+    playSfx: (effect: SoundEffect) => {
+      soundEngine.play(effect);
+    },
+
+    openHallOfFame: (tab: 'leaderboard' | 'achievements' = 'leaderboard') => {
+      set({ isHallOfFameOpen: true, hallOfFameTab: tab });
+      soundEngine.play('click');
+    },
+
+    closeHallOfFame: () => {
+      set({ isHallOfFameOpen: false });
+      soundEngine.play('click');
+    },
+
+    dismissAchievementToast: () => {
+      set({ recentlyUnlockedAchievement: null });
+    },
+
+    submitRunToHallOfFame: (alias: string) => {
+      const entry = recordHallOfFameEntry(get().player, alias);
+      soundEngine.play('victory');
+      return entry;
+    },
 
     toggleSaveModal: (open?: boolean) =>
       set((state) => ({ isSaveModalOpen: open !== undefined ? open : !state.isSaveModalOpen })),
@@ -186,6 +443,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           market: current.market,
           logs: current.logs,
           priceHistory: current.priceHistory,
+          globalPriceHistory: current.globalPriceHistory,
         },
         slotId,
         title
@@ -212,6 +470,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         market: st.market,
         logs: st.logs,
         priceHistory: st.priceHistory || createInitialPriceHistory(st.market),
+        globalPriceHistory:
+          st.globalPriceHistory && Object.keys(st.globalPriceHistory).length > 0
+            ? st.globalPriceHistory
+            : createInitialGlobalPriceHistory(st.player.currentCityId, st.market),
         lastSavedAt: saveData.savedAt || Date.now(),
         tradeModal: { isOpen: false, drugId: null, mode: 'buy' },
       });
@@ -230,6 +492,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           market: current.market,
           logs: current.logs,
           priceHistory: current.priceHistory,
+          globalPriceHistory: current.globalPriceHistory,
         },
         slotId
       );
@@ -254,7 +517,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     setActiveTab: (tab: 'market' | 'places' | 'travel') => set({ activeTab: tab }),
-    setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties') =>
+    setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation') =>
       set({ placesSubTab: subTab }),
     setFontScale: (scale: 'normal' | 'large' | 'xl') => set({ fontScale: scale }),
     toggleTerminal: () => set((state) => ({ isTerminalOpen: !state.isTerminalOpen })),
@@ -292,6 +555,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           logs: state.logs,
         });
         triggerAutoSave(get, set);
+        soundEngine.play('buy');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'buy', unitsTraded: units });
       }
       return result;
     },
@@ -311,6 +576,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           logs: state.logs,
         });
         triggerAutoSave(get, set);
+        soundEngine.play('sell');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'sell', unitsTraded: units });
       }
       return result;
     },
@@ -329,6 +596,115 @@ export const useGameStore = create<GameStore>((set, get) => {
           logs: state.logs,
         });
         triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    depositToVaultAction: (drugId: string, units: number, cityId?: string) => {
+      const state = {
+        player: {
+          ...get().player,
+          inventory: { ...get().player.inventory },
+          vaults: { ...get().player.vaults },
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = depositToVault(state, drugId, units, cityId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('vault');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'vault' });
+      }
+      return result;
+    },
+
+    withdrawFromVaultAction: (drugId: string, units: number, cityId?: string) => {
+      const state = {
+        player: {
+          ...get().player,
+          inventory: { ...get().player.inventory },
+          vaults: { ...get().player.vaults },
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = withdrawFromVault(state, drugId, units, cityId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('vault');
+      }
+      return result;
+    },
+
+    dispatchCourierAction: (params: {
+      shipperId: string;
+      originCityId?: string;
+      targetCityId: string;
+      drugId: string;
+      units: number;
+      source?: 'inventory' | 'vault';
+    }) => {
+      const state = {
+        player: {
+          ...get().player,
+          inventory: { ...get().player.inventory },
+          vaults: { ...get().player.vaults },
+          shipments: [...get().player.shipments],
+          stats: { ...(get().player.stats || {}) },
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = dispatchCourier(state, params);
+      if (result.success) {
+        state.player.stats = state.player.stats || {};
+        state.player.stats.couriersDispatchedCount = (state.player.stats.couriersDispatchedCount || 0) + 1;
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('courier');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'courier' });
+      }
+      return result;
+    },
+
+    buyIntelAction: (tipId: string) => {
+      const state = {
+        player: {
+          ...get().player,
+          activeIntel: Array.from(get().player.activeIntel || []),
+          stats: { ...(get().player.stats || {}) },
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = purchaseIntelTip(state, tipId);
+      if (result.success) {
+        state.player.stats = state.player.stats || {};
+        state.player.stats.intelPurchasedCount = (state.player.stats.intelPurchasedCount || 0) + 1;
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('pager');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'intel' });
       }
       return result;
     },
@@ -347,6 +723,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           logs: state.logs,
         });
         triggerAutoSave(get, set);
+        soundEngine.play('vault');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'property' });
       }
       return result;
     },
@@ -370,6 +748,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           logs: state.logs,
         });
         triggerAutoSave(get, set);
+        soundEngine.play('gunshot');
+        checkAchievementsAndUpdate(get, set);
       }
       return result;
     },
@@ -385,6 +765,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+        soundEngine.play('bank');
+        checkAchievementsAndUpdate(get, set);
       }
       return result;
     },
@@ -400,6 +782,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+        soundEngine.play('bank');
+        checkAchievementsAndUpdate(get, set);
       }
       return result;
     },
@@ -415,6 +799,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+        soundEngine.play('sell');
+        checkAchievementsAndUpdate(get, set);
       }
       return result;
     },
@@ -430,6 +816,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+        soundEngine.play('bank');
       }
       return result;
     },
@@ -445,18 +832,33 @@ export const useGameStore = create<GameStore>((set, get) => {
         syncStateToMemory(state);
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
+        soundEngine.play('heal');
       }
       return result;
     },
 
-    travel: (targetCityId: string) => {
+    travel: (
+      targetCityId: string,
+      seatClass: FlightSeatClass = 'economy',
+      flightCostOverride?: number,
+      useOwnedAircraft = false
+    ) => {
       const state = {
-        player: { ...get().player },
+        player: {
+          ...get().player,
+          stats: { ...(get().player.stats || {}) },
+        },
         market: { ...get().market },
         logs: [...get().logs],
       };
-      const result = travelToCity(state, targetCityId);
+      const result = travelToCity(state, targetCityId, seatClass, flightCostOverride, useOwnedAircraft);
       if (result.success) {
+        state.player.stats = state.player.stats || {};
+        state.player.stats.citiesVisited = state.player.stats.citiesVisited || [];
+        if (!state.player.stats.citiesVisited.includes(targetCityId)) {
+          state.player.stats.citiesVisited.push(targetCityId);
+        }
+
         // Record price history
         const updatedHistory = { ...get().priceHistory };
         for (const drug of DRUGS) {
@@ -467,20 +869,51 @@ export const useGameStore = create<GameStore>((set, get) => {
           updatedHistory[drug.id] = hist;
         }
 
+        // Record multi-country global price history
+        const allPrices = generateAllCitiesPrices(
+          targetCityId,
+          state.market,
+          state.player.currentDay,
+          state.player.activeIntel
+        );
+        const updatedGlobal = { ...get().globalPriceHistory };
+        for (const drug of DRUGS) {
+          if (!updatedGlobal[drug.id]) updatedGlobal[drug.id] = {};
+          for (const city of CITIES) {
+            const hist = updatedGlobal[drug.id][city.id] ? [...updatedGlobal[drug.id][city.id]] : [];
+            const p = allPrices[drug.id]?.[city.id] ?? Math.round(drug.basePrice * (city.drugModifiers[drug.id] ?? 1.0));
+            hist.push(p);
+            if (hist.length > 20) hist.shift();
+            updatedGlobal[drug.id][city.id] = hist;
+          }
+        }
+
         syncStateToMemory(state);
         set({
           player: state.player,
           market: state.market,
           logs: state.logs,
           priceHistory: updatedHistory,
+          globalPriceHistory: updatedGlobal,
           activeTab: 'market',
+          tacticalCombatRound: 1,
+          combatCoverActive: false,
+          enemyBlindedRounds: 0,
+          combatLogs: [],
         });
         triggerAutoSave(get, set);
+        if (state.player.activeEncounter) {
+          soundEngine.play('police');
+        } else {
+          soundEngine.play('travel');
+        }
+        checkAchievementsAndUpdate(get, set, { lastAction: 'travel' });
       }
       return result;
     },
 
     nextDay: () => {
+      const prevRank = get().player.currentRankId;
       const state = {
         player: { ...get().player },
         market: { ...get().market },
@@ -498,19 +931,60 @@ export const useGameStore = create<GameStore>((set, get) => {
         updatedHistory[drug.id] = hist;
       }
 
+      // Record multi-country global price history
+      const allPrices = generateAllCitiesPrices(
+        state.player.currentCityId,
+        state.market,
+        state.player.currentDay,
+        state.player.activeIntel
+      );
+      const updatedGlobal = { ...get().globalPriceHistory };
+      for (const drug of DRUGS) {
+        if (!updatedGlobal[drug.id]) updatedGlobal[drug.id] = {};
+        for (const city of CITIES) {
+          const hist = updatedGlobal[drug.id][city.id] ? [...updatedGlobal[drug.id][city.id]] : [];
+          const p = allPrices[drug.id]?.[city.id] ?? Math.round(drug.basePrice * (city.drugModifiers[drug.id] ?? 1.0));
+          hist.push(p);
+          if (hist.length > 20) hist.shift();
+          updatedGlobal[drug.id][city.id] = hist;
+        }
+      }
+
       syncStateToMemory(state);
       set({
         player: state.player,
         market: state.market,
         logs: state.logs,
         priceHistory: updatedHistory,
+        globalPriceHistory: updatedGlobal,
       });
       triggerAutoSave(get, set);
+
+      if (state.player.isGameOver) {
+        soundEngine.play(state.player.health <= 0 ? 'defeat' : 'victory');
+      } else if (state.player.activeEncounter) {
+        soundEngine.play('police');
+      } else if (state.player.currentRankId !== prevRank) {
+        soundEngine.play('demotion');
+      } else {
+        const anyIntelToday = state.player.activeIntel?.some(
+          (i) => i.purchased && i.targetDay === state.player.currentDay
+        );
+        if (anyIntelToday) {
+          soundEngine.play('pager');
+        } else {
+          soundEngine.play('click');
+        }
+      }
+      checkAchievementsAndUpdate(get, set, { lastAction: 'advanceDay' });
     },
 
     resolveEncounterAction: (action: 'fight' | 'flee' | 'bribe' | 'surrender') => {
       const state = {
-        player: { ...get().player },
+        player: {
+          ...get().player,
+          stats: { ...(get().player.stats || {}) },
+        },
         market: { ...get().market },
         logs: [...get().logs],
       };
@@ -519,8 +993,10 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       const city = CITY_MAP.get(state.player.currentCityId)?.name ?? 'City';
       const isGod = state.player.cheats?.godMode;
+      let fightWon = false;
 
       if (action === 'flee') {
+        modifyCityHeat(state, state.player.currentCityId, 10);
         const fleeSuccess = isGod || Math.random() > 0.35;
         if (fleeSuccess) {
           state.logs.unshift({
@@ -531,6 +1007,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             timestamp: Date.now(),
           });
           state.player.activeEncounter = null;
+          soundEngine.play('flee');
         } else {
           const damage = Math.floor(15 + Math.random() * 25);
           state.player.health = Math.max(0, state.player.health - damage);
@@ -541,14 +1018,19 @@ export const useGameStore = create<GameStore>((set, get) => {
             message: `Escape thwarted! You took ${damage} damage from gunfire!`,
             timestamp: Date.now(),
           });
+          soundEngine.play('gunshot');
           if (state.player.health <= 0) {
             state.player.isGameOver = true;
             state.player.gameOverReason = `Killed in action while fleeing ${encounter.enemyName}.`;
+            soundEngine.play('defeat');
           }
         }
       } else if (action === 'bribe') {
+        modifyCityHeat(state, state.player.currentCityId, 8);
         if (isGod || state.player.cash >= encounter.bribeCost) {
           if (!isGod) state.player.cash -= encounter.bribeCost;
+          state.player.stats = state.player.stats || {};
+          state.player.stats.bribesCount = (state.player.stats.bribesCount || 0) + 1;
           state.logs.unshift({
             day: state.player.currentDay,
             city,
@@ -557,6 +1039,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             timestamp: Date.now(),
           });
           state.player.activeEncounter = null;
+          soundEngine.play('bribe');
         } else {
           state.logs.unshift({
             day: state.player.currentDay,
@@ -567,6 +1050,9 @@ export const useGameStore = create<GameStore>((set, get) => {
           });
         }
       } else if (action === 'surrender') {
+        modifyCityHeat(state, state.player.currentCityId, -15);
+        state.player.stats = state.player.stats || {};
+        state.player.stats.surrendersCount = (state.player.stats.surrendersCount || 0) + 1;
         if (!isGod) {
           state.player.cash = 0;
           state.player.inventory = {};
@@ -579,9 +1065,14 @@ export const useGameStore = create<GameStore>((set, get) => {
           timestamp: Date.now(),
         });
         state.player.activeEncounter = null;
+        soundEngine.play('defeat');
       } else if (action === 'fight') {
+        modifyCityHeat(state, state.player.currentCityId, 20);
         const winRoll = isGod || Math.random() > 0.4;
+        fightWon = winRoll;
         if (winRoll) {
+          state.player.stats = state.player.stats || {};
+          state.player.stats.combatWins = (state.player.stats.combatWins || 0) + 1;
           state.logs.unshift({
             day: state.player.currentDay,
             city,
@@ -590,6 +1081,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             timestamp: Date.now(),
           });
           state.player.activeEncounter = null;
+          soundEngine.play('victory');
         } else {
           const damage = Math.floor(20 + Math.random() * 35);
           state.player.health = Math.max(0, state.player.health - damage);
@@ -600,9 +1092,11 @@ export const useGameStore = create<GameStore>((set, get) => {
             message: `Firefight was brutal! You suffered ${damage} damage!`,
             timestamp: Date.now(),
           });
+          soundEngine.play('gunshot');
           if (state.player.health <= 0) {
             state.player.isGameOver = true;
             state.player.gameOverReason = `Killed in a gun battle with ${encounter.enemyName}.`;
+            soundEngine.play('defeat');
           }
         }
       }
@@ -613,6 +1107,381 @@ export const useGameStore = create<GameStore>((set, get) => {
         logs: state.logs,
       });
       triggerAutoSave(get, set);
+      checkAchievementsAndUpdate(get, set, {
+        lastAction: 'combat',
+        combatWon: fightWon,
+        nearDeathSurvival: state.player.health > 0 && state.player.health <= 15,
+      });
+    },
+
+    resolveTacticalCombatAction: (action: CombatDuelAction) => {
+      const state = {
+        player: {
+          ...get().player,
+          inventory: { ...get().player.inventory },
+          weapons: { ...get().player.weapons },
+          combatConsumables: {
+            ...(get().player.combatConsumables || { flashbangs: 0, smokeGrenades: 0, medkits: 0 }),
+          },
+          stats: { ...(get().player.stats || {}) },
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const encounter = state.player.activeEncounter;
+      if (!encounter) return;
+
+      const city = CITY_MAP.get(state.player.currentCityId)?.name ?? 'City';
+      const isGod = state.player.cheats?.godMode;
+      const combatLogs = [...(get().combatLogs || [])];
+      let currentCover = get().combatCoverActive;
+      let blinded = get().enemyBlindedRounds;
+      const roundNum = get().tacticalCombatRound + 1;
+
+      let roundEnded = false;
+      let playerWon = false;
+
+      if (action === 'use_medkit') {
+        if ((state.player.combatConsumables?.medkits ?? 0) <= 0) {
+          combatLogs.unshift(`[R${roundNum}] No combat medkits remaining in trauma pack!`);
+          set({ combatLogs });
+          return;
+        }
+        state.player.combatConsumables.medkits -= 1;
+        const healAmount = 40;
+        state.player.health = Math.min(100, state.player.health + healAmount);
+        combatLogs.unshift(`[R${roundNum}] MEDKIT: Injected military adrenaline (+${healAmount} HP). Health: ${state.player.health}% HP.`);
+        soundEngine.play('heal');
+      } else if (action === 'use_flashbang') {
+        if ((state.player.combatConsumables?.flashbangs ?? 0) <= 0) {
+          combatLogs.unshift(`[R${roundNum}] No M84 flashbangs remaining!`);
+          set({ combatLogs });
+          return;
+        }
+        state.player.combatConsumables.flashbangs -= 1;
+        blinded = 2;
+        combatLogs.unshift(`[R${roundNum}] FLASHBANG: Detonated M84 Stun Grenade! ${encounter.enemyName} is blinded and disoriented!`);
+        soundEngine.play('gunshot');
+      } else if (action === 'use_smoke') {
+        if ((state.player.combatConsumables?.smokeGrenades ?? 0) <= 0) {
+          combatLogs.unshift(`[R${roundNum}] No tactical smoke grenades remaining!`);
+          set({ combatLogs });
+          return;
+        }
+        state.player.combatConsumables.smokeGrenades -= 1;
+        const escapeSuccess = isGod || Math.random() < 0.90;
+        if (escapeSuccess) {
+          combatLogs.unshift(`[R${roundNum}] SMOKE SCREEN: Thick white phosphorus deployed! Escaped into the alleyways.`);
+          state.logs.unshift({
+            day: state.player.currentDay,
+            city,
+            type: 'combat',
+            message: `Escaped cleanly from ${encounter.enemyName} behind a dense tactical smoke screen!`,
+            timestamp: Date.now(),
+          });
+          state.player.activeEncounter = null;
+          soundEngine.play('flee');
+          roundEnded = true;
+        } else {
+          combatLogs.unshift(`[R${roundNum}] SMOKE SCREEN: Thermal scopes penetrated smoke! Escape cut off!`);
+        }
+      } else if (action === 'take_cover') {
+        currentCover = true;
+        combatLogs.unshift(`[R${roundNum}] TACTICAL COVER: Ducked behind armored barricade (-50% incoming damage this turn).`);
+        soundEngine.play('click');
+      } else if (action === 'flee') {
+        const fleeSuccess = isGod || Math.random() > 0.35;
+        if (fleeSuccess) {
+          combatLogs.unshift(`[R${roundNum}] ESCAPE: Dashed down subway steps and broke contact!`);
+          state.logs.unshift({
+            day: state.player.currentDay,
+            city,
+            type: 'combat',
+            message: `Escaped cleanly from ${encounter.enemyName}!`,
+            timestamp: Date.now(),
+          });
+          state.player.activeEncounter = null;
+          soundEngine.play('flee');
+          roundEnded = true;
+        } else {
+          combatLogs.unshift(`[R${roundNum}] ESCAPE THWARTED: Enforcers pinned your exit corridor!`);
+        }
+      } else if (action === 'bribe') {
+        if (isGod || state.player.cash >= encounter.bribeCost) {
+          if (!isGod) state.player.cash -= encounter.bribeCost;
+          state.player.stats.bribesCount = (state.player.stats.bribesCount || 0) + 1;
+          state.logs.unshift({
+            day: state.player.currentDay,
+            city,
+            type: 'combat',
+            message: `Bribe accepted! Handed over $${encounter.bribeCost.toLocaleString()} to ${encounter.enemyName}.`,
+            timestamp: Date.now(),
+          });
+          state.player.activeEncounter = null;
+          soundEngine.play('bribe');
+          roundEnded = true;
+        } else {
+          combatLogs.unshift(`[R${roundNum}] BRIBE REJECTED: Not enough cash to satisfy bribe demand!`);
+        }
+      } else if (action === 'surrender') {
+        if (!isGod) {
+          state.player.cash = 0;
+          state.player.inventory = {};
+        }
+        state.player.stats.surrendersCount = (state.player.stats.surrendersCount || 0) + 1;
+        state.logs.unshift({
+          day: state.player.currentDay,
+          city,
+          type: 'combat',
+          message: `${encounter.enemyName} confiscated all your street holdings!`,
+          timestamp: Date.now(),
+        });
+        state.player.activeEncounter = null;
+        soundEngine.play('defeat');
+        roundEnded = true;
+      } else {
+        // Attack actions: snap_fire, aim_fire, suppress
+        let accuracy = 0.70;
+        let suppressEnemy = false;
+
+        if (action === 'aim_fire') {
+          accuracy = 0.90;
+        } else if (action === 'suppress') {
+          accuracy = 0.60;
+          suppressEnemy = true;
+        }
+
+        const hit = isGod || Math.random() < accuracy;
+        if (hit) {
+          encounter.count = Math.max(0, encounter.count - 1);
+          soundEngine.play('gunshot');
+          combatLogs.unshift(
+            `[R${roundNum}] HIT! ${action.toUpperCase()}: Direct hit eliminates 1x hostile! (${encounter.count} enemies remaining)`
+          );
+          if (encounter.count <= 0) {
+            playerWon = true;
+            roundEnded = true;
+            state.player.stats.combatWins = (state.player.stats.combatWins || 0) + 1;
+            state.logs.unshift({
+              day: state.player.currentDay,
+              city,
+              type: 'combat',
+              message: `VICTORY! You eliminated ${encounter.enemyName} and secured your cargo.`,
+              timestamp: Date.now(),
+            });
+            state.player.activeEncounter = null;
+            soundEngine.play('victory');
+          }
+        } else {
+          combatLogs.unshift(`[R${roundNum}] MISS: Shot went wide! No damage dealt.`);
+          soundEngine.play('gunshot');
+        }
+
+        if (suppressEnemy) {
+          blinded = Math.max(blinded, 1);
+        }
+      }
+
+      // Enemy counterattack (if encounter still active and enemy not blinded)
+      if (!roundEnded && state.player.activeEncounter) {
+        if (blinded > 0) {
+          combatLogs.unshift(`[R${roundNum}] ENEMY SUPPRESSED: ${encounter.enemyName} is blinded and cannot return fire!`);
+          blinded -= 1;
+        } else {
+          const enemyAccuracy = Math.min(0.75, 0.40 + encounter.danger * 0.04);
+          const enemyHit = Math.random() < enemyAccuracy;
+          if (enemyHit && !isGod) {
+            let incomingDamage = Math.floor(12 + Math.random() * (encounter.danger * 4));
+            if (currentCover) {
+              incomingDamage = Math.round(incomingDamage * 0.5);
+              combatLogs.unshift(`[R${roundNum}] COVER ABSORBED: Incoming fire reduced to ${incomingDamage} HP!`);
+            }
+            // Armor absorption
+            if (state.player.armor && state.player.armor.durability > 0) {
+              const absorbed = Math.min(state.player.armor.durability, Math.round(incomingDamage * 0.6));
+              state.player.armor.durability -= absorbed;
+              incomingDamage -= absorbed;
+              if (state.player.armor.durability <= 0) {
+                state.player.armor = null;
+                combatLogs.unshift(`[R${roundNum}] ARMOR SHATTERED! Ballistic armor was destroyed!`);
+              }
+            }
+            state.player.health = Math.max(0, state.player.health - incomingDamage);
+            combatLogs.unshift(`[R${roundNum}] ENEMY FIRE: Hit by ${encounter.enemyName}! Took ${incomingDamage} damage! (${state.player.health}% HP left)`);
+            soundEngine.play('gunshot');
+            if (state.player.health <= 0) {
+              state.player.isGameOver = true;
+              state.player.gameOverReason = `Killed in action during a firefight with ${encounter.enemyName}.`;
+              state.player.activeEncounter = null;
+              soundEngine.play('defeat');
+            }
+          } else {
+            combatLogs.unshift(`[R${roundNum}] ENEMY MISSED: Enemy fire pinged harmlessly off masonry.`);
+          }
+        }
+      }
+
+      // Reset cover after round
+      if (action !== 'take_cover') {
+        currentCover = false;
+      }
+
+      syncStateToMemory(state);
+      set({
+        player: state.player,
+        logs: state.logs,
+        tacticalCombatRound: roundNum,
+        combatCoverActive: currentCover,
+        enemyBlindedRounds: blinded,
+        combatLogs: combatLogs.slice(0, 8),
+      });
+      triggerAutoSave(get, set);
+      checkAchievementsAndUpdate(get, set, {
+        lastAction: 'combat',
+        combatWon: playerWon,
+        nearDeathSurvival: state.player.health > 0 && state.player.health <= 15,
+      });
+    },
+
+    bookFlightAction: (
+      targetCityId: string,
+      seatClass: FlightSeatClass,
+      ticketCostOverride?: number,
+      useOwnedAircraft = false
+    ) => {
+      return get().travel(targetCityId, seatClass, ticketCostOverride, useOwnedAircraft);
+    },
+
+    buyAircraftAction: (aircraftId: string) => {
+      const state = {
+        player: {
+          ...get().player,
+          ownedAircraft: [...(get().player.ownedAircraft || [])],
+        },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyAircraft(state, aircraftId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('vault');
+        checkAchievementsAndUpdate(get, set, { lastAction: 'aircraft' });
+      }
+      return result;
+    },
+
+    selectActiveAircraftAction: (aircraftId: string | null) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = selectActiveAircraft(state, aircraftId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    buyShellBusinessAction: (businessId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyShellBusiness(state, businessId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    buyCorporateUpgradeAction: (upgradeId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyCorporateUpgrade(state, upgradeId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    executeBusinessLaunderAction: (businessId: string, amount: number) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = executeBusinessLaundering(state, businessId, amount);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    acceptContract: (contractId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = acceptSyndicateContract(state, contractId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    deliverContract: (contractId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = deliverSyndicateContract(state, contractId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('victory');
+        checkAchievementsAndUpdate(get, set);
+      }
+      return result;
+    },
+
+    paySyndicateTribute: (syndicateId: SyndicateId) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = paySyndicateTributeAction(state, syndicateId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
     },
 
     runCheat: (cmd: string) => {
@@ -696,9 +1565,81 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
     },
 
-    restartGame: () => {
+    retireEmpireAction: () => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = retireEmpire(state);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('victory');
+      }
+      return result;
+    },
+
+    buyCleanIdentityAction: () => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = purchaseCleanIdentity(state);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('victory');
+      }
+      return result;
+    },
+
+    bribePoliceAction: () => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = bribePolice(state);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('bribe');
+      }
+      return result;
+    },
+
+    setDurationMode: (mode: GameDurationMode) => {
+      const modeConfig = DURATION_MODES.find((m) => m.id === mode) ?? DURATION_MODES[0];
+      const state = { ...get().player };
+      state.gameDurationMode = modeConfig.id;
+      state.isEndless = modeConfig.isEndless;
+      if (!modeConfig.isEndless) {
+        state.maxDays = Math.max(state.currentDay, modeConfig.days);
+      } else {
+        state.maxDays = modeConfig.days;
+      }
+      set({ player: state });
+      triggerAutoSave(get, set);
+    },
+
+    restartGame: (mode?: GameDurationMode) => {
       deleteLocalSaveSlot('autosave');
-      const fresh = createInitialState();
+      const chosenMode = mode || get().player.gameDurationMode || 'classic';
+      const fresh = createInitialState(chosenMode);
       syncStateToMemory(fresh);
       set({
         ...fresh,
@@ -706,10 +1647,17 @@ export const useGameStore = create<GameStore>((set, get) => {
         placesSubTab: 'bank',
         isTerminalOpen: false,
         isSaveModalOpen: false,
+        isHallOfFameOpen: false,
+        recentlyUnlockedAchievement: null,
         lastSavedAt: null,
         priceHistory: createInitialPriceHistory(fresh.market),
+        globalPriceHistory: createInitialGlobalPriceHistory(fresh.player.currentCityId, fresh.market),
+        isDrugGraphOpen: false,
+        selectedGraphDrugId: null,
+        isGlobalAnalyticsOpen: false,
         tradeModal: { isOpen: false, drugId: null, mode: 'buy' },
       });
+      soundEngine.play('click');
     },
   };
 

@@ -58,5 +58,25 @@
     "heatReduction": 0.85,
     "image": "/assets/properties/island_paradise.png",
     "description": "Offshore private island fortress with private airstrip and radar jamming. Untouchable sovereign sanctuary."
+  },
+  {
+    "id": "private_hangar",
+    "name": "Private Aviation Hangar & Airstrip",
+    "tier": 7,
+    "price": 45000000,
+    "storageUnits": 200000,
+    "heatReduction": 0.90,
+    "image": "/assets/properties/private_hangar.png",
+    "description": "Reinforced aviation hangar with private kerosene depot, maintenance bays, and 8,000-ft runway. Reduces fuel costs to $0 for all owned aircraft!"
+  },
+  {
+    "id": "sovereign_airstrip_compound",
+    "name": "Sovereign Mountain Airfield & Bunker",
+    "tier": 8,
+    "price": 120000000,
+    "storageUnits": 500000,
+    "heatReduction": 0.95,
+    "image": "/assets/properties/sovereign_airstrip_compound.png",
+    "description": "Deep mountain sovereign airfield with subterranean hangars, radar-jamming array, and cliffside runway. The ultimate criminal redoubt."
   }
 ]

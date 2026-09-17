@@ -2,12 +2,13 @@ import React from 'react';
 import { useGameStore } from '../store/gameStore';
 import {
   CITY_MAP,
-  RANK_MAP,
 } from '../engine/constants';
+import { DealerProfileCard } from './DealerProfileCard';
 import {
   getInventoryTotalUnits,
   getCarryingCapacity,
   getTotalWealth,
+  getCityHeat,
 } from '../engine/game';
 import {
   DollarSign,
@@ -17,21 +18,35 @@ import {
   Package,
   MapPin,
   Calendar,
-  Award,
+  Trophy,
   Terminal,
   Shield,
   HardDrive,
+  Flame,
+  Volume2,
+  VolumeX,
+  Volume1,
+  Globe,
+  Plane,
+  Handshake,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const player = useGameStore((s) => s.player);
   const toggleTerminal = useGameStore((s) => s.toggleTerminal);
   const toggleSaveModal = useGameStore((s) => s.toggleSaveModal);
+  const openHallOfFame = useGameStore((s) => s.openHallOfFame);
+  const openGlobalAnalytics = useGameStore((s) => s.openGlobalAnalytics);
+  const openFlightBoard = useGameStore((s) => s.openFlightBoard);
+  const openSyndicateModal = useGameStore((s) => s.openSyndicateModal);
   const lastSavedAt = useGameStore((s) => s.lastSavedAt);
   const fontScale = useGameStore((s) => s.fontScale);
   const setFontScale = useGameStore((s) => s.setFontScale);
+  const audioVolume = useGameStore((s) => s.audioVolume);
+  const isAudioMuted = useGameStore((s) => s.isAudioMuted);
+  const setAudioVolume = useGameStore((s) => s.setAudioVolume);
+  const toggleAudioMute = useGameStore((s) => s.toggleAudioMute);
   const city = CITY_MAP.get(player.currentCityId);
-  const rank = RANK_MAP.get(player.currentRankId);
 
   const totalUnits = getInventoryTotalUnits(player);
   const capacity = getCarryingCapacity(player);
@@ -40,6 +55,7 @@ export const Header: React.FC = () => {
   const isGod = player.cheats?.godMode;
 
   const capacityPercent = Math.min(100, Math.round((totalUnits / capacity) * 100));
+  const currentCityHeat = getCityHeat(player, player.currentCityId);
 
   return (
     <header className="bg-slate-900/90 border-b border-slate-800 backdrop-blur px-4 py-3 sticky top-0 z-40">
@@ -49,10 +65,10 @@ export const Header: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-black tracking-wider text-emerald-400">
-                DRUG LORD 2
+                DRUG LORD
               </span>
-              <span className="text-xs uppercase px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                FINTECH
+              <span className="text-xs uppercase px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-black">
+                REVANCED
               </span>
               {isGod && (
                 <span className="text-xs uppercase px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 flex items-center gap-1 font-bold animate-pulse">
@@ -60,16 +76,50 @@ export const Header: React.FC = () => {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+            <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-400 mt-1 flex-wrap">
               <span className="flex items-center gap-1 text-sky-400">
                 <MapPin className="w-3.5 h-3.5" />
                 {city?.name ?? 'Unknown'}, {city?.country}
               </span>
+
+              {/* City Police Heat Indicator */}
+              <span
+                className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 transition-all ${
+                  currentCityHeat >= 70
+                    ? 'bg-red-950/90 text-red-300 border-red-500 animate-pulse font-black'
+                    : currentCityHeat >= 30
+                    ? 'bg-amber-950/70 text-amber-300 border-amber-600'
+                    : 'bg-emerald-950/50 text-emerald-400 border-emerald-800/70'
+                }`}
+                title={`Local Police & DEA Heat in ${city?.name}: ${currentCityHeat}%. Critical heat (≥70%) triggers DEA raids and armed airport customs interceptions.`}
+              >
+                <Flame className={`w-3 h-3 ${currentCityHeat >= 70 ? 'text-red-400' : currentCityHeat >= 30 ? 'text-amber-400' : 'text-emerald-400'}`} />
+                <span>Heat {currentCityHeat}%</span>
+              </span>
+
               <span className="text-slate-600">•</span>
               <span className="flex items-center gap-1 text-amber-400">
                 <Calendar className="w-3.5 h-3.5" />
-                Day {player.currentDay} / {player.maxDays}
+                Day {player.currentDay} / {player.isEndless ? <span className="text-emerald-400 font-bold">∞</span> : player.maxDays}
               </span>
+              {player.isEndless && (
+                <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-700/80 tracking-wider">
+                  ENDLESS
+                </span>
+              )}
+              {player.daysInsolvent && player.daysInsolvent > 0 ? (
+                <span
+                  className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 ${
+                    player.daysInsolvent >= 2
+                      ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
+                      : 'bg-amber-950 text-amber-300 border-amber-600'
+                  }`}
+                  title={`${player.daysInsolvent}/3 days net worth below rank requirement. Demoted on day 3!`}
+                >
+                  <AlertTriangle className="w-3 h-3 text-red-400" />
+                  {player.daysInsolvent === 1 ? 'Insolvency 1/3' : 'Demotion Risk 2/3'}
+                </span>
+              ) : null}
               <span className="text-slate-600">•</span>
               <span className="text-slate-300">
                 Net Worth: <strong className="text-amber-300">${netWorth.toLocaleString()}</strong>
@@ -103,13 +153,14 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Stash Capacity */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[130px]">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="flex items-center gap-1 text-indigo-400">
-                <Package className="w-3.5 h-3.5" /> Stash
+          <div className="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[160px]">
+            <div className="flex items-center justify-between gap-3 text-xs mb-1">
+              <span className="flex items-center gap-1.5 text-indigo-400 font-semibold shrink-0">
+                <Package className="w-3.5 h-3.5 shrink-0" />
+                <span>Stash</span>
               </span>
-              <span className="font-bold text-slate-200">
-                {totalUnits} / {capacity}
+              <span className="font-bold text-slate-200 font-mono shrink-0">
+                {totalUnits.toLocaleString()} / {capacity.toLocaleString()}
               </span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -126,16 +177,8 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Rank Badge */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-xs hidden lg:block">
-            <div className="flex items-center gap-1.5 text-amber-300 font-semibold">
-              <Award className="w-3.5 h-3.5 text-amber-400" />
-              {rank?.name}
-            </div>
-            <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]">
-              {rank?.container}
-            </div>
-          </div>
+          {/* Dealer Profile & Rank Hover Card */}
+          <DealerProfileCard />
 
           {/* Font Scale Switcher */}
           <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-1 flex items-center gap-1 text-xs">
@@ -174,6 +217,51 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
+          {/* Web Audio & Sound FX Controls */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-1 flex items-center gap-1.5 text-xs">
+            <button
+              onClick={toggleAudioMute}
+              className={`px-2 py-0.5 rounded font-bold transition-all flex items-center gap-1 ${
+                isAudioMuted
+                  ? 'text-rose-400 bg-rose-950/40 border border-rose-900/50'
+                  : 'text-emerald-300 bg-emerald-950/80 border border-emerald-800/80 shadow-sm'
+              }`}
+              title={
+                isAudioMuted
+                  ? 'Sound Muted - Click to Unmute'
+                  : `Sound FX Active (${Math.round(audioVolume * 100)}%) - Click to Mute`
+              }
+            >
+              {isAudioMuted ? (
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+              ) : audioVolume > 0.5 ? (
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <Volume1 className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span className="hidden xl:inline text-[11px] font-mono">
+                {isAudioMuted ? 'MUTE' : `${Math.round(audioVolume * 100)}%`}
+              </span>
+            </button>
+
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={isAudioMuted ? 0 : audioVolume}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setAudioVolume(val);
+                if (isAudioMuted && val > 0) {
+                  toggleAudioMute();
+                }
+              }}
+              className="w-12 sm:w-16 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition-all"
+              title={`Adjust Sound FX Volume: ${Math.round(audioVolume * 100)}%`}
+            />
+          </div>
+
           {/* Dev Mode Terminal Button */}
           <button
             onClick={toggleTerminal}
@@ -198,6 +286,51 @@ export const Header: React.FC = () => {
                 title="Auto-saved to local browser storage"
               />
             )}
+          </button>
+
+          {/* Underworld Hall of Fame & Badges */}
+          <button
+            onClick={() => openHallOfFame('leaderboard')}
+            className="px-2.5 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/80 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-amber-950/50"
+            title="Underworld Hall of Fame Leaderboard & Badges"
+          >
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">HOF</span>
+            {player.unlockedAchievements && player.unlockedAchievements.length > 0 && (
+              <span className="text-[10px] text-amber-300 font-bold bg-amber-900/60 px-1 py-0.2 rounded border border-amber-600">
+                {player.unlockedAchievements.length}
+              </span>
+            )}
+          </button>
+
+          {/* Global Arbitrage Radar */}
+          <button
+            onClick={() => openGlobalAnalytics()}
+            className="px-2.5 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/80 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-cyan-950/50 cursor-pointer"
+            title="Open Global Price Radar & Smuggling Arbitrage"
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400 animate-spin-slow" />
+            <span className="hidden sm:inline">RADAR</span>
+          </button>
+
+          {/* Real-Time Airport Flight Board */}
+          <button
+            onClick={() => openFlightBoard()}
+            className="px-2.5 py-1.5 rounded-lg bg-sky-950/80 hover:bg-sky-900 border border-sky-700/80 text-sky-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-sky-950/50 cursor-pointer"
+            title="Open Live Airport Departure Flip-Board & Real-Time Flight Schedules"
+          >
+            <Plane className="w-3.5 h-3.5 text-sky-400" />
+            <span className="hidden sm:inline">FLIGHTS</span>
+          </button>
+
+          {/* Syndicate Cartels Diplomacy */}
+          <button
+            onClick={() => openSyndicateModal()}
+            className="px-2.5 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-700/80 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-rose-950/50 cursor-pointer"
+            title="Open Underworld Crime Syndicates & Cartel Faction Dossier"
+          >
+            <Handshake className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">CARTELS</span>
           </button>
         </div>
 

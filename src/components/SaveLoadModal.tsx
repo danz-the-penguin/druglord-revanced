@@ -288,8 +288,18 @@ export const SaveLoadModal: React.FC = () => {
                             <h4 className="text-sm font-black text-slate-100 truncate">{meta.title}</h4>
                             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                               <span className="flex items-center gap-1 text-cyan-300">
-                                <Calendar className="w-3 h-3" /> Day {meta.playerDay}/{meta.maxDays}
+                                <Calendar className="w-3 h-3" /> Day {meta.playerDay}/{meta.isEndless ? '∞' : meta.maxDays}
                               </span>
+                              {meta.isEndless && (
+                                <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                                  ENDLESS
+                                </span>
+                              )}
+                              {(meta.daysInsolvent ?? 0) > 0 && (
+                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-800 animate-pulse">
+                                  DEMOTION RISK ({meta.daysInsolvent}/3)
+                                </span>
+                              )}
                               <span>•</span>
                               <span className="flex items-center gap-1 text-emerald-400">
                                 <MapPin className="w-3 h-3" /> {meta.currentCityName}
@@ -469,7 +479,9 @@ export const SaveLoadModal: React.FC = () => {
                     <span className="flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4" /> Verified Save File
                     </span>
-                    <span>Day {importPreview.metadata.playerDay} • {importPreview.metadata.rankName}</span>
+                    <span>
+                      Day {importPreview.metadata.playerDay}/{importPreview.metadata.isEndless ? '∞' : importPreview.metadata.maxDays} • {importPreview.metadata.rankName}
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-xs pt-1">

@@ -19,6 +19,9 @@ import {
   SlidersHorizontal,
   Layers,
   RotateCcw,
+  Radio,
+  LineChart,
+  Globe,
 } from 'lucide-react';
 
 type SortField = 'default' | 'name' | 'price' | 'quantity' | 'stash';
@@ -31,6 +34,8 @@ export const MarketBoard: React.FC = () => {
   const player = useGameStore((s) => s.player);
   const priceHistory = useGameStore((s) => s.priceHistory);
   const openTradeModal = useGameStore((s) => s.openTradeModal);
+  const openDrugGraph = useGameStore((s) => s.openDrugGraph);
+  const openGlobalAnalytics = useGameStore((s) => s.openGlobalAnalytics);
 
   const totalUnits = getInventoryTotalUnits(player);
   const capacity = getCarryingCapacity(player);
@@ -166,9 +171,19 @@ export const MarketBoard: React.FC = () => {
             Institutional Order Book & Spot Market
           </h2>
         </div>
-        <span className="text-sm text-slate-300 font-mono">
-          Available Stash: <strong className="text-emerald-400 text-base">{remainingCapacity}</strong> / {capacity} units
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => openGlobalAnalytics()}
+            className="px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700 text-cyan-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
+            title="Open 21-City Global Price Radar & Smuggling Arbitrage"
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400 animate-spin-slow" />
+            <span>Global Radar</span>
+          </button>
+          <span className="text-sm text-slate-300 font-mono">
+            Available Stash: <strong className="text-emerald-400 text-base">{remainingCapacity}</strong> / {capacity} units
+          </span>
+        </div>
       </div>
 
       {/* Filter and Sort Toolbar */}
@@ -333,7 +348,7 @@ export const MarketBoard: React.FC = () => {
                 title="Click to sort by spot price"
               >
                 <span className="flex items-center justify-end gap-1.5">
-                  Spot Price
+                  Spot / Base
                   {sortField === 'price' ? (
                     <span className="text-emerald-400">{sortDirection === 'desc' ? '▼' : '▲'}</span>
                   ) : (
@@ -380,6 +395,10 @@ export const MarketBoard: React.FC = () => {
               const price = marketItem?.price ?? drug.basePrice;
               const availableUnits = marketItem?.availableUnits ?? 0;
               const playerHolding = player.inventory[drug.id]?.units ?? 0;
+              const vaultHolding = player.vaults?.[player.currentCityId]?.[drug.id] ?? 0;
+              const activeIntelTip = player.activeIntel?.find(
+                (t) => t.cityId === player.currentCityId && t.drugId === drug.id && t.purchased && t.targetDay >= player.currentDay
+              );
               const canAfford = player.cash >= price && remainingCapacity > 0 && availableUnits > 0;
               const canSell = playerHolding > 0;
               const history = priceHistory[drug.id] || [drug.basePrice, price];
@@ -399,35 +418,77 @@ export const MarketBoard: React.FC = () => {
                     />
                   </td>
 
-                  {/* Spot Price */}
-                  <td className="py-3.5 px-3 text-right font-black text-slate-100 text-base lg:text-lg">
-                    ${price.toLocaleString()}
+                  {/* Spot Price & Global Base Price */}
+                  <td className="py-2.5 px-3 text-right">
+                    <div className="font-black text-slate-100 text-base lg:text-lg leading-tight">
+                      ${price.toLocaleString()}
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-400 flex items-center justify-end gap-1 mt-0.5">
+                      <span>Base:</span>
+                      <span className="text-slate-300 font-semibold">${drug.basePrice.toLocaleString()}</span>
+                      {(() => {
+                        const diff = price - drug.basePrice;
+                        const pct = Math.round((diff / drug.basePrice) * 100);
+                        if (pct === 0) return null;
+                        return (
+                          <span
+                            className={`text-[10px] font-bold px-1 py-0.2 rounded font-mono ${
+                              diff > 0
+                                ? 'text-emerald-400 bg-emerald-950/80 border border-emerald-800/60'
+                                : 'text-rose-400 bg-rose-950/80 border border-rose-800/60'
+                            }`}
+                            title={`Spot price is ${diff > 0 ? '+' : ''}${diff.toLocaleString()} (${diff > 0 ? '+' : ''}${pct}%) compared to global baseline`}
+                          >
+                            {diff > 0 ? `+${pct}%` : `${pct}%`}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </td>
 
                   {/* 14D Sparkline Chart */}
-                  <td className="py-3.5 px-3 text-center">
-                    <Sparkline data={history} width={110} height={26} />
+                  <td
+                    onClick={() => openDrugGraph(drug.id)}
+                    className="py-3.5 px-3 text-center cursor-pointer group/spark hover:bg-slate-800/80 transition-colors"
+                    title={`Click to open ${drug.name} price graph modal`}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <Sparkline data={history} width={100} height={26} />
+                      <LineChart className="w-3.5 h-3.5 text-slate-500 group-hover/spark:text-emerald-400 opacity-60 group-hover/spark:opacity-100 transition-all shrink-0" />
+                    </div>
                   </td>
 
-                  {/* Trend / Surge */}
+                  {/* Trend / Surge & Inside Intel */}
                   <td className="py-3.5 px-3 text-center">
-                    {marketItem?.surge === 'high' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-950/90 border border-amber-600 text-amber-300 animate-pulse">
-                        <TrendingUp className="w-3.5 h-3.5 text-amber-400" /> Shortage
-                      </span>
-                    ) : marketItem?.surge === 'crash' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-rose-950/90 border border-rose-600 text-rose-300">
-                        <TrendingDown className="w-3.5 h-3.5 text-rose-400" /> Flooded
-                      </span>
-                    ) : price > drug.basePrice ? (
-                      <span className="text-emerald-400 inline-flex items-center gap-0.5 text-xs font-semibold">
-                        <ArrowUpRight className="w-3.5 h-3.5" /> Bull
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 inline-flex items-center gap-0.5 text-xs font-semibold">
-                        <ArrowDownRight className="w-3.5 h-3.5" /> Bear
-                      </span>
-                    )}
+                    <div className="flex flex-col items-center gap-1">
+                      {marketItem?.surge === 'high' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-950/90 border border-amber-600 text-amber-300 animate-pulse">
+                          <TrendingUp className="w-3.5 h-3.5 text-amber-400" /> Shortage
+                        </span>
+                      ) : marketItem?.surge === 'crash' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-rose-950/90 border border-rose-600 text-rose-300">
+                          <TrendingDown className="w-3.5 h-3.5 text-rose-400" /> Flooded
+                        </span>
+                      ) : price > drug.basePrice ? (
+                        <span className="text-emerald-400 inline-flex items-center gap-0.5 text-xs font-semibold">
+                          <ArrowUpRight className="w-3.5 h-3.5" /> Bull
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 inline-flex items-center gap-0.5 text-xs font-semibold">
+                          <ArrowDownRight className="w-3.5 h-3.5" /> Bear
+                        </span>
+                      )}
+
+                      {activeIntelTip && (
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-950/90 border border-orange-600 text-orange-300 animate-pulse cursor-help"
+                          title={`Wiretip: ${activeIntelTip.headline}`}
+                        >
+                          <Radio className="w-3 h-3 text-orange-400" />
+                          <span>Day {activeIntelTip.targetDay} {activeIntelTip.eventType === 'surge_spike' ? '+Spike' : activeIntelTip.eventType === 'market_glut' ? '-Glut' : 'Raid'}</span>
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Available Units */}
@@ -439,10 +500,24 @@ export const MarketBoard: React.FC = () => {
                     )}
                   </td>
 
-                  {/* Stash */}
+                  {/* Stash & Local Vault */}
                   <td className="py-3.5 px-3 text-right">
-                    {playerHolding > 0 ? (
-                      <span className="text-emerald-400 font-black text-sm">{playerHolding}</span>
+                    {playerHolding > 0 || vaultHolding > 0 ? (
+                      <div>
+                        {playerHolding > 0 ? (
+                          <span className="text-emerald-400 font-black text-sm">{playerHolding}</span>
+                        ) : (
+                          <span className="text-slate-600 text-sm">0</span>
+                        )}
+                        {vaultHolding > 0 && (
+                          <span
+                            className="text-[10px] text-teal-400 block font-bold font-mono"
+                            title="Stored in local safehouse vault"
+                          >
+                            +{vaultHolding} vlt
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-slate-600 text-sm">-</span>
                     )}

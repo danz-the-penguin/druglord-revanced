@@ -13,6 +13,19 @@
     "description": "High-purity crystalline alkaloid. Massive margins, heavy DEA focus."
   },
   {
+    "id": "super_soldier_serum",
+    "name": "Compound-Z",
+    "scientificName": "Synthetic Nootropic-Combat Stimulant",
+    "chemicalFormula": "C32H48N6O4",
+    "molecularWeight": "580.77 g/mol",
+    "image": "/assets/drugs/super_soldier_serum.png",
+    "minPrice": 8000,
+    "maxPrice": 26000,
+    "basePrice": 16500,
+    "volatility": 0.40,
+    "description": "Clandestine military-grade black-ops neural enhancer. High-value experimental cartel synthetic."
+  },
+  {
     "id": "heroin",
     "name": "Heroin",
     "scientificName": "Diacetylmorphine",
@@ -24,6 +37,19 @@
     "basePrice": 9000,
     "volatility": 0.3,
     "description": "Semi-synthetic opioid synthesized from morphine. Consistently high urban demand."
+  },
+  {
+    "id": "carfentanil",
+    "name": "Carfentanil",
+    "scientificName": "4-Carbomethoxyfentanyl (Wildnil)",
+    "chemicalFormula": "C24H30N2O3",
+    "molecularWeight": "394.51 g/mol",
+    "image": "/assets/drugs/carfentanil.png",
+    "minPrice": 2500,
+    "maxPrice": 8500,
+    "basePrice": 4800,
+    "volatility": 0.45,
+    "description": "Ultra-potent synthetic elephant tranquilizer. Extreme lethality, massive margins, intense DEA heat."
   },
   {
     "id": "crack",
@@ -104,6 +130,32 @@
     "description": "Crude street-cooked desomorphine synthesized with red phosphorus and iodine. Infamous toxic necrotic side-effects with wild price swings."
   },
   {
+    "id": "dmt",
+    "name": "DMT",
+    "scientificName": "N,N-Dimethyltryptamine",
+    "chemicalFormula": "C12H16N2",
+    "molecularWeight": "188.27 g/mol",
+    "image": "/assets/drugs/dmt.png",
+    "minPrice": 280,
+    "maxPrice": 950,
+    "basePrice": 580,
+    "volatility": 0.35,
+    "description": "The Spirit Molecule. Extracted freebase crystalline alkaloid commanding premium prices among elite circles."
+  },
+  {
+    "id": "oxycodone",
+    "name": "Oxycodone",
+    "scientificName": "Oxycodone HCl (Oxy 80)",
+    "chemicalFormula": "C18H21NO4",
+    "molecularWeight": "315.36 g/mol",
+    "image": "/assets/drugs/oxycodone.png",
+    "minPrice": 150,
+    "maxPrice": 620,
+    "basePrice": 380,
+    "volatility": 0.32,
+    "description": "Diverted 'Oxy 80' pharmaceutical prescription tablets. Fast turnover in urban and suburban markets."
+  },
+  {
     "id": "lsd",
     "name": "LSD",
     "scientificName": "Lysergic Acid Diethylamide",
@@ -154,6 +206,19 @@
     "basePrice": 180,
     "volatility": 0.38,
     "description": "Doctored morphine pressed into cheap street counterfeit doses. Significantly cheaper to produce than genuine M 15 pills, but carries high overdose volatility."
+  },
+  {
+    "id": "codeine",
+    "name": "Codeine",
+    "scientificName": "Codeine Phosphate & Promethazine",
+    "chemicalFormula": "C18H21NO3",
+    "molecularWeight": "299.36 g/mol",
+    "image": "/assets/drugs/codeine.png",
+    "minPrice": 70,
+    "maxPrice": 260,
+    "basePrice": 160,
+    "volatility": 0.28,
+    "description": "Pharmaceutical promethazine-codeine cough syrup (Lean). Pervasive cultural and nightclub demand."
   },
   {
     "id": "speed",
