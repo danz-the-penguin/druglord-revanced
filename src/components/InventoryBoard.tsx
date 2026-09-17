@@ -15,6 +15,8 @@ import {
   SlidersHorizontal,
   Layers,
   RotateCcw,
+  PackageOpen,
+  ShoppingCart,
 } from 'lucide-react';
 
 type InvSortField = 'default' | 'name' | 'units' | 'value' | 'pnl';
@@ -111,6 +113,15 @@ export const InventoryBoard: React.FC = () => {
     return list;
   }, [inventoryEntries, searchQuery, sortField, sortDirection, market]);
 
+  const scrollToOrderBook = () => {
+    const el = document.getElementById('market-order-book');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 380, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div ref={containerRef} className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
       {/* Header Bar */}
@@ -127,8 +138,23 @@ export const InventoryBoard: React.FC = () => {
       </div>
 
       {inventoryEntries.length === 0 ? (
-        <div className="p-10 text-center text-slate-500 font-mono text-sm">
-          Your trench coat and trunk are completely empty. Acquire commodities from the Order Book to start arbitrage trading.
+        <div className="p-10 sm:p-14 flex flex-col items-center justify-center text-center font-mono space-y-3.5 select-none">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-950/60 border-2 border-indigo-500/40 flex items-center justify-center text-indigo-400 shadow-xl shadow-indigo-950/50 mb-1 animate-in zoom-in-95">
+            <PackageOpen className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h3 className="text-base font-black text-slate-200 uppercase tracking-wider">
+            Your Trench Coat & Stash Are Empty
+          </h3>
+          <p className="text-xs text-slate-400 max-w-md leading-relaxed font-sans">
+            You currently hold 0 contraband units in your personal inventory. Scan the live Institutional Order Book to initiate your first commodity arbitrage trades.
+          </p>
+          <button
+            onClick={scrollToOrderBook}
+            className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-slate-950 font-black text-xs flex items-center gap-2 transition-all shadow-lg shadow-indigo-950/60 cursor-pointer active:scale-95"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>Browse Institutional Order Book ↓</span>
+          </button>
         </div>
       ) : (
         <>

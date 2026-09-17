@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { Terminal, Filter, Maximize2, Minimize2, Search, Radio, Clock } from 'lucide-react';
+import { sanitizeLogMessage } from '../utils/formatters';
 
 export const EventLog: React.FC = () => {
   const logs = useGameStore((s) => s.logs);
@@ -81,17 +82,38 @@ export const EventLog: React.FC = () => {
         </span>
         {['all', 'market', 'finance', 'travel', 'combat', 'event', 'system'].map((type) => {
           const isActive = selectedType === type;
+          const count = type === 'all' ? logs.length : logs.filter((l) => l.type === type).length;
+
+          const activeThemes: Record<string, string> = {
+            all: 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300 font-black shadow-md shadow-emerald-950/60',
+            market: 'bg-sky-400 text-slate-950 ring-2 ring-sky-300 font-black shadow-md shadow-sky-950/60',
+            finance: 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 font-black shadow-md shadow-amber-950/60',
+            travel: 'bg-cyan-400 text-slate-950 ring-2 ring-cyan-300 font-black shadow-md shadow-cyan-950/60',
+            combat: 'bg-rose-500 text-white ring-2 ring-rose-400 font-black shadow-md shadow-rose-950/60',
+            event: 'bg-purple-400 text-slate-950 ring-2 ring-purple-300 font-black shadow-md shadow-purple-950/60',
+            system: 'bg-slate-200 text-slate-950 ring-2 ring-white font-black shadow-md shadow-slate-900/60',
+          };
+
+          const activeClass = activeThemes[type] || 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300 font-black';
+
           return (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                 isActive
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-900/50'
-                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+                  ? activeClass
+                  : 'bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800'
               }`}
             >
-              {type}
+              <span>{type}</span>
+              <span
+                className={`text-[10px] px-1 py-0.2 rounded font-mono ${
+                  isActive ? 'bg-black/20 text-current font-black' : 'bg-slate-900 text-slate-500 font-bold'
+                }`}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
@@ -151,7 +173,7 @@ export const EventLog: React.FC = () => {
               {/* Message with enlarged font */}
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className={`${fontScaleClass} text-slate-200 font-medium leading-relaxed select-text`}>
-                  {entry.message}
+                  {sanitizeLogMessage(entry.message)}
                 </p>
               </div>
             </div>

@@ -162,7 +162,7 @@ export const MarketBoard: React.FC = () => {
   }, [searchQuery, filterMode, sortField, sortDirection, market, player.inventory, player.cash, remainingCapacity]);
 
   return (
-    <div ref={containerRef} className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+    <div id="market-order-book" ref={containerRef} className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md scroll-mt-6">
       {/* Header Bar */}
       <div className="px-5 py-4 bg-slate-800/80 border-b border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -187,23 +187,24 @@ export const MarketBoard: React.FC = () => {
       </div>
 
       {/* Filter and Sort Toolbar */}
-      <div className="bg-slate-950/80 px-5 py-3 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+      <div className="bg-slate-950/80 px-4 sm:px-5 py-3 border-b border-slate-800/80 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 text-xs font-mono">
         {/* Left: Search and Filter Mode Pills */}
-        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
           {/* Search box */}
-          <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-64 shrink-0">
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search drug or formula..."
-              className="w-full bg-slate-900 border border-slate-700/70 rounded-lg pl-8 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              placeholder="Search drug, formula, or type..."
+              className="w-full bg-slate-900 border border-slate-700/70 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                title="Clear search"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -214,7 +215,7 @@ export const MarketBoard: React.FC = () => {
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setFilterMode('all')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
                 filterMode === 'all'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -225,7 +226,7 @@ export const MarketBoard: React.FC = () => {
 
             <button
               onClick={() => setFilterMode('affordable')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
                 filterMode === 'affordable'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -236,7 +237,7 @@ export const MarketBoard: React.FC = () => {
 
             <button
               onClick={() => setFilterMode('in_stash')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
                 filterMode === 'in_stash'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -247,7 +248,7 @@ export const MarketBoard: React.FC = () => {
 
             <button
               onClick={() => setFilterMode('surges')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
                 filterMode === 'surges'
                   ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -259,65 +260,65 @@ export const MarketBoard: React.FC = () => {
         </div>
 
         {/* Right: Quick Sort Controls */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-slate-500 text-[11px] font-bold uppercase flex items-center gap-1 mr-1">
+        <div className="flex items-center gap-1.5 flex-wrap pt-2.5 xl:pt-0 border-t xl:border-t-0 border-slate-800/80">
+          <span className="text-slate-500 text-[11px] font-bold uppercase flex items-center gap-1 mr-1 shrink-0">
             <SlidersHorizontal className="w-3 h-3 text-slate-400" /> Sort:
           </span>
 
           <button
             onClick={() => handleSortToggle('name', 'asc')}
-            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
               sortField === 'name'
-                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300'
+                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
                 : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
             }`}
             title="Sort alphabetically by name"
           >
             {sortField === 'name' && sortDirection === 'desc' ? (
-              <ArrowDownZA className="w-3.5 h-3.5 text-emerald-400" />
+              <ArrowDownZA className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             ) : (
-              <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
+              <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             )}
-            Alphabetical {sortField === 'name' && (sortDirection === 'asc' ? '(A-Z)' : '(Z-A)')}
+            <span>Alphabetical {sortField === 'name' && (sortDirection === 'asc' ? '(A-Z)' : '(Z-A)')}</span>
           </button>
 
           <button
             onClick={() => handleSortToggle('price', 'desc')}
-            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
               sortField === 'price'
-                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300'
+                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
                 : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
             }`}
             title="Sort by spot price"
           >
             {sortField === 'price' && sortDirection === 'asc' ? (
-              <ArrowDown01 className="w-3.5 h-3.5 text-emerald-400" />
+              <ArrowDown01 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             ) : (
-              <ArrowDown10 className="w-3.5 h-3.5 text-emerald-400" />
+              <ArrowDown10 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             )}
-            Price {sortField === 'price' && (sortDirection === 'desc' ? '▼' : '▲')}
+            <span>Price {sortField === 'price' && (sortDirection === 'desc' ? '▼' : '▲')}</span>
           </button>
 
           <button
             onClick={() => handleSortToggle('quantity', 'desc')}
-            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
               sortField === 'quantity'
-                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300'
+                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
                 : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
             }`}
             title="Sort by available supply quantity"
           >
-            <Layers className="w-3.5 h-3.5 text-emerald-400" />
-            Quantity {sortField === 'quantity' && (sortDirection === 'desc' ? '▼' : '▲')}
+            <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Quantity {sortField === 'quantity' && (sortDirection === 'desc' ? '▼' : '▲')}</span>
           </button>
 
           {(sortField !== 'default' || filterMode !== 'all' || searchQuery) && (
             <button
               onClick={handleResetFilters}
-              className="px-2 py-1 rounded-md text-[11px] font-bold text-slate-400 hover:text-rose-400 bg-slate-900 border border-slate-800 flex items-center gap-1 transition-colors ml-1 cursor-pointer"
+              className="px-2.5 py-1 rounded-md text-[11px] font-bold text-slate-400 hover:text-rose-400 bg-slate-900 border border-slate-800 flex items-center gap-1 transition-colors ml-1 cursor-pointer shrink-0"
               title="Reset all filters and sort order"
             >
-              <RotateCcw className="w-3 h-3" /> Reset
+              <RotateCcw className="w-3 h-3 shrink-0" /> Reset
             </button>
           )}
         </div>

@@ -561,11 +561,13 @@ export function buyDrug(
     };
   }
 
+  const drugName = DRUG_MAP.get(drugId)?.name ?? drugId;
+
   state.logs.unshift({
     day: state.player.currentDay,
     city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
     type: 'market',
-    message: `Bought ${units}x ${drugId} for $${totalCost.toLocaleString()} ($${marketItem.price.toLocaleString()}/unit).`,
+    message: `Bought ${units}x ${drugName} for $${totalCost.toLocaleString()} ($${marketItem.price.toLocaleString()}/unit).`,
     timestamp: Date.now(),
   });
 
@@ -635,11 +637,13 @@ export function sellDrug(
   const profitSign = profit >= 0 ? '+' : '-';
   const profitText = `${profitSign}$${Math.abs(profit).toLocaleString()}`;
 
+  const drugName = DRUG_MAP.get(drugId)?.name ?? drugId;
+
   state.logs.unshift({
     day: state.player.currentDay,
     city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
     type: 'market',
-    message: `Sold ${units}x ${drugId} for $${totalRevenue.toLocaleString()} (${profitText} profit).`,
+    message: `Sold ${units}x ${drugName} for $${totalRevenue.toLocaleString()} (${profitText} profit).`,
     timestamp: Date.now(),
   });
 
@@ -661,11 +665,13 @@ export function dumpDrug(
     delete state.player.inventory[drugId];
   }
 
+  const drugName = DRUG_MAP.get(drugId)?.name ?? drugId;
+
   state.logs.unshift({
     day: state.player.currentDay,
     city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
     type: 'market',
-    message: `Dumped ${units}x ${drugId} into the sewer to free up space.`,
+    message: `Dumped ${units}x ${drugName} into the sewer to free up space.`,
     timestamp: Date.now(),
   });
 
