@@ -68,53 +68,70 @@ export const InventoryBoard: React.FC = () => {
                     key={item.drugId}
                     className="hover:bg-slate-800/50 transition-colors group"
                   >
-                    {/* Commodity Thumbnail, Name & Formula */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        {drug && <DrugImage drug={drug} size="sm" />}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-100 text-base group-hover:text-indigo-300 transition-colors">
-                              {drug?.name ?? item.drugId}
-                            </span>
-                            {drug?.chemicalFormula && (
-                              <span className="px-1.5 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold border border-indigo-900/60 text-[11px] tracking-tight shrink-0">
-                                {formatFormula(drug.chemicalFormula)}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Shorter Definition with Zoom on Hover */}
-                          <div className="relative group/def cursor-help inline-block">
-                            <div className="text-xs text-slate-400 truncate max-w-[160px] sm:max-w-[190px] mt-0.5 transition-all duration-200 origin-left group-hover/def:scale-105 group-hover/def:text-indigo-300">
-                              {drug?.scientificName ? drug.scientificName : drug?.description}
-                            </div>
-
-                            {/* Floating Zoomed Card */}
-                            {drug && (
-                              <div className="absolute left-0 bottom-full mb-2 hidden group-hover/def:block z-50 w-72 p-3 bg-slate-950/95 border border-indigo-500/80 rounded-xl shadow-2xl backdrop-blur-md text-xs font-mono pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-                                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800">
-                                  <span className="font-bold text-indigo-400 text-xs uppercase">{drug.name}</span>
-                                  <span className="text-[10px] text-slate-400 font-bold">{formatFormula(drug.chemicalFormula)}</span>
-                                </div>
-                                {drug.scientificName && (
-                                  <div className="text-[11px] text-sky-300 font-semibold mb-1">
-                                    {drug.scientificName}
-                                  </div>
-                                )}
-                                <p className="text-[11px] text-slate-300 leading-relaxed">
-                                  {drug.description}
-                                </p>
-                                {drug.molecularWeight && (
-                                  <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex justify-between">
-                                    <span>Molecular Mass:</span>
-                                    <span className="text-indigo-400 font-bold">{drug.molecularWeight}</span>
-                                  </div>
+                    {/* Commodity Card with Hover Zoom & Embedded Large Image */}
+                    <td className="py-2 px-3 relative">
+                      <div className="relative group/card">
+                        {/* Resting Card View */}
+                        <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-2.5 transition-all duration-200 group-hover/card:border-indigo-500/80 group-hover/card:bg-slate-900/90 cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            {drug && <DrugImage drug={drug} size="sm" />}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-100 text-base group-hover/card:text-indigo-300 transition-colors">
+                                  {drug?.name ?? item.drugId}
+                                </span>
+                                {drug?.chemicalFormula && (
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold border border-indigo-900/60 text-[10px] tracking-tight shrink-0">
+                                    {formatFormula(drug.chemicalFormula)}
+                                  </span>
                                 )}
                               </div>
-                            )}
+                              {/* Shorter resting definition */}
+                              <div className="text-xs text-slate-400 truncate max-w-[160px] sm:max-w-[190px] mt-0.5">
+                                {drug?.scientificName ? drug.scientificName : drug?.description}
+                              </div>
+                            </div>
                           </div>
                         </div>
+
+                        {/* The Whole Zoomed Hover Card (Enlarged image is with the card!) */}
+                        {drug && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[340px] hidden group-hover/card:flex z-50 rounded-2xl border-2 border-indigo-500 bg-slate-950/98 p-3.5 shadow-2xl shadow-indigo-950/90 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200 pointer-events-none gap-3.5 items-start">
+                            {/* Larger image WITH the card */}
+                            <div className="shrink-0">
+                              <DrugImage drug={drug} size="md" className="ring-2 ring-indigo-500/60 shadow-lg" />
+                            </div>
+
+                            {/* Complete Details & Definition */}
+                            <div className="flex-1 min-w-0 font-mono">
+                              <div className="flex items-center justify-between gap-1 border-b border-slate-800 pb-1.5 mb-1.5">
+                                <span className="font-black text-indigo-400 text-base uppercase tracking-wide truncate">
+                                  {drug.name}
+                                </span>
+                                {drug.chemicalFormula && (
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-900 text-indigo-300 font-black border border-indigo-800 text-[10px] shrink-0">
+                                    {formatFormula(drug.chemicalFormula)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {drug.scientificName && (
+                                <div className="text-xs font-bold text-sky-300 mb-1">
+                                  {drug.scientificName}
+                                </div>
+                              )}
+
+                              <p className="text-xs text-slate-300 leading-relaxed">
+                                {drug.description}
+                              </p>
+
+                              <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                                <span>Molecular Mass: <strong className="text-slate-200">{drug.molecularWeight || 'N/A'}</strong></span>
+                                <span>Avg Cost: <strong className="text-indigo-400">${item.avgCost.toLocaleString()}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
 
