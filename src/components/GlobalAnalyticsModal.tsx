@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DRUGS, DRUG_MAP, CITIES, CITY_MAP } from '../engine/constants';
 import { getDrugDetails } from '../engine/drugDetails';
+import { AIRCRAFT_MAP, calculateAircraftFlightCost } from '../engine/aviation';
 import {
   Globe,
   X,
@@ -12,36 +13,52 @@ import {
   RotateCcw,
   Plus,
   Minus,
+  Search,
+  ArrowUpDown,
+  TrendingUp,
 } from 'lucide-react';
 import { stepPlaybackSpeed } from '../utils/graphAnimation';
 
 const SPEED_PRESETS = [0.5, 1, 2, 4];
 
+// Comprehensive 30-City Distinct Underworld Radar Color Palette
 const CITY_PALETTE: Record<string, string> = {
   new_york: '#f59e0b', // amber
-  bogota: '#10b981', // emerald
-  london: '#38bdf8', // sky
-  tokyo: '#c084fc', // purple
   miami: '#fb7185', // rose
-  berlin: '#22d3ee', // cyan
-  amsterdam: '#a3e635', // lime
   los_angeles: '#fb923c', // orange
-  zurich: '#818cf8', // indigo
-  hong_kong: '#f43f5e', // red
-  bangkok: '#e879f9', // fuchsia
-  sydney: '#34d399', // teal
-  medellin: '#4ade80', // green
-  tijuana: '#fdba74', // warm
-  frankfurt: '#94a3b8', // slate
-  dubai: '#fbbf24', // gold
+  detroit: '#94a3b8', // slate
+  vancouver: '#38bdf8', // sky
+  tijuana: '#fdba74', // peach
+  bogota: '#10b981', // emerald
+  medellin: '#4ade80', // bright green
   rio_de_janeiro: '#2dd4bf', // mint
+  london: '#60a5fa', // blue
+  paris: '#c084fc', // purple
+  amsterdam: '#a3e635', // lime
+  berlin: '#22d3ee', // cyan
+  ibiza: '#f472b6', // pink
+  sydney: '#34d399', // teal
+  tokyo: '#e879f9', // fuchsia
+  bangkok: '#facc15', // yellow
+  hong_kong: '#f43f5e', // red
+  dubai: '#fbbf24', // gold
   johannesburg: '#a78bfa', // violet
-  chicago: '#f97316', // orange-red
-  seattle: '#06b6d4', // cyan-dark
-  moscow: '#ef4444', // crimson
+  lagos: '#f97316', // orange-dark
+  panama_city: '#14b8a6', // caribbean teal
+  singapore: '#06b6d4', // dark cyan
+  zurich: '#818cf8', // indigo
+  istanbul: '#ea580c', // amber-red
+  mexico_city: '#e11d48', // crimson
+  frankfurt: '#64748b', // cool-slate
+  sao_paulo: '#16a34a', // jungle green
+  madrid: '#c2410c', // terracotta
+  toronto: '#0284c7', // cobalt
 };
 
-const DEFAULT_ACTIVE_CITIES = ['bogota', 'new_york', 'london', 'tokyo', 'miami'];
+const DEFAULT_ACTIVE_CITIES = ['bogota', 'new_york', 'london', 'tokyo', 'medellin'];
+
+type RadarSortField = 'price' | 'name' | 'region' | 'spread' | 'vault';
+type RadarSortDirection = 'asc' | 'desc';
 
 export const GlobalAnalyticsModal: React.FC = () => {
   const {
@@ -57,6 +74,10 @@ export const GlobalAnalyticsModal: React.FC = () => {
   } = useGameStore();
 
   const [activeCities, setActiveCities] = useState<string[]>(DEFAULT_ACTIVE_CITIES);
+  const [selectedRegion, setSelectedRegion] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortField, setSortField] = useState<RadarSortField>('price');
+  const [sortDirection, setSortDirection] = useState<RadarSortDirection>('asc');
 
   // Playback & Animation State
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
@@ -70,45 +91,111 @@ export const GlobalAnalyticsModal: React.FC = () => {
   const drug = DRUG_MAP.get(activeDrugId) || DRUGS[0];
   const drugDetails = getDrugDetails(drug.id);
 
-  if (!isGlobalAnalyticsOpen) return null;
+  // Private aircraft detection for realistic flight cost calculations
+  const activeAircraft = player.selectedAircraftId ? AIRCRAFT_MAP.get(player.selectedAircraftId) : null;
+  const privateFuelCost = activeAircraft ? calculateAircraftFlightCost(activeAircraft, player.ownedProperties || []) : 0;
+
+  // Calculate actual flight cost to any target city
+  const getFlightCost = (targetCity: { flightCost: number; id: string }) => {
+    if (activeAircraft) return privateFuelCost;
+    return targetCity.flightCost;
+  };
 
   const toggleCity = (cityId: string) => {
     setActiveCities((prev) => {
       if (prev.includes(cityId)) {
-        if (prev.length <= 1) return prev; // keep at least 1
+        if (prev.length <= 1) return prev;
         return prev.filter((id) => id !== cityId);
       } else {
-        if (prev.length >= 7) return prev; // max 7
+        if (prev.length >= 8) return prev;
         return [...prev, cityId];
       }
     });
   };
 
-  // Compile full price list across all 21 cities
-  const cityPriceEntries = CITIES.map((city) => {
-    const isCurrent = city.id === player.currentCityId;
-    const history = globalPriceHistory[drug.id]?.[city.id] || [];
-    const price = isCurrent
-      ? (market[drug.id]?.price ?? drug.basePrice)
-      : (history[history.length - 1] ?? Math.round(drug.basePrice * (city.drugModifiers[drug.id] ?? 1.0)));
+  // Compile full price list across all 30 cities with robust fallbacks
+  const allCityPriceEntries = useMemo(() => {
+    return CITIES.map((city) => {
+      const isCurrent = city.id === player.currentCityId;
+      const history = (globalPriceHistory && globalPriceHistory[drug.id]?.[city.id]) || [];
+      const regionalModifier = city.drugModifiers?.[drug.id] ?? 1.0;
+      const fallbackPrice = Math.max(1, Math.round(drug.basePrice * regionalModifier));
 
-    const baseSpread = drug.basePrice > 0 ? ((price - drug.basePrice) / drug.basePrice) * 100 : 0;
-    const vaultUnits = player.vaults?.[city.id]?.[drug.id] ?? 0;
+      let price = fallbackPrice;
+      if (isCurrent) {
+        price = market[drug.id]?.price ?? fallbackPrice;
+      } else if (history.length > 0) {
+        const last = history[history.length - 1];
+        if (typeof last === 'number' && !isNaN(last) && isFinite(last) && last > 0) {
+          price = last;
+        }
+      }
 
-    return {
-      city,
-      price,
-      history,
-      baseSpread,
-      vaultUnits,
-      isCurrent,
-    };
-  }).sort((a, b) => a.price - b.price);
+      const baseSpread = drug.basePrice > 0 ? ((price - drug.basePrice) / drug.basePrice) * 100 : 0;
+      const vaultUnits = player.vaults?.[city.id]?.[drug.id] ?? 0;
+      const flightCost = getFlightCost(city);
 
-  const cheapestEntry = cityPriceEntries[0];
-  const highestEntry = cityPriceEntries[cityPriceEntries.length - 1];
-  const grossArbitrageSpread = Math.max(0, highestEntry.price - cheapestEntry.price);
-  const grossRoi = cheapestEntry.price > 0 ? (grossArbitrageSpread / cheapestEntry.price) * 100 : 0;
+      return {
+        city,
+        price,
+        history,
+        baseSpread,
+        vaultUnits,
+        isCurrent,
+        flightCost,
+      };
+    });
+  }, [drug.id, drug.basePrice, player.currentCityId, player.vaults, globalPriceHistory, market, activeAircraft, privateFuelCost]);
+
+  // Global Best Arbitrage Route (Overall Cheapest vs Overall Highest)
+  const sortedByPriceGlobal = useMemo(() => {
+    return [...allCityPriceEntries].sort((a, b) => a.price - b.price);
+  }, [allCityPriceEntries]);
+
+  const cheapestGlobalEntry = sortedByPriceGlobal[0] || allCityPriceEntries[0];
+  const highestGlobalEntry = sortedByPriceGlobal[sortedByPriceGlobal.length - 1] || allCityPriceEntries[0];
+  const grossArbitrageSpread = Math.max(0, highestGlobalEntry.price - cheapestGlobalEntry.price);
+  const grossRoi = cheapestGlobalEntry.price > 0 ? (grossArbitrageSpread / cheapestGlobalEntry.price) * 100 : 0;
+
+  // Local Departure Arbitrage (From Current City to Top Paying Destination)
+  const currentCityEntry = allCityPriceEntries.find((e) => e.isCurrent) || cheapestGlobalEntry;
+  const bestDepartureDestination = useMemo(() => {
+    const destinations = allCityPriceEntries.filter((e) => !e.isCurrent);
+    return destinations.sort((a, b) => b.price - a.price)[0] || destinations[0];
+  }, [allCityPriceEntries]);
+
+  const localArbitrageSpread = bestDepartureDestination
+    ? Math.max(0, bestDepartureDestination.price - currentCityEntry.price)
+    : 0;
+  const localRoi = currentCityEntry.price > 0 && bestDepartureDestination
+    ? (localArbitrageSpread / currentCityEntry.price) * 100
+    : 0;
+
+  // Filtered & Sorted Table Entries
+  const filteredAndSortedEntries = useMemo(() => {
+    let list = allCityPriceEntries.filter((item) => {
+      const matchesRegion = selectedRegion === 'All' || item.city.region === selectedRegion;
+      const query = searchQuery.trim().toLowerCase();
+      const matchesQuery =
+        !query ||
+        item.city.name.toLowerCase().includes(query) ||
+        item.city.country.toLowerCase().includes(query) ||
+        (item.city.region && item.city.region.toLowerCase().includes(query));
+      return matchesRegion && matchesQuery;
+    });
+
+    list.sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'price') comparison = a.price - b.price;
+      else if (sortField === 'name') comparison = a.city.name.localeCompare(b.city.name);
+      else if (sortField === 'region') comparison = (a.city.region || '').localeCompare(b.city.region || '');
+      else if (sortField === 'spread') comparison = a.baseSpread - b.baseSpread;
+      else if (sortField === 'vault') comparison = a.vaultUnits - b.vaultUnits;
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return list;
+  }, [allCityPriceEntries, selectedRegion, searchQuery, sortField, sortDirection]);
 
   // Chart setup
   const svgWidth = 720;
@@ -120,34 +207,54 @@ export const GlobalAnalyticsModal: React.FC = () => {
   const chartWidth = svgWidth - paddingLeft - paddingRight;
   const chartHeight = svgHeight - paddingTop - paddingBottom;
 
-  // Find max length among active cities
+  // Find max length among active cities safely
   const seriesLengths = activeCities.map(
-    (cId) => globalPriceHistory[drug.id]?.[cId]?.length || 5
+    (cId) => globalPriceHistory?.[drug.id]?.[cId]?.length || 5
   );
   const maxSeriesLength = Math.max(5, ...seriesLengths);
 
-  // Compute all prices in active series to bound Y-axis
+  // Compute all prices in active series to bound Y-axis with strict NaN guards
   const allActivePrices: number[] = [];
   activeCities.forEach((cId) => {
-    const s = globalPriceHistory[drug.id]?.[cId] || [];
-    if (s.length > 0) allActivePrices.push(...s);
-    else {
+    const s = globalPriceHistory?.[drug.id]?.[cId] || [];
+    if (s.length > 0) {
+      s.forEach((p) => {
+        if (typeof p === 'number' && !isNaN(p) && isFinite(p) && p > 0) {
+          allActivePrices.push(p);
+        }
+      });
+    } else {
       const city = CITY_MAP.get(cId);
-      allActivePrices.push(Math.round(drug.basePrice * (city?.drugModifiers[drug.id] ?? 1.0)));
+      const mod = city?.drugModifiers?.[drug.id] ?? 1.0;
+      const validMod = typeof mod === 'number' && !isNaN(mod) ? mod : 1.0;
+      const p = Math.max(1, Math.round(drug.basePrice * validMod));
+      if (typeof p === 'number' && !isNaN(p) && isFinite(p)) {
+        allActivePrices.push(p);
+      }
     }
   });
 
-  const minVal = Math.floor(Math.min(...allActivePrices) * 0.85);
-  const maxVal = Math.ceil(Math.max(...allActivePrices) * 1.12);
+  if (allActivePrices.length === 0) {
+    allActivePrices.push(Math.round(drug.basePrice * 0.8), Math.round(drug.basePrice * 1.2));
+  }
+
+  const minVal = Math.max(1, Math.floor(Math.min(...allActivePrices) * 0.85));
+  const maxVal = Math.max(minVal + 10, Math.ceil(Math.max(...allActivePrices) * 1.12));
   const valRange = Math.max(1, maxVal - minVal);
 
   const getX = (index: number) => {
     if (maxSeriesLength <= 1) return paddingLeft + chartWidth / 2;
-    return paddingLeft + (index / (maxSeriesLength - 1)) * chartWidth;
+    const ratio = Math.max(0, Math.min(1, index / (maxSeriesLength - 1)));
+    const res = paddingLeft + ratio * chartWidth;
+    return isFinite(res) ? res : paddingLeft;
   };
 
   const getY = (val: number) => {
-    return paddingTop + chartHeight - ((val - minVal) / valRange) * chartHeight;
+    if (!isFinite(val) || isNaN(val)) return paddingTop + chartHeight / 2;
+    const ratio = (val - minVal) / valRange;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    const res = paddingTop + chartHeight - clamped * chartHeight;
+    return isFinite(res) ? res : paddingTop + chartHeight;
   };
 
   const yTicks = [
@@ -158,7 +265,7 @@ export const GlobalAnalyticsModal: React.FC = () => {
     maxVal,
   ];
 
-  // Reset on drug change
+  // Reset animation on drug change
   useEffect(() => {
     setPlaybackProgress(0);
     setIsPlaying(true);
@@ -210,6 +317,31 @@ export const GlobalAnalyticsModal: React.FC = () => {
     setIsPlaying((prev) => !prev);
   };
 
+  const handleFlyAction = (cityId: string) => {
+    const targetCity = CITY_MAP.get(cityId);
+    if (!targetCity) return;
+    const cost = getFlightCost(targetCity);
+    if (player.cash < cost) return;
+
+    if (activeAircraft) {
+      travel(cityId, 'economy', undefined, true);
+    } else {
+      travel(cityId, 'economy', undefined, false);
+    }
+    closeGlobalAnalytics();
+  };
+
+  const handleSortToggle = (field: RadarSortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  if (!isGlobalAnalyticsOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 font-mono select-none animate-in fade-in duration-200">
       <div className="bg-slate-950 border-2 border-cyan-500/80 rounded-3xl w-full max-w-5xl overflow-hidden shadow-[0_25px_70px_rgba(6,182,212,0.25)] flex flex-col max-h-[92vh]">
@@ -225,18 +357,23 @@ export const GlobalAnalyticsModal: React.FC = () => {
                   Global Underworld Exchange & Multi-Country Radar
                 </h3>
                 <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-xs font-bold">
-                  21 Cities Monitored
+                  {CITIES.length} Cities Monitored
                 </span>
+                {activeAircraft && (
+                  <span className="px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 text-xs font-bold flex items-center gap-1">
+                    <Plane className="w-3 h-3 text-sky-400" /> Private Aviation Active
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5 truncate">
-                {drug.name} ({drugDetails.drugClass}) • Cross-border commodity arbitrage and historical price curves.
+                {drug.name} ({drugDetails.drugClass}) • Cross-border commodity arbitrage, regional pricing, and live route navigation.
               </p>
             </div>
           </div>
 
           <button
             onClick={closeGlobalAnalytics}
-            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition-colors shrink-0"
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -253,9 +390,9 @@ export const GlobalAnalyticsModal: React.FC = () => {
               <button
                 key={d.id}
                 onClick={() => setSelectedAnalyticsDrugId(d.id)}
-                className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950 font-black'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                 }`}
               >
@@ -267,39 +404,110 @@ export const GlobalAnalyticsModal: React.FC = () => {
 
         {/* Modal Scrollable Body */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
-          {/* Optimal Smuggling Route Recommendation Callout */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-emerald-950/30 to-slate-900 border border-cyan-800/80 shadow-lg flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
-                <Compass className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-black text-cyan-400 tracking-wider block">
-                  Optimal Global Smuggling Route for {drug.name}
-                </span>
-                <div className="flex items-center gap-2 mt-1 flex-wrap text-sm">
-                  <span className="font-bold text-emerald-300">
-                    Buy in {cheapestEntry.city.name} (${cheapestEntry.price.toLocaleString()})
-                  </span>
-                  <span className="text-slate-500 font-black">&rarr;</span>
-                  <span className="font-bold text-cyan-300">
-                    Sell in {highestEntry.city.name} (${highestEntry.price.toLocaleString()})
-                  </span>
+          {/* Dual Arbitrage Highlights: Global Best vs Current Port Arbitrage */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Global Best Arbitrage Route */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-950/40 via-emerald-950/20 to-slate-900 border border-cyan-800/80 shadow-lg flex flex-col justify-between gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-black text-cyan-400 tracking-wider block">
+                      Global Optimal Arbitrage Corridor
+                    </span>
+                    <span className="text-xs text-slate-400">Lowest buy port to highest sell port worldwide</span>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Flight fare: ${cheapestEntry.city.flightCost + highestEntry.city.flightCost} • Net profit per 100 units: <strong className="text-emerald-400 font-bold">+${(grossArbitrageSpread * 100).toLocaleString()}</strong>
-                </p>
+                <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700 text-[10px] font-black">
+                  +{grossRoi.toFixed(0)}% ROI
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap text-sm pt-1">
+                <div className="bg-slate-950/80 px-2.5 py-1 rounded-lg border border-emerald-900/60">
+                  <span className="text-[10px] text-emerald-400 block uppercase">Source Port</span>
+                  <strong className="text-emerald-300 font-bold">{cheapestGlobalEntry.city.name}</strong> (${cheapestGlobalEntry.price.toLocaleString()})
+                </div>
+                <span className="text-cyan-400 font-black">&rarr;</span>
+                <div className="bg-slate-950/80 px-2.5 py-1 rounded-lg border border-cyan-900/60">
+                  <span className="text-[10px] text-cyan-400 block uppercase">Destination Port</span>
+                  <strong className="text-cyan-300 font-bold">{highestGlobalEntry.city.name}</strong> (${highestGlobalEntry.price.toLocaleString()})
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[11px]">Gross Spread:</span>{' '}
+                  <strong className="text-emerald-400 font-black">+${grossArbitrageSpread.toLocaleString()} / unit</strong>
+                </div>
+                {!cheapestGlobalEntry.isCurrent && (
+                  <button
+                    onClick={() => handleFlyAction(cheapestGlobalEntry.city.id)}
+                    disabled={player.cash < cheapestGlobalEntry.flightCost}
+                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-black text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plane className="w-3 h-3" />
+                    <span>Fly to Buy Port (${cheapestGlobalEntry.flightCost})</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="text-right shrink-0">
-              <span className="text-[10px] uppercase text-slate-400 block">Gross Spread</span>
-              <div className="text-xl font-black text-emerald-400">
-                +${grossArbitrageSpread.toLocaleString()} / unit
+            {/* Local Departure Arbitrage (From Current City) */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-sky-950/20 to-slate-900 border border-indigo-800/80 shadow-lg flex flex-col justify-between gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/40">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-black text-indigo-300 tracking-wider block">
+                      Departure Arbitrage from {currentCityEntry.city.name}
+                    </span>
+                    <span className="text-xs text-slate-400">Best profit destination from your current location</span>
+                  </div>
+                </div>
+                {bestDepartureDestination && (
+                  <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700 text-[10px] font-black">
+                    +{localRoi.toFixed(0)}% Margin
+                  </span>
+                )}
               </div>
-              <span className="text-xs text-emerald-300 font-bold">
-                +{grossRoi.toFixed(0)}% Profit Margin
-              </span>
+
+              {bestDepartureDestination ? (
+                <div className="flex items-center gap-2 flex-wrap text-sm pt-1">
+                  <div className="bg-slate-950/80 px-2.5 py-1 rounded-lg border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Buy Here</span>
+                    <strong className="text-slate-100 font-bold">{currentCityEntry.city.name}</strong> (${currentCityEntry.price.toLocaleString()})
+                  </div>
+                  <span className="text-indigo-400 font-black">&rarr;</span>
+                  <div className="bg-slate-950/80 px-2.5 py-1 rounded-lg border border-indigo-900/60">
+                    <span className="text-[10px] text-indigo-400 block uppercase">Fly & Sell At</span>
+                    <strong className="text-indigo-300 font-bold">{bestDepartureDestination.city.name}</strong> (${bestDepartureDestination.price.toLocaleString()})
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400">You are in the highest paying city for {drug.name}.</div>
+              )}
+
+              {bestDepartureDestination && (
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+                  <div>
+                    <span className="text-slate-400 text-[11px]">Net Margin:</span>{' '}
+                    <strong className="text-indigo-300 font-black">+${localArbitrageSpread.toLocaleString()} / unit</strong>
+                  </div>
+                  <button
+                    onClick={() => handleFlyAction(bestDepartureDestination.city.id)}
+                    disabled={player.cash < bestDepartureDestination.flightCost}
+                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-slate-100 font-black text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plane className="w-3 h-3 text-sky-300" />
+                    <span>Fly to Sell Port (${bestDepartureDestination.flightCost})</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -308,12 +516,15 @@ export const GlobalAnalyticsModal: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase text-slate-300">
-                  Historical City Price Action (Last {maxSeriesLength} Days)
+                  Historical Price Curves (Last {maxSeriesLength} Days)
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  • Click any city below to toggle curve (Max 8)
                 </span>
               </div>
 
-              {/* Active City Toggle Chips */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Active City Toggle Chips with horizontal scrollbar */}
+              <div className="flex items-center gap-1.5 flex-wrap max-h-24 overflow-y-auto">
                 {CITIES.map((c) => {
                   const isActive = activeCities.includes(c.id);
                   const color = CITY_PALETTE[c.id] || '#38bdf8';
@@ -378,7 +589,7 @@ export const GlobalAnalyticsModal: React.FC = () => {
 
                 {/* Plot each active city's price curve */}
                 {activeCities.map((cId) => {
-                  const series = globalPriceHistory[drug.id]?.[cId] || [];
+                  const series = globalPriceHistory?.[drug.id]?.[cId] || [];
                   const color = CITY_PALETTE[cId] || '#38bdf8';
                   if (series.length === 0) return null;
 
@@ -482,41 +693,34 @@ export const GlobalAnalyticsModal: React.FC = () => {
               </svg>
             </div>
 
-            {/* Playback Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs font-mono">
+            {/* Radar Animation & Scrub Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-800 text-xs">
               <div className="flex items-center gap-2">
                 <button
                   onClick={togglePlay}
-                  className={`px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
-                    isPlaying
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30'
-                      : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400 font-black'
-                  }`}
+                  className="p-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
                   title={isPlaying ? 'Pause radar animation' : 'Play radar animation'}
                 >
-                  {isPlaying ? (
-                    <Pause className="w-3.5 h-3.5 fill-current" />
-                  ) : (
-                    <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                  )}
-                  <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
+                  {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  <span>{isPlaying ? 'Pause' : 'Play'}</span>
                 </button>
 
                 <button
-                  onClick={() => { setPlaybackProgress(0); setIsPlaying(true); }}
-                  className="p-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all cursor-pointer"
+                  onClick={() => {
+                    setPlaybackProgress(0);
+                    setIsPlaying(true);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer border border-slate-700 transition-colors"
                   title="Rewind radar animation"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
 
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px] font-bold text-cyan-400">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-cyan-400 animate-pulse' : 'bg-slate-600'}`} />
-                  <span>{isPlaying ? `RADAR ACTIVE (${speed}x)` : 'PAUSED'}</span>
+                <div className="text-[11px] text-slate-400 font-bold ml-1">
+                  <span>{isPlaying ? `RADAR SCANNING (${speed}x)` : 'RADAR PAUSED'}</span>
                 </div>
               </div>
 
-              {/* Speed Controls & Scrubber */}
               <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
                 <button
                   onClick={handleDecreaseSpeed}
@@ -569,31 +773,105 @@ export const GlobalAnalyticsModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Global Arbitrage Matrix Table */}
+          {/* 30 Cities Global Arbitrage Matrix Table */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase text-slate-300 flex items-center gap-2">
-                <span>All 21 Cities Price Arbitrage Table</span>
-                <span className="text-slate-500 font-normal">(Sorted from Lowest to Highest)</span>
-              </h4>
+            {/* Filter and Search Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+              {/* Region Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                <span className="text-slate-500 font-bold uppercase text-[10px] mr-1">Region:</span>
+                {['All', 'Americas', 'Europe', 'Asia-Pacific', 'Middle East & Africa'].map((region) => (
+                  <button
+                    key={region}
+                    onClick={() => setSelectedRegion(region)}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      selectedRegion === region
+                        ? 'bg-cyan-500 text-slate-950 font-black shadow-sm'
+                        : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    {region}
+                  </button>
+                ))}
+              </div>
+
+              {/* City Search Bar */}
+              <div className="relative w-full sm:w-56">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search 30 cities or countries..."
+                  className="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-8 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden shadow-lg">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800">
-                    <th className="py-2.5 px-4 font-semibold">City & Country</th>
-                    <th className="py-2.5 px-3 font-semibold">Region</th>
-                    <th className="py-2.5 px-3 text-right font-semibold">Spot Price</th>
-                    <th className="py-2.5 px-3 text-right font-semibold">Spread vs Base</th>
-                    <th className="py-2.5 px-3 text-center font-semibold">Vault Stash</th>
-                    <th className="py-2.5 px-4 text-right font-semibold">Quick Action</th>
+                    <th
+                      onClick={() => handleSortToggle('name')}
+                      className="py-2.5 px-4 font-semibold cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>City & Country</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleSortToggle('region')}
+                      className="py-2.5 px-3 font-semibold cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Region</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleSortToggle('price')}
+                      className="py-2.5 px-3 text-right font-semibold cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Spot Price</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleSortToggle('spread')}
+                      className="py-2.5 px-3 text-right font-semibold cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Spread vs Base</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleSortToggle('vault')}
+                      className="py-2.5 px-3 text-center font-semibold cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Vault Stash</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                      </div>
+                    </th>
+                    <th className="py-2.5 px-4 text-right font-semibold">Quick Navigation</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
-                  {cityPriceEntries.map((entry, idx) => {
-                    const isCheapest = idx === 0;
-                    const isHighest = idx === cityPriceEntries.length - 1;
+                  {filteredAndSortedEntries.map((entry) => {
+                    const isCheapest = entry.city.id === cheapestGlobalEntry.city.id;
+                    const isHighest = entry.city.id === highestGlobalEntry.city.id;
 
                     return (
                       <tr
@@ -672,27 +950,33 @@ export const GlobalAnalyticsModal: React.FC = () => {
                                 closeGlobalAnalytics();
                                 openTradeModal(drug.id, 'buy');
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-colors shadow-sm"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-colors shadow-sm cursor-pointer"
                             >
                               Trade Here
                             </button>
                           ) : (
                             <button
-                              onClick={() => {
-                                travel(entry.city.id);
-                                closeGlobalAnalytics();
-                              }}
-                              disabled={player.cash < entry.city.flightCost}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 font-bold text-xs border border-slate-700 transition-colors flex items-center gap-1 ml-auto"
+                              onClick={() => handleFlyAction(entry.city.id)}
+                              disabled={player.cash < entry.flightCost}
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 font-bold text-xs border border-slate-700 transition-colors flex items-center gap-1 ml-auto cursor-pointer"
+                              title={`Fly to ${entry.city.name} (${activeAircraft ? 'Private Aircraft' : 'Commercial Airfare'})`}
                             >
                               <Plane className="w-3 h-3 text-sky-400" />
-                              <span>Fly (${entry.city.flightCost})</span>
+                              <span>Fly (${entry.flightCost})</span>
                             </button>
                           )}
                         </td>
                       </tr>
                     );
                   })}
+
+                  {filteredAndSortedEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                        No cities match your search filter "{searchQuery}".
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -706,7 +990,7 @@ export const GlobalAnalyticsModal: React.FC = () => {
           </div>
           <button
             onClick={closeGlobalAnalytics}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition-colors"
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition-colors cursor-pointer"
           >
             Close Radar
           </button>

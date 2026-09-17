@@ -2,6 +2,7 @@ import { memoryMirror } from './memoryBuffer';
 import { CITY_MAP, DRUG_MAP } from './constants';
 import { PlayerState } from './types';
 import { soundEngine, SoundEffect } from '../utils/audio';
+import { PRECURSORS } from './production';
 
 export interface CheatExecutionResult {
   success: boolean;
@@ -247,6 +248,60 @@ export function executeCheat(
       state.player.vaults[city.id][drug.id] = (state.player.vaults[city.id][drug.id] || 0) + units;
 
       return { success: true, message: `Injected ${units} units of ${drug.name} into ${city.name} safehouse vault.` };
+    }
+
+    case 'precursor': {
+      if (!arg1) return { success: false, message: 'Usage: precursor <id|all> <quantity>' };
+      const qty = parseInt(arg2 ?? '50', 10);
+      if (isNaN(qty) || qty <= 0) return { success: false, message: 'Invalid quantity' };
+      if (!state.player.precursorInventory) state.player.precursorInventory = {};
+
+      if (arg1.toLowerCase() === 'all') {
+        for (const pId of Object.keys(PRECURSORS)) {
+          state.player.precursorInventory[pId] = (state.player.precursorInventory[pId] || 0) + qty;
+        }
+        return { success: true, message: `Granted +${qty} units of ALL chemical precursors.` };
+      }
+
+      const prec = PRECURSORS[arg1.toLowerCase()];
+      if (!prec) return { success: false, message: `Unknown precursor: "${arg1}". Try: ephedrine, acetic_anhydride, pill_binder, ergot_solvents, bio_precursor_z, hydro_nutrients, or "all".` };
+
+      state.player.precursorInventory[prec.id] = (state.player.precursorInventory[prec.id] || 0) + qty;
+      return { success: true, message: `Granted +${qty} units of ${prec.name}.` };
+    }
+
+    case 'finish_cook':
+    case 'finishcook': {
+      const batches = state.player.activeCookBatches || [];
+      if (batches.length === 0) return { success: true, message: 'No active cook batches running.' };
+      for (const b of batches) {
+        b.daysRemaining = 0;
+        b.status = 'ready';
+      }
+      return { success: true, message: `Fast-forwarded ${batches.length} cooking batches to READY status.` };
+    }
+
+    case 'fake':
+    case 'fake_drug': {
+      if (!arg1) return { success: false, message: 'Usage: fake <drug_id> <quantity>' };
+      const drug = DRUG_MAP.get(arg1.toLowerCase());
+      if (!drug) return { success: false, message: `Unknown drug: "${arg1}"` };
+      const units = parseInt(arg2 ?? '10', 10);
+      if (isNaN(units) || units <= 0) return { success: false, message: 'Invalid quantity' };
+
+      const existing = state.player.inventory[drug.id];
+      if (existing) {
+        existing.units += units;
+        existing.fakeUnits = (existing.fakeUnits || 0) + units;
+      } else {
+        state.player.inventory[drug.id] = {
+          drugId: drug.id,
+          units,
+          avgCost: drug.basePrice,
+          fakeUnits: units,
+        };
+      }
+      return { success: true, message: `Injected ${units} counterfeit/adulterated units of ${drug.name} into your stash.` };
     }
 
     default:

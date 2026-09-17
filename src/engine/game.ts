@@ -25,6 +25,7 @@ import {
   calculateCustomsBonusFromBusinesses,
 } from './laundering';
 import { AIRCRAFT_MAP, calculateAircraftFlightCost } from './aviation';
+import { advanceCookBatches } from './production';
 
 export interface GameEngineState {
   player: PlayerState;
@@ -476,6 +477,24 @@ export function buyProperty(state: GameEngineState, propertyId: string): ActionR
 export function buyWeapon(state: GameEngineState, weaponId: string): ActionResult {
   const item = WEAPON_MAP.get(weaponId);
   if (!item) return { success: false, message: 'Item not found in armory' };
+
+  if (item.type === 'armor' && state.player.armor?.id === item.id) {
+    return { success: false, message: `You already have ${item.name} equipped` };
+  }
+
+  if (item.type === 'utility') {
+    const maxHold = item.maxHold ?? 10;
+    let curCount = 0;
+    if (item.id === 'no_scent') curCount = state.player.noScentCans || 0;
+    else if (item.id === 'flashbang') curCount = state.player.combatConsumables?.flashbangs || 0;
+    else if (item.id === 'smoke_grenade') curCount = state.player.combatConsumables?.smokeGrenades || 0;
+    else if (item.id === 'combat_medkit') curCount = state.player.combatConsumables?.medkits || 0;
+
+    if (curCount >= maxHold) {
+      return { success: false, message: `You are already carrying the maximum capacity (${maxHold}) for ${item.name}` };
+    }
+  }
+
   if (state.player.cash < item.price) {
     return { success: false, message: `Insufficient cash. Need $${item.price.toLocaleString()}` };
   }
@@ -542,8 +561,34 @@ export function buyDrug(
   state.player.cash -= totalCost;
   marketItem.availableUnits -= units;
 
+  // Fake / Adulterated Contraband Acquisition Chance
+  // Natural botanical crops (pot, mushrooms, peyote, kat) are not adulterated;
+  // chemical/powder/pill synthetics risk counterfeit cuts during gluts or elevated heat.
+  let fakeUnitsAcquired = 0;
+  const isSyndicateAllied = syndicateDiscount >= 0.15;
+  const ADULTERABLE_DRUGS = new Set([
+    'cocaine', 'heroin', 'crack', 'fentanyl', 'ice', 'oxycodone',
+    'ecstasy', 'special_k', 'super_soldier_serum', 'krokodil', 'tranq', 'speed', 'carfentanil'
+  ]);
+  if (!isSyndicateAllied && ADULTERABLE_DRUGS.has(drugId)) {
+    const cityHeat = getCityHeat(state.player, state.player.currentCityId);
+    if (marketItem.surge === 'crash' || cityHeat >= 20) {
+      let fakeChance = 0.08; // 8% base chance during market instability or elevated heat
+      if (marketItem.surge === 'crash') fakeChance += 0.10; // +10% during street market glut / price crash
+      if (cityHeat >= 50) fakeChance += 0.07; // Elevated in high-heat cities
+
+      if (Math.random() < fakeChance) {
+        // Slipped in adulterated cuts (between 15% and 40% of batch, min 1, max units)
+        fakeUnitsAcquired = Math.max(1, Math.min(units, Math.round(units * (0.15 + Math.random() * 0.25))));
+      }
+    }
+  }
+
   // Update inventory with weighted average cost
   const existing = state.player.inventory[drugId];
+  const prevFake = existing?.fakeUnits || 0;
+  const newFakeUnits = prevFake + fakeUnitsAcquired;
+
   if (existing) {
     const totalExistingVal = existing.units * existing.avgCost;
     const newTotalUnits = existing.units + units;
@@ -552,16 +597,28 @@ export function buyDrug(
       drugId,
       units: newTotalUnits,
       avgCost: newAvgCost,
+      ...(newFakeUnits > 0 ? { fakeUnits: newFakeUnits } : {}),
     };
   } else {
     state.player.inventory[drugId] = {
       drugId,
       units,
-      avgCost: marketItem.price,
+      avgCost: unitPrice,
+      ...(newFakeUnits > 0 ? { fakeUnits: newFakeUnits } : {}),
     };
   }
 
   const drugName = DRUG_MAP.get(drugId)?.name ?? drugId;
+
+  if (fakeUnitsAcquired > 0) {
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+      type: 'market',
+      message: `⚠️ QUALITY ALERT: Street rumors whisper that counterfeit batches of ${drugName} are circulating in ${CITY_MAP.get(state.player.currentCityId)?.name ?? 'the area'}. Inspect purity before attempting to sell.`,
+      timestamp: Date.now(),
+    });
+  }
 
   state.logs.unshift({
     day: state.player.currentDay,
@@ -618,34 +675,84 @@ export function sellDrug(
   const marketItem = state.market[drugId];
   if (!marketItem) return { success: false, message: 'No buyers in this city' };
 
-  const totalRevenue = marketItem.price * units;
-  const costBasis = inventoryItem.avgCost * units;
-  const profit = totalRevenue - costBasis;
+  const fakeInHolding = inventoryItem.fakeUnits ?? 0;
+  const fakeToSell = Math.min(fakeInHolding, units);
+  const cleanToSell = units - fakeToSell;
 
-  state.player.cash += totalRevenue;
+  // Deduct units from inventory
   inventoryItem.units -= units;
+  if (fakeToSell > 0) {
+    inventoryItem.fakeUnits = Math.max(0, fakeInHolding - fakeToSell);
+  }
 
   if (inventoryItem.units <= 0) {
     delete state.player.inventory[drugId];
   }
 
-  if (units >= 50) {
-    const sellHeat = Math.min(5, Math.floor(units / 50));
-    modifyCityHeat(state, state.player.currentCityId, sellHeat);
+  const drugName = DRUG_MAP.get(drugId)?.name ?? drugId;
+  const cityName = CITY_MAP.get(state.player.currentCityId)?.name ?? 'City';
+
+  let totalRevenue = 0;
+  let penaltyFine = 0;
+  let heatPenalty = 0;
+
+  // Handle counterfeit detection & penalties
+  if (fakeToSell > 0) {
+    penaltyFine = Math.min(state.player.cash, Math.max(250, Math.round(fakeToSell * marketItem.price * 0.4)));
+    state.player.cash -= penaltyFine;
+
+    heatPenalty = Math.min(25, 10 + fakeToSell * 2);
+    modifyCityHeat(state, state.player.currentCityId, heatPenalty);
+
+    if (!state.player.stats) state.player.stats = {};
+    state.player.stats.fakeDrugsDiscovered = (state.player.stats.fakeDrugsDiscovered || 0) + fakeToSell;
+
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: cityName,
+      type: 'combat',
+      message: `🚨 COUNTERFEIT SCANDAL: Street buyers in ${cityName} discovered ${fakeToSell}x ${drugName} was fake/adulterated bunk! Contraband confiscated, fined $${penaltyFine.toLocaleString()} in retribution, +${heatPenalty}% Heat!`,
+      timestamp: Date.now(),
+    });
   }
 
-  const profitSign = profit >= 0 ? '+' : '-';
-  const profitText = `${profitSign}$${Math.abs(profit).toLocaleString()}`;
+  // Handle revenue for clean genuine units
+  if (cleanToSell > 0) {
+    totalRevenue = marketItem.price * cleanToSell;
+    state.player.cash += totalRevenue;
 
-  const drugName = DRUG_MAP.get(drugId)?.name ?? drugId;
+    const costBasis = inventoryItem.avgCost * cleanToSell;
+    const profit = totalRevenue - costBasis;
+    const profitSign = profit >= 0 ? '+' : '-';
+    const profitText = `${profitSign}$${Math.abs(profit).toLocaleString()}`;
 
-  state.logs.unshift({
-    day: state.player.currentDay,
-    city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
-    type: 'market',
-    message: `Sold ${units}x ${drugName} for $${totalRevenue.toLocaleString()} (${profitText} profit).`,
-    timestamp: Date.now(),
-  });
+    if (cleanToSell >= 50) {
+      const sellHeat = Math.min(5, Math.floor(cleanToSell / 50));
+      modifyCityHeat(state, state.player.currentCityId, sellHeat);
+    }
+
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: cityName,
+      type: 'market',
+      message: `Sold ${cleanToSell}x ${drugName} for $${totalRevenue.toLocaleString()} (${profitText} profit).`,
+      timestamp: Date.now(),
+    });
+  }
+
+  if (fakeToSell > 0 && cleanToSell === 0) {
+    return {
+      success: false,
+      message: `Counterfeit bust! All ${fakeToSell}x units were fake and confiscated. Fined $${penaltyFine.toLocaleString()} and gained +${heatPenalty}% heat!`,
+    };
+  }
+
+  if (fakeToSell > 0) {
+    return {
+      success: true,
+      message: `Sold ${cleanToSell} pure units for $${totalRevenue.toLocaleString()}. Note: ${fakeToSell} fake units were confiscated by angry buyers (Fined $${penaltyFine.toLocaleString()}, +${heatPenalty}% heat)!`,
+    };
+  }
 
   return { success: true, message: `Successfully sold ${units} units.` };
 }
@@ -678,6 +785,41 @@ export function dumpDrug(
   return { success: true, message: `Dumped ${units} units.` };
 }
 
+export function dumpFakeDrugs(state: GameEngineState, drugId: string): ActionResult {
+  const inventoryItem = state.player.inventory[drugId];
+  const drug = DRUG_MAP.get(drugId);
+  const drugName = drug?.name ?? drugId;
+  const cityName = CITY_MAP.get(state.player.currentCityId)?.name ?? 'City';
+
+  if (!inventoryItem || !inventoryItem.fakeUnits || inventoryItem.fakeUnits <= 0) {
+    return { success: false, message: `No counterfeit or adulterated units found in your ${drugName} holding.` };
+  }
+
+  const flushedCount = inventoryItem.fakeUnits;
+  inventoryItem.fakeUnits = 0;
+  inventoryItem.units -= flushedCount;
+
+  if (inventoryItem.units <= 0) {
+    delete state.player.inventory[drugId];
+  }
+
+  if (!state.player.stats) state.player.stats = {};
+  state.player.stats.fakeDrugsFlushed = (state.player.stats.fakeDrugsFlushed || 0) + flushedCount;
+
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: cityName,
+    type: 'market',
+    message: `SANITIZATION: Safely flushed ${flushedCount.toLocaleString()}x counterfeit ${drugName} down the safehouse drain with zero heat penalty.`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    success: true,
+    message: `Safely flushed ${flushedCount}x fake/adulterated ${drugName} units down the drain.`,
+  };
+}
+
 export function depositToVault(
   state: GameEngineState,
   drugId: string,
@@ -708,28 +850,48 @@ export function depositToVault(
     };
   }
 
+  // Intercept and destroy counterfeit units before vault storage
+  const fakeInHolding = inventoryItem.fakeUnits ?? 0;
+  const fakeToDeposit = Math.min(fakeInHolding, units);
+  const cleanToDeposit = units - fakeToDeposit;
+
+  if (fakeToDeposit > 0) {
+    inventoryItem.fakeUnits = Math.max(0, fakeInHolding - fakeToDeposit);
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: cityName,
+      type: 'combat',
+      message: `⚠️ VAULT CONTAMINATION INTERCEPTED: Safehouse security tested your deposit and incinerated ${fakeToDeposit}x counterfeit ${drug.name}! Only clean units accepted.`,
+      timestamp: Date.now(),
+    });
+  }
+
   // Deduct from pocket inventory
   inventoryItem.units -= units;
   if (inventoryItem.units <= 0) {
     delete state.player.inventory[drugId];
   }
 
-  // Add to city vault
-  if (!state.player.vaults) state.player.vaults = {};
-  if (!state.player.vaults[targetCity]) state.player.vaults[targetCity] = {};
-  state.player.vaults[targetCity][drugId] = (state.player.vaults[targetCity][drugId] || 0) + units;
+  // Add clean units to city vault
+  if (cleanToDeposit > 0) {
+    if (!state.player.vaults) state.player.vaults = {};
+    if (!state.player.vaults[targetCity]) state.player.vaults[targetCity] = {};
+    state.player.vaults[targetCity][drugId] = (state.player.vaults[targetCity][drugId] || 0) + cleanToDeposit;
+  }
 
   state.logs.unshift({
     day: state.player.currentDay,
     city: cityName,
     type: 'market',
-    message: `STASH VAULT: Deposited ${units.toLocaleString()} units of ${drug.name} into ${cityName} safehouse vault.`,
+    message: `STASH VAULT: Deposited ${cleanToDeposit.toLocaleString()} units of ${drug.name} into ${cityName} safehouse vault.${fakeToDeposit > 0 ? ` (${fakeToDeposit} fake units incinerated)` : ''}`,
     timestamp: Date.now(),
   });
 
   return {
     success: true,
-    message: `Securely stashed ${units.toLocaleString()} units of ${drug.name} in ${cityName} vault.`,
+    message: fakeToDeposit > 0
+      ? `Stashed ${cleanToDeposit} pure units in ${cityName} vault (${fakeToDeposit} counterfeit units incinerated by security).`
+      : `Securely stashed ${units.toLocaleString()} units of ${drug.name} in ${cityName} vault.`,
   };
 }
 
@@ -1341,6 +1503,9 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
     state.player.currentCityId,
     state.player.syndicateContracts || []
   );
+
+  // 5e. Advance active clandestine lab cook batches
+  advanceCookBatches(state);
 
   // Check game over by calendar (only in timed modes, not Endless)
   if (!state.player.isEndless && state.player.currentDay > state.player.maxDays) {

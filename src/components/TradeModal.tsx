@@ -3,7 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { DRUG_MAP } from '../engine/constants';
 import { getInventoryTotalUnits, getCarryingCapacity } from '../engine/game';
 import { DrugImage } from './DrugImage';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 
 export const TradeModal: React.FC = () => {
   const { tradeModal, closeTradeModal, player, market, buy, sell, dump } = useGameStore();
@@ -161,6 +161,21 @@ export const TradeModal: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Counterfeit Warning Banner */}
+          {mode === 'sell' && inventoryItem?.fakeUnits && inventoryItem.fakeUnits > 0 && (
+            <div className="p-3.5 bg-amber-950/40 border border-amber-500/60 rounded-2xl text-xs text-amber-200 flex items-start gap-3 shadow-lg shadow-amber-950/40">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-black text-amber-300 uppercase tracking-wide">
+                  ⚠️ Adulterated Batch Warning ({inventoryItem.fakeUnits} Fake Units)
+                </strong>
+                <p className="mt-0.5 text-amber-200/90 leading-relaxed font-sans">
+                  Your stash contains <strong>{inventoryItem.fakeUnits} counterfeit / cut units</strong>. Street buyers test incoming merchandise: any fake units sold will be confiscated, triggering buyer fines and a local police heat spike! You can safely flush fake units in your Stash board.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Slider & numeric input */}
           <div className="space-y-3">

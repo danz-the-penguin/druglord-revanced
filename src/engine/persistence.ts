@@ -255,6 +255,9 @@ export function parseAndValidateSave(rawInput: string): { success: true; data: D
   p.combatConsumables = p.combatConsumables || { flashbangs: 0, smokeGrenades: 0, medkits: 0 };
   p.ownedAircraft = Array.isArray(p.ownedAircraft) ? p.ownedAircraft : [];
   p.selectedAircraftId = p.selectedAircraftId || null;
+  p.installedLabs = p.installedLabs || {};
+  p.activeCookBatches = Array.isArray(p.activeCookBatches) ? p.activeCookBatches : [];
+  p.precursorInventory = p.precursorInventory || {};
   p.stats = p.stats || {
     combatWins: 0,
     bribesCount: 0,

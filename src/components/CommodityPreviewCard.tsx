@@ -4,7 +4,7 @@ import { Drug } from '../engine/types';
 import { DrugImage } from './DrugImage';
 import { useGameStore } from '../store/gameStore';
 import { getDrugDetails } from '../engine/drugDetails';
-import { LineChart, Globe, Briefcase } from 'lucide-react';
+import { LineChart, Globe, Briefcase, AlertTriangle } from 'lucide-react';
 
 interface CommodityPreviewCardProps {
   drug: Drug;
@@ -375,6 +375,16 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
                                 </span>
                               </div>
                             </div>
+
+                            {/* Counterfeit Warning Badge if holding contains fake units */}
+                            {inventoryHolding?.fakeUnits && inventoryHolding.fakeUnits > 0 && (
+                              <div className="flex items-center gap-2 bg-amber-950/60 border border-amber-500/60 px-3 py-1.5 rounded-xl text-[11px] text-amber-200 shadow-sm">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span>
+                                  <strong className="text-amber-300 font-bold">{inventoryHolding.fakeUnits} fake units</strong> detected in batch. Selling will cause buyer penalties & heat!
+                                </span>
+                              </div>
+                            )}
 
                             {/* Row 2: Financial Performance (Avg Cost & Unrealized P&L) */}
                             <div className="grid grid-cols-2 gap-2 text-center">

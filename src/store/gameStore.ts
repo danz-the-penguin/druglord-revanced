@@ -5,6 +5,7 @@ import {
   buyDrug,
   sellDrug,
   dumpDrug,
+  dumpFakeDrugs,
   depositBank,
   withdrawBank,
   repayLoan,
@@ -58,11 +59,19 @@ import {
   recordHallOfFameEntry,
   HallOfFameEntry,
 } from '../engine/hallOfFame';
+import { LabType } from '../engine/productionTypes';
+import {
+  buildLab,
+  buyPrecursor,
+  startCookBatch,
+  collectCookBatch,
+  cancelCookBatch,
+} from '../engine/production';
 
 export interface GameStore extends GameEngineState {
   // Modal / View Controls
   activeTab: 'market' | 'places' | 'travel';
-  placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation';
+  placesSubTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation' | 'labs';
   isTerminalOpen: boolean;
   isSaveModalOpen: boolean;
   isHallOfFameOpen: boolean;
@@ -122,6 +131,13 @@ export interface GameStore extends GameEngineState {
   buyCorporateUpgradeAction: (upgradeId: string) => { success: boolean; message: string };
   executeBusinessLaunderAction: (businessId: string, amount: number) => { success: boolean; message: string };
 
+  // Clandestine Production Labs & Precursors
+  buildLabAction: (propertyId: string, labType: LabType) => { success: boolean; message: string };
+  buyPrecursorAction: (precursorId: string, units: number, payFrom?: 'cash' | 'bank') => { success: boolean; message: string };
+  startCookBatchAction: (propertyId: string, recipeId: string, batchCount?: number) => { success: boolean; message: string };
+  collectCookBatchAction: (batchId: string, destination?: 'pocket' | 'vault') => { success: boolean; message: string };
+  cancelCookBatchAction: (batchId: string) => { success: boolean; message: string };
+
   // Tactical Firefight Duel Combat
   tacticalCombatRound: number;
   combatCoverActive: boolean;
@@ -141,7 +157,7 @@ export interface GameStore extends GameEngineState {
 
   // Actions
   setActiveTab: (tab: 'market' | 'places' | 'travel') => void;
-  setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation') => void;
+  setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation' | 'labs') => void;
   setFontScale: (scale: 'normal' | 'large' | 'xl') => void;
   toggleTerminal: () => void;
   openTradeModal: (drugId: string, mode: 'buy' | 'sell' | 'dump') => void;
@@ -150,6 +166,7 @@ export interface GameStore extends GameEngineState {
   buy: (drugId: string, units: number) => { success: boolean; message: string };
   sell: (drugId: string, units: number) => { success: boolean; message: string };
   dump: (drugId: string, units: number) => { success: boolean; message: string };
+  dumpFakeDrugsAction: (drugId: string) => { success: boolean; message: string };
   depositToVaultAction: (drugId: string, units: number, cityId?: string) => { success: boolean; message: string };
   withdrawFromVaultAction: (drugId: string, units: number, cityId?: string) => { success: boolean; message: string };
   dispatchCourierAction: (params: {
@@ -517,7 +534,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     setActiveTab: (tab: 'market' | 'places' | 'travel') => set({ activeTab: tab }),
-    setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation') =>
+    setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation' | 'labs') =>
       set({ placesSubTab: subTab }),
     setFontScale: (scale: 'normal' | 'large' | 'xl') => set({ fontScale: scale }),
     toggleTerminal: () => set((state) => ({ isTerminalOpen: !state.isTerminalOpen })),
@@ -589,6 +606,25 @@ export const useGameStore = create<GameStore>((set, get) => {
         logs: [...get().logs],
       };
       const result = dumpDrug(state, drugId, units);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({
+          player: state.player,
+          logs: state.logs,
+        });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    dumpFakeDrugsAction: (drugId: string) => {
+      const state = {
+        player: { ...get().player, inventory: { ...get().player.inventory }, stats: { ...(get().player.stats || {}) } },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = dumpFakeDrugs(state, drugId);
       if (result.success) {
         syncStateToMemory(state);
         set({
@@ -1431,6 +1467,80 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
         soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    buildLabAction: (propertyId: string, labType: LabType) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buildLab(state, propertyId, labType);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    buyPrecursorAction: (precursorId: string, units: number, payFrom: 'cash' | 'bank' = 'cash') => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyPrecursor(state, precursorId, units, payFrom);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    startCookBatchAction: (propertyId: string, recipeId: string, batchCount = 1) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = startCookBatch(state, propertyId, recipeId, batchCount);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    collectCookBatchAction: (batchId: string, destination: 'pocket' | 'vault' = 'pocket') => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = collectCookBatch(state, batchId, destination);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+      }
+      return result;
+    },
+
+    cancelCookBatchAction: (batchId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = cancelCookBatch(state, batchId);
+      if (result.success) {
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
       }
       return result;
     },

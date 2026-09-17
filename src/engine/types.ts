@@ -110,6 +110,7 @@ export interface PlayerInventoryItem {
   drugId: string;
   units: number;
   avgCost: number;
+  fakeUnits?: number;
 }
 
 export interface ActiveEncounter {
@@ -166,6 +167,8 @@ export interface PlayerStats {
   contractsCompletedCount?: number;
   businessesAcquiredCount?: number;
   totalCleanMoneyLaundered?: number;
+  fakeDrugsDiscovered?: number;
+  fakeDrugsFlushed?: number;
 }
 
 export type SyndicateId = 'medellin' | 'golden_triangle' | 'synthetic_chem' | 'designer_ring' | 'balkan';
@@ -332,6 +335,9 @@ export interface PlayerState {
   combatConsumables?: PlayerCombatConsumables;
   ownedAircraft?: string[];
   selectedAircraftId?: string | null;
+  installedLabs?: Record<string, import('./productionTypes').LabType[]>;
+  activeCookBatches?: import('./productionTypes').ActiveCookBatch[];
+  precursorInventory?: Record<string, number>;
   stats?: PlayerStats;
   cheats: {
     godMode: boolean;
@@ -342,7 +348,7 @@ export interface PlayerState {
 export interface GameLogEntry {
   day: number;
   city: string;
-  type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system' | 'cheat';
+  type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system' | 'cheat' | 'production';
   message: string;
   timestamp: number;
 }

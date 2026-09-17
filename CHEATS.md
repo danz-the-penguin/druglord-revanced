@@ -9,10 +9,11 @@ Welcome to the clandestine operator manual for **Drug Lord: ReVanced**. This doc
 1. [How to Open the Terminal](#-how-to-open-the-terminal)
 2. [Console Cheat Commands Reference](#-console-cheat-commands-reference)
 3. [All 25 Contraband Commodity IDs](#-all-25-contraband-commodity-ids)
-4. [All 30 Global City IDs](#-all-30-global-city-ids)
-5. [Cheat Engine (.CT) & Memory Buffer Offsets](#-cheat-engine-ct--memory-buffer-offsets)
-6. [Browser DevTools JavaScript API](#-browser-devtools-javascript-api)
-7. [Easter Eggs & Secret Key Combos](#-easter-eggs--secret-key-combos)
+4. [Chemical Precursor IDs (Clandestine Labs)](#-chemical-precursor-ids-clandestine-labs)
+5. [All 30 Global City IDs](#-all-30-global-city-ids)
+6. [Cheat Engine (.CT) & Memory Buffer Offsets](#-cheat-engine-ct--memory-buffer-offsets)
+7. [Browser DevTools JavaScript API](#-browser-devtools-javascript-api)
+8. [Easter Eggs & Secret Key Combos](#-easter-eggs--secret-key-combos)
 
 ---
 
@@ -66,6 +67,14 @@ Type any of the following commands into the terminal prompt (`>`) and press **`E
 | `days <amount>` | `days 90` | Sets the maximum campaign calendar days. |
 | `days +<amount>` | `days +30` | Extends your operation timeframe by adding extra calendar days. |
 
+### 🧪 Clandestine Production & Synthesis (Phase 1)
+
+| Command Syntax | Example | Description |
+| :--- | :--- | :--- |
+| `precursor <id\|all> <qty>` | `precursor all 50` | Injects industrial precursor chemicals directly into your chemical warehouse stash. |
+| `finish_cook` | `finish_cook` | Instantly advances all active cook & synthesis batches in your clandestine labs to 100% ready for immediate harvest. |
+| `fake <drug_id> <qty>` | `fake cocaine 20` | Injects counterfeit / adulterated contraband into your personal stash to test buyer confiscation and penalties. |
+
 ### 📡 Intelligence & Audio Synthesis
 
 | Command Syntax | Example | Description |
@@ -109,6 +118,28 @@ Use these exact IDs when running `rig <drug_id> <price>` or `vault_give <city_id
 | `special_k` | Special K | $55 | $25 – $140 | Ketamine Hydrochloride Powder |
 | `ecstasy` | Ecstacy | $45 | $20 – $110 | MDMA Pressed Party Tablets |
 | `kat` | Kat | $12 | $5 – $35 | Cathinone Plant Leaves |
+
+---
+
+## ⚗️ Chemical Precursor IDs (Clandestine Labs)
+
+Use these IDs when injecting precursors via `precursor <id> <qty>`:
+
+| Precursor ID | Chemical Name | Base Cost | Seaport Cost (-30%) | Used In Synthesis Of |
+| :--- | :--- | :---: | :---: | :--- |
+| `hydro_nutrients` | Hydroponic Nutrient Salts | $15 | $10 | Pot, Psilocybin Mushrooms |
+| `ephedrine` | Pseudoephedrine Crystals | $80 | $56 | Speed, Ice (Methamphetamine) |
+| `acetic_anhydride` | Acetic Anhydride Solvent | $60 | $42 | Ice, Speed |
+| `pill_binder` | Microcrystalline Cellulose Binder | $25 | $17 | Ecstasy, Oxycodone |
+| `ergot_solvents` | Ergotamine Tartrate & Solvents | $120 | $84 | Oxycodone |
+| `bio_precursor_z` | Bio-Peptide Growth Medium Z | $450 | $315 | Compound-Z, Carfentanil |
+
+### 🔬 Modular Clandestine Lab Types
+Constructible in owned properties with free lab slots:
+* `hydro_greenhouse` — **Hydroponic Greenhouse** (Cultivates Pot & Mushrooms)
+* `chemical_reflux` — **Chemical Reflux Lab** (Synthesizes Speed & Ice)
+* `pill_press` — **Pill Pressing Machine** (Presses Ecstasy & Oxycodone)
+* `bio_reactor` — **Bio-Reactor Facility** (Synthesizes Compound-Z & Carfentanil)
 
 ---
 

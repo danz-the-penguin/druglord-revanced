@@ -17,6 +17,7 @@ import {
   RotateCcw,
   PackageOpen,
   ShoppingCart,
+  AlertTriangle,
 } from 'lucide-react';
 
 type InvSortField = 'default' | 'name' | 'units' | 'value' | 'pnl';
@@ -27,6 +28,7 @@ export const InventoryBoard: React.FC = () => {
   const player = useGameStore((s) => s.player);
   const market = useGameStore((s) => s.market);
   const openTradeModal = useGameStore((s) => s.openTradeModal);
+  const dumpFakeDrugsAction = useGameStore((s) => s.dumpFakeDrugsAction);
 
   const inventoryEntries = Object.values(player.inventory).filter((item) => item.units > 0);
 
@@ -343,8 +345,17 @@ export const InventoryBoard: React.FC = () => {
                       </td>
 
                       {/* Units */}
-                      <td className="py-3.5 px-3 text-right text-indigo-300 font-black text-base">
-                        {item.units}
+                      <td className="py-3.5 px-3 text-right font-black text-base">
+                        <span className="text-indigo-300">{item.units}</span>
+                        {item.fakeUnits && item.fakeUnits > 0 ? (
+                          <div
+                            className="text-[10px] text-amber-400 font-bold flex items-center justify-end gap-1 mt-0.5"
+                            title={`${item.fakeUnits} units are adulterated / fake. Selling them will provoke buyer retaliation, fines, and police heat!`}
+                          >
+                            <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                            <span>{item.fakeUnits} Fake</span>
+                          </div>
+                        ) : null}
                       </td>
 
                       {/* Avg Cost */}
@@ -380,6 +391,16 @@ export const InventoryBoard: React.FC = () => {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {item.fakeUnits && item.fakeUnits > 0 && (
+                            <button
+                              onClick={() => dumpFakeDrugsAction(item.drugId)}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1"
+                              title={`Safely flush ${item.fakeUnits} counterfeit units down the drain with zero penalty`}
+                            >
+                              <AlertTriangle className="w-3 h-3 text-amber-400" />
+                              <span>Flush Fake</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => openTradeModal(item.drugId, 'sell')}
                             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all shadow-sm active:scale-95 cursor-pointer"

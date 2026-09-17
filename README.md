@@ -17,7 +17,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Vitest-105%2F105%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-125%2F125%20Passed-10B981?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 <p align="center">
@@ -25,7 +25,7 @@
   Elevated with modern narco-aviation, corporate money laundering shell corporations, multi-city safehouse vaults, black market cartel diplomacy, zero-dependency retro Web Audio synthesizer, and high-stakes turn-based tactical combat.
 </p>
 
-[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
+[🎮 Features](#-key-game-systems) • [⚖️ Evolution vs 2003](#-evolution-drug-lord-22-vs-revanced) • [📦 Commodity Catalog](#-25-commodity-market-catalog) • [🧪 Clandestine Labs](#-clandestine-production--precursor-supply-chains) • [✈️ Narco-Aviation](#-narco-aviation--private-fleet) • [🧺 Shell Entities](#-underworld-fintech--money-laundering) • [🤝 Syndicates](#-cartel-syndicates--diplomacy) • [👾 Cheat Terminal](#-cartel-debug-terminal--cheat-table) • [🕵️ Cheats Guide](CHEATS.md) • [🎨 Custom Assets](#-custom-asset-directory) • [🚀 Quickstart](#-getting-started)
 
 ---
 
@@ -38,6 +38,7 @@
 | **Tech Platform** | Windows 95/98/XP 16/32-bit binary (`.exe`) | Modern Web App (React 19, TypeScript, Tailwind 4, Vite 8) |
 | **Commodities** | 10 fixed legacy street drugs | **25 Commodities** (Classics + Fentanyl, Carfentanil, DMT, Compound-Z) |
 | **World Locations** | 8 basic text locations | **21 Real-World Global Metropolises** with dynamic flight routes & distance |
+| **Manufacturing** | None (pure broker trading) | **4 Modular Clandestine Labs** + 6 chemical precursors & 30% seaport discounts |
 | **Aviation System** | None (instant text travel) | **4 Private Aircraft Tiers** with cargo bonus, customs shielding & fuel logistics |
 | **Stash Vaults** | Single local locker | **Multi-City Distributed Vaults** + international logistics courier networks |
 | **Banking & Finance** | Basic bank interest & loan shark | **8 Corporate Shell Laundering Fronts** + forensic CPAs & Swiss banking stakes |
@@ -90,12 +91,22 @@ Own and fly private smuggling aircraft between international hub airports and cl
 * **City Stash Vaults**: Store drugs safely in any city to wait out market slumps.
 * **Intercontinental Couriers**: Dispatch overland or maritime smuggling couriers to transport contraband between international vaults with calculated travel times and interception risk.
 
-### 🧺 4. Underworld Fintech & Money Laundering
+### 🧪 4. Clandestine Production & Precursor Supply Chains
+Vertical integration layer allowing players to produce their own contraband:
+* **Modular Manufacturing Rooms**: Install specialized labs inside owned properties based on slot limits:
+  * **Hydroponic Greenhouse** — Cultivates high-yield Pot & Psilocybin Mushrooms.
+  * **Chemical Reflux Lab** — Synthesizes pure Ice (d-Methamphetamine) & Amphetamine Speed.
+  * **Pill Pressing Machine** — Presses counterfeit Ecstasy (MDMA) & diverted Oxycodone.
+  * **Bio-Reactor Facility** — Advanced biological synthesis of Compound-Z & Carfentanil.
+* **Precursor Chemical Logistics**: Purchase 6 industrial precursors (`ephedrine`, `acetic_anhydride`, `pill_binder`, `ergot_solvents`, `bio_precursor_z`, `hydro_nutrients`) from major seaports (e.g. Amsterdam, Singapore, Dubai, Hong Kong, Tokyo) at an automatic **30% maritime shipping discount**.
+* **Zero Cost-Basis Profit Margins**: Cook batches over 1 to 5 calendar days, trading storage and hold time for 70% to 85%+ net profit margins over spot market buying.
+
+### 🧺 5. Underworld Fintech & Money Laundering
 Avoid FinCEN asset forfeiture by structuring and layering illicit street profits:
 * **8 Shell Business Fronts**: Coin Laundromats, Express Car Washes, VIP Nightclubs, Fine Art Galleries, Customs Brokerages, Panama Bearer Holding Trusts, ASIC Crypto Mining Pools, and Swiss Private Banking Subsidiaries.
 * **Corporate Legal Upgrades**: Retain forensic CPAs, offshore defense attorneys, and automated micro-smurfing mule networks to suppress audit risks.
 
-### 🤝 5. Cartel Syndicates & Black Market Diplomacy
+### 🤝 6. Cartel Syndicates & Black Market Diplomacy
 Manage diplomatic relations with 5 international crime syndicates:
 * **Medellín Cartel** (*Los Extraditables*) — Cocaine & Crack Cocaine
 * **Golden Triangle Triads** (*The Black Lotus Triad*) — Raw Opium & Refined Heroin
@@ -106,16 +117,16 @@ Manage diplomatic relations with 5 international crime syndicates:
 * **Peace Tributes**: Wire tribute cash to cartel bosses to call off hit squads.
 * **Supply Contracts**: Deliver required contraband parcels to target cities within strict deadlines for massive cash bonuses and syndicate standing.
 
-### ⚔️ 6. Tactical Turn-Based Combat
+### ⚔️ 7. Tactical Turn-Based Combat
 Encounter local street cops, DEA federal task forces, tactical SWAT squads, and armed loan shark enforcers.
 * **Weapons**: Combat Knives, 9mm Pistols, 12-Gauge Shotguns, SMGs, Dynamite, Hand Grenades, Flamethrowers, and Anti-SWAT Rocket Launchers.
 * **Tactical Gear**: M84 Stun Flashbangs (forces enemy miss), Tactical Smoke Screens (+50% escape probability), Military Combat Medkits (+40 HP), and No-Scent Chemical Sprays (masks cargo from airport sniffer dogs).
 
-### 👑 7. Dealer Hierarchy & Demotion Radar
+### 👑 8. Dealer Hierarchy & Demotion Radar
 * Rise through 6 underworld standing ranks: **Wannabe ➔ Small-time Operator ➔ Dealer ➔ Big-Time Dealer ➔ Distributor ➔ Drug Lord**.
 * **Live Solvency Checker**: Hover the dealer badge to track promotion requirements and 3-day hold milestones. If your net worth drops below the rank threshold, a 3-day insolvency timer warns you before stripping status.
 
-### 💾 8. Hall of Fame & Career Dossiers
+### 💾 9. Hall of Fame & Career Dossiers
 * **Data Vault**: Multi-slot browser local storage persistence with JSON import/export.
 * **Hall of Fame**: Persistent leaderboard archiving your greatest criminal empires with shareable career dossiers and score calculations.
 * **Endless Mode**: Play fixed 30, 60, 90-day campaigns, or rule the world indefinitely.
@@ -244,7 +255,7 @@ npm run dev
 Open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
 ### Test Suites
-Run the comprehensive 88-test engine test suite:
+Run the comprehensive 125-test engine test suite:
 ```bash
 npm test
 ```

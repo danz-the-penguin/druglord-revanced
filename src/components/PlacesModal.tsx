@@ -32,7 +32,7 @@ import {
   calculateTotalHeatShield,
 } from '../engine/laundering';
 import { PropertyImage } from './PropertyImage';
-import { WeaponImage } from './WeaponImage';
+import { ArmoryPreviewCard } from './ArmoryPreviewCard';
 import {
   Building2,
   Skull,
@@ -62,11 +62,13 @@ import {
   Briefcase,
   ShieldCheck,
   Plane,
+  FlaskConical,
 } from 'lucide-react';
 import { AIRCRAFT_FLEET, calculateAircraftFlightCost } from '../engine/aviation';
 import { AircraftImage } from './AircraftImage';
 import { ShellImage } from './ShellImage';
 import { SharkImage } from './SharkImage';
+import { ClandestineLabsView } from './ClandestineLabsView';
 
 export const PlacesModal: React.FC = () => {
   const {
@@ -316,6 +318,23 @@ export const PlacesModal: React.FC = () => {
           }`}
         >
           <Package className="w-4 h-4" /> Stash Vaults & Couriers
+        </button>
+
+        <button
+          onClick={() => setPlacesSubTab('labs')}
+          className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            placesSubTab === 'labs'
+              ? 'border-emerald-400 text-emerald-400 bg-emerald-950/30'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <FlaskConical className="w-4 h-4 text-emerald-400" />
+          <span>Clandestine Labs</span>
+          {(player.activeCookBatches?.filter((b) => b.status === 'ready').length || 0) > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black animate-pulse">
+              {player.activeCookBatches?.filter((b) => b.status === 'ready').length}
+            </span>
+          )}
         </button>
 
         <button
@@ -698,6 +717,9 @@ export const PlacesModal: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* CLANDESTINE LABS & PRECURSORS TAB */}
+        {placesSubTab === 'labs' && <ClandestineLabsView />}
 
         {/* SAFETHOUSES & REAL ESTATE TAB */}
         {placesSubTab === 'properties' && (
@@ -2145,8 +2167,8 @@ export const PlacesModal: React.FC = () => {
         {placesSubTab === 'armory' && (
           <div className="space-y-5 max-w-4xl mx-auto">
             {/* Loadout Status Bar */}
-            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs">
-              <div className="flex items-center gap-4">
+            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+              <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
                 <div>
                   <span className="text-slate-500 uppercase block text-[10px]">Equipped Armor</span>
                   <span className="font-bold text-cyan-400 text-sm">
@@ -2159,59 +2181,60 @@ export const PlacesModal: React.FC = () => {
                     {player.noScentCans || 0} / 10
                   </span>
                 </div>
+                <div>
+                  <span className="text-slate-500 uppercase block text-[10px]">M84 Stun</span>
+                  <span className="font-bold text-amber-400 text-sm">
+                    {player.combatConsumables?.flashbangs || 0} / 10
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 uppercase block text-[10px]">Smoke Screens</span>
+                  <span className="font-bold text-sky-400 text-sm">
+                    {player.combatConsumables?.smokeGrenades || 0} / 10
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 uppercase block text-[10px]">Medkits</span>
+                  <span className="font-bold text-rose-400 text-sm">
+                    {player.combatConsumables?.medkits || 0} / 10
+                  </span>
+                </div>
               </div>
-              <div className="text-slate-400 text-xs">
-                Firearms protect you against cartel hit squads and DEA raids.
+              <div className="text-slate-400 text-xs hidden sm:block">
+                Hover any item to inspect tactical stats & zoom card.
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {WEAPONS.map((item) => {
-                const isOwned =
-                  item.type === 'weapon'
-                    ? (player.weapons[item.id] || 0) > 0
-                    : item.type === 'armor'
-                    ? player.armor?.id === item.id
-                    : false;
+                let count = 0;
+                let isOwned = false;
 
-                const count = player.weapons[item.id] || 0;
+                if (item.type === 'weapon') {
+                  count = player.weapons[item.id] || 0;
+                  isOwned = count > 0;
+                } else if (item.type === 'armor') {
+                  isOwned = player.armor?.id === item.id;
+                  count = isOwned ? 1 : 0;
+                } else if (item.type === 'utility') {
+                  if (item.id === 'no_scent') count = player.noScentCans || 0;
+                  else if (item.id === 'flashbang') count = player.combatConsumables?.flashbangs || 0;
+                  else if (item.id === 'smoke_grenade') count = player.combatConsumables?.smokeGrenades || 0;
+                  else if (item.id === 'combat_medkit') count = player.combatConsumables?.medkits || 0;
+                  isOwned = count > 0;
+                }
+
                 const canAfford = player.cash >= item.price;
 
                 return (
-                  <div
+                  <ArmoryPreviewCard
                     key={item.id}
-                    className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition-colors"
-                  >
-                    <div className="flex items-start gap-3.5">
-                      <WeaponImage item={item} size="md" />
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <span className="font-bold text-slate-100 text-sm">{item.name}</span>
-                          <span className="text-amber-400 font-black text-sm">
-                            ${item.price.toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{item.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-800/70 flex items-center justify-between text-xs">
-                      <span className="text-slate-300 font-semibold capitalize">
-                        {item.type === 'weapon'
-                          ? `Damage: ${item.damage} ${count > 0 ? `(Owned: ${count})` : ''}`
-                          : item.type === 'armor'
-                          ? `Defense: +${Math.round((item.defense ?? 0) * 100)}%`
-                          : `Masks: ${item.maskUnits} units`}
-                      </span>
-                      <button
-                        onClick={() => handleBuyWeapon(item.id)}
-                        disabled={!canAfford}
-                        className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-bold text-xs transition-colors shadow-sm"
-                      >
-                        {isOwned && item.type === 'armor' ? 'Equipped' : 'Purchase'}
-                      </button>
-                    </div>
-                  </div>
+                    item={item}
+                    onPurchase={handleBuyWeapon}
+                    canAfford={canAfford}
+                    isOwned={isOwned}
+                    ownedCount={count}
+                  />
                 );
               })}
             </div>
