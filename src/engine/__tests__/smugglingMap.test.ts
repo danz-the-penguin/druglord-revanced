@@ -8,6 +8,7 @@ import {
   DEA_BLOCKADE_ZONES,
   evaluateCityHotspots,
   calculateCourierBlips,
+  generateGeodesicArcPoints,
   generateGeodesicArcSegments,
   getGeodesicPointAt,
 } from '../smugglingMapData';
@@ -150,14 +151,14 @@ describe('Smuggling Map Engine & Geodesic Navigation', () => {
     expect(blips[0].currentPosition.y).toBeGreaterThan(150);
   });
 
-  it('splits trans-pacific geodesic arcs cleanly across the antimeridian without screen jumping', () => {
+  it('renders trans-pacific geodesic arcs as a single continuous polyline with unwrapped longitudes', () => {
     // Tokyo (lat 35.67, lng 139.65) to Los Angeles (lat 33.94, lng -118.40) crosses the 180° antimeridian
     const tokyoAirport = AIRPORT_REGISTRY['tokyo'];
     const laAirport = AIRPORT_REGISTRY['los_angeles'];
     expect(tokyoAirport).toBeDefined();
     expect(laAirport).toBeDefined();
 
-    const segments = generateGeodesicArcSegments(
+    const points = generateGeodesicArcPoints(
       tokyoAirport.coordinates.lat,
       tokyoAirport.coordinates.lng,
       laAirport.coordinates.lat,
@@ -165,22 +166,32 @@ describe('Smuggling Map Engine & Geodesic Navigation', () => {
       60
     );
 
-    // Must split into at least 2 clean segments
-    expect(segments.length).toBeGreaterThanOrEqual(2);
+    // Returns a single continuous array of 61 points
+    expect(points.length).toBe(61);
+    expect(points[0][0]).toBeCloseTo(tokyoAirport.coordinates.lat, 1);
+    expect(points[0][1]).toBeCloseTo(tokyoAirport.coordinates.lng, 1);
 
-    // Verify that NO consecutive points inside any segment have |deltaLng| > 180 (no screen jumps!)
-    for (const segment of segments) {
-      for (let i = 1; i < segment.length; i++) {
-        const deltaLng = Math.abs(segment[i][1] - segment[i - 1][1]);
-        expect(deltaLng).toBeLessThanOrEqual(180);
-      }
+    // Endpoint longitude is unwrapped (progressed past 180° into ~241.6°)
+    const expectedUnwrappedLng2 = laAirport.coordinates.lng + 360;
+    expect(points[points.length - 1][1]).toBeCloseTo(expectedUnwrappedLng2, 1);
+
+    // Verify continuous monotonic progression: smooth step across 180° with NO negative jumps
+    for (let i = 1; i < points.length; i++) {
+      const step = points[i][1] - points[i - 1][1];
+      expect(step).toBeGreaterThan(0);
+      expect(step).toBeLessThan(10); // Smooth incremental step
     }
 
-    // A route not crossing the antimeridian (e.g. Miami to London) should remain 1 segment
-    const miami = AIRPORT_REGISTRY['miami'].coordinates;
-    const london = AIRPORT_REGISTRY['london'].coordinates;
-    const singleSegment = generateGeodesicArcSegments(miami.lat, miami.lng, london.lat, london.lng, 30);
-    expect(singleSegment.length).toBe(1);
+    // Segments wrapper returns single array containing points
+    const segments = generateGeodesicArcSegments(
+      tokyoAirport.coordinates.lat,
+      tokyoAirport.coordinates.lng,
+      laAirport.coordinates.lat,
+      laAirport.coordinates.lng,
+      60
+    );
+    expect(segments.length).toBe(1);
+    expect(segments[0]).toEqual(points);
   });
 
   it('calculates continuous geodesic points and headings along flight routes', () => {
@@ -202,38 +213,40 @@ describe('Smuggling Map Engine & Geodesic Navigation', () => {
     expect(mid.headingDeg).toBeLessThanOrEqual(360);
   });
 
-  it('correctly calculates shortest path and antimeridian split for New York to Surabaya without Arctic arching', () => {
+  it('correctly calculates shortest path and unwrapped continuous coordinates for New York to Surabaya without Arctic arching', () => {
     const ny = AIRPORT_REGISTRY['new_york'].coordinates;
     const sub = AIRPORT_REGISTRY['surabaya'].coordinates;
     expect(ny).toBeDefined();
     expect(sub).toBeDefined();
 
-    const segments = generateGeodesicArcSegments(ny.lat, ny.lng, sub.lat, sub.lng, 60);
+    const points = generateGeodesicArcPoints(ny.lat, ny.lng, sub.lat, sub.lng, 60);
 
-    // Splits into 2 segments across the Pacific antimeridian
-    expect(segments.length).toBe(2);
+    // Single continuous polyline
+    expect(points.length).toBe(61);
 
-    // Ensure all points stay well south of the Arctic (never arching into 70°+ Arctic)
-    for (const segment of segments) {
-      for (const [lat, lng] of segment) {
-        expect(lat).toBeLessThan(65); // never arches toward Arctic poles
-        expect(lat).toBeGreaterThan(-65);
-        expect(lng).toBeGreaterThanOrEqual(-180);
-        expect(lng).toBeLessThanOrEqual(180);
-      }
-      for (let i = 1; i < segment.length; i++) {
-        const deltaLng = Math.abs(segment[i][1] - segment[i - 1][1]);
-        expect(deltaLng).toBeLessThanOrEqual(180);
-      }
+    // NY to Surabaya wraps across the Pacific: lng moves from -73.78 westward to -247.21
+    expect(points[0][1]).toBeCloseTo(ny.lng, 1);
+    const expectedUnwrappedLng2 = sub.lng - 360;
+    expect(points[points.length - 1][1]).toBeCloseTo(expectedUnwrappedLng2, 1);
+
+    // Monotonic progression with no breaks or jumps
+    for (let i = 1; i < points.length; i++) {
+      const step = points[i][1] - points[i - 1][1];
+      expect(step).toBeLessThan(0);
+      expect(Math.abs(step)).toBeLessThan(10);
     }
 
-    // Segment 1 ends near antimeridian boundary (-180)
-    const seg1End = segments[0][segments[0].length - 1];
-    expect(seg1End[1]).toBe(-180);
+    // Ensure all points stay well south of the Arctic (never arching into 70°+ Arctic poles)
+    for (const [lat] of points) {
+      expect(lat).toBeLessThan(65);
+      expect(lat).toBeGreaterThan(-65);
+    }
 
-    // Segment 2 begins at corresponding antimeridian boundary (+180)
-    const seg2Start = segments[1][0];
-    expect(seg2Start[1]).toBe(180);
-    expect(seg2Start[0]).toBeCloseTo(seg1End[0], 0.1);
+    // getGeodesicPointAt matches the continuous unwrapped trajectory
+    const midPoint = getGeodesicPointAt(ny.lat, ny.lng, sub.lat, sub.lng, 0.5);
+    expect(midPoint.lng).toBeCloseTo((ny.lng + expectedUnwrappedLng2) / 2, 0.5);
+    expect(midPoint.lat).toBeLessThan(65);
+    expect(midPoint.headingDeg).toBeGreaterThanOrEqual(0);
+    expect(midPoint.headingDeg).toBeLessThanOrEqual(360);
   });
 });

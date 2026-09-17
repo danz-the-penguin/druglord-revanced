@@ -11,7 +11,7 @@ import {
   evaluateCityHotspots,
   calculateCourierBlips,
   ASEAN_WATERWAYS,
-  generateGeodesicArcSegments,
+  generateGeodesicArcPoints,
   getGeodesicPointAt,
 } from '../engine/smugglingMapData';
 import {
@@ -343,15 +343,15 @@ export const SmugglingMap: React.FC = () => {
         const destAirport = AIRPORT_REGISTRY[destId];
         if (!destAirport || destId === selectedCityId) continue;
 
-        const arcSegments = generateGeodesicArcSegments(
+        const arcPoints = generateGeodesicArcPoints(
           originAirport.coordinates.lat,
           originAirport.coordinates.lng,
           destAirport.coordinates.lat,
           destAirport.coordinates.lng,
-          30
+          35
         );
 
-        const poly = L.polyline(arcSegments as L.LatLngExpression[][], {
+        const poly = L.polyline(arcPoints, {
           color: '#0284c7',
           weight: 1.5,
           opacity: 0.35,
@@ -364,7 +364,7 @@ export const SmugglingMap: React.FC = () => {
 
     // 2. High-priority selected corridor
     if (selectedCityId && selectedCityId !== player.currentCityId && targetAirport) {
-      const selectedArcSegments = generateGeodesicArcSegments(
+      const selectedArcPoints = generateGeodesicArcPoints(
         originAirport.coordinates.lat,
         originAirport.coordinates.lng,
         targetAirport.coordinates.lat,
@@ -373,14 +373,14 @@ export const SmugglingMap: React.FC = () => {
       );
 
       // Glow layer
-      const glowPoly = L.polyline(selectedArcSegments as L.LatLngExpression[][], {
+      const glowPoly = L.polyline(selectedArcPoints, {
         color: '#06b6d4',
         weight: 6,
         opacity: 0.3,
       });
 
       // Sharp central route line
-      const routePoly = L.polyline(selectedArcSegments as L.LatLngExpression[][], {
+      const routePoly = L.polyline(selectedArcPoints, {
         color: '#22d3ee',
         weight: 2.5,
         opacity: 0.95,

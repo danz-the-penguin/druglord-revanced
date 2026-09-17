@@ -115,10 +115,56 @@ export function interpolateQuadraticBezier(
 }
 
 /**
- * Generates an array of continuous geodesic arc segments, cleanly splitting
- * any segments that cross the antimeridian (180° / -180° longitude) so
- * Trans-Pacific or long-haul routes (e.g. New York to Surabaya, Tokyo to Los Angeles)
- * render smoothly across the Pacific without shooting up toward the Arctic.
+ * Generates an array of continuous [lat, lng] points forming a single uninterrupted curved arc.
+ * Unwraps target longitude across the ±180° antimeridian (e.g., transitioning smoothly from
+ * 170° to 190° instead of cutting to -170°), allowing a single continuous SVG/Canvas polyline
+ * to sweep across the screen without breaks or splitting.
+ */
+export function generateGeodesicArcPoints(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+  numPoints = 60
+): [number, number][] {
+  // 1. Check if crossing the antimeridian is necessary and adjust lng2 by ±360°
+  let unwrappedLng2 = lng2;
+  const rawDiff = lng2 - lng1;
+  if (rawDiff > 180) {
+    unwrappedLng2 -= 360;
+  } else if (rawDiff < -180) {
+    unwrappedLng2 += 360;
+  }
+
+  const deltaLon = unwrappedLng2 - lng1;
+  const distanceDeg = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(deltaLon, 2));
+  if (distanceDeg < 1e-6) {
+    return [[lat1, lng1]];
+  }
+
+  // Determine natural hemisphere arc lift (bounded so it never arches toward the Arctic poles)
+  const avgLat = (lat1 + lat2) / 2;
+  const liftSign = avgLat >= 0 ? 1 : -1;
+  const maxLift = Math.min(18, distanceDeg * 0.12);
+
+  const points: [number, number][] = [];
+
+  for (let i = 0; i <= numPoints; i++) {
+    const f = i / numPoints;
+    // Continuous longitude unwrapping: smoothly steps from lng1 to unwrappedLng2 without breaks
+    const lng = lng1 + f * deltaLon;
+    const baseLat = lat1 + f * (lat2 - lat1);
+    const lift = maxLift * Math.sin(Math.PI * f) * liftSign;
+    const lat = Math.max(-80, Math.min(80, baseLat + lift));
+
+    points.push([Math.round(lat * 10000) / 10000, Math.round(lng * 10000) / 10000]);
+  }
+
+  return points;
+}
+
+/**
+ * Backward compatibility wrapper returning a single continuous unwrapped polyline.
  */
 export function generateGeodesicArcSegments(
   lat1: number,
@@ -127,96 +173,12 @@ export function generateGeodesicArcSegments(
   lng2: number,
   numPoints = 60
 ): [number, number][][] {
-  // 1. Calculate shortest directional longitude delta crossing ±180°
-  let deltaLon = lng2 - lng1;
-  if (deltaLon > 180) {
-    deltaLon -= 360;
-  } else if (deltaLon < -180) {
-    deltaLon += 360;
-  }
-
-  const distanceDeg = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(deltaLon, 2));
-  if (distanceDeg < 1e-6) {
-    return [[[lat1, lng1]]];
-  }
-
-  // Determine natural hemisphere arc lift (bounded so it never arches toward the Arctic poles)
-  const avgLat = (lat1 + lat2) / 2;
-  const liftSign = avgLat >= 0 ? 1 : -1;
-  const maxLift = Math.min(18, distanceDeg * 0.12);
-
-  const segments: [number, number][][] = [];
-  let currentSegment: [number, number][] = [];
-
-  let prevRawLng = lng1;
-  let prevLat = lat1;
-  let prevNormLng = lng1;
-
-  for (let i = 0; i <= numPoints; i++) {
-    const f = i / numPoints;
-    const rawLng = lng1 + f * deltaLon;
-    const baseLat = lat1 + f * (lat2 - lat1);
-    const lift = maxLift * Math.sin(Math.PI * f) * liftSign;
-    const lat = Math.max(-80, Math.min(80, baseLat + lift));
-
-    let normLng = rawLng;
-    while (normLng > 180) normLng -= 360;
-    while (normLng < -180) normLng += 360;
-
-    if (i === 0) {
-      currentSegment.push([lat, normLng]);
-      prevRawLng = rawLng;
-      prevLat = lat;
-      prevNormLng = normLng;
-      continue;
-    }
-
-    // Check if we crossed the antimeridian (+180 / -180) between prevNormLng and normLng
-    const stepDeltaLng = normLng - prevNormLng;
-
-    if (Math.abs(stepDeltaLng) > 180) {
-      // Crossing occurred: compute exact intersection latitude at the 180° meridian
-      let t = 0.5;
-      let exitLng = 180;
-      let enterLng = -180;
-
-      if (deltaLon > 0) {
-        // Eastbound crossing: passed +180° from west to east
-        t = (180 - prevRawLng) / (rawLng - prevRawLng);
-        exitLng = 180;
-        enterLng = -180;
-      } else {
-        // Westbound crossing: passed -180° from east to west
-        t = (-180 - prevRawLng) / (rawLng - prevRawLng);
-        exitLng = -180;
-        enterLng = 180;
-      }
-
-      t = Math.max(0, Math.min(1, t));
-      const crossLat = prevLat + t * (lat - prevLat);
-
-      currentSegment.push([crossLat, exitLng]);
-      segments.push(currentSegment);
-      currentSegment = [[crossLat, enterLng], [lat, normLng]];
-    } else {
-      currentSegment.push([lat, normLng]);
-    }
-
-    prevRawLng = rawLng;
-    prevLat = lat;
-    prevNormLng = normLng;
-  }
-
-  if (currentSegment.length > 0) {
-    segments.push(currentSegment);
-  }
-
-  return segments;
+  return [generateGeodesicArcPoints(lat1, lng1, lat2, lng2, numPoints)];
 }
 
 /**
- * Calculates the exact spherical position [lat, lng] and tangent heading
- * along a great-circle arc at a given progress fraction (0.0 to 1.0).
+ * Calculates the exact position [lat, lng] and tangent heading
+ * along a continuous unwrapped great-circle arc at a given progress fraction (0.0 to 1.0).
  */
 export function getGeodesicPointAt(
   lat1: number,
@@ -227,13 +189,15 @@ export function getGeodesicPointAt(
 ): { lat: number; lng: number; headingDeg: number } {
   const f = Math.max(0, Math.min(1, fraction));
 
-  let deltaLon = lng2 - lng1;
-  if (deltaLon > 180) {
-    deltaLon -= 360;
-  } else if (deltaLon < -180) {
-    deltaLon += 360;
+  let unwrappedLng2 = lng2;
+  const rawDiff = lng2 - lng1;
+  if (rawDiff > 180) {
+    unwrappedLng2 -= 360;
+  } else if (rawDiff < -180) {
+    unwrappedLng2 += 360;
   }
 
+  const deltaLon = unwrappedLng2 - lng1;
   const distanceDeg = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(deltaLon, 2));
   if (distanceDeg < 1e-6) {
     return { lat: lat1, lng: lng1, headingDeg: 0 };
@@ -243,15 +207,11 @@ export function getGeodesicPointAt(
   const liftSign = avgLat >= 0 ? 1 : -1;
   const maxLift = Math.min(18, distanceDeg * 0.12);
 
-  // Position at fraction f
-  const rawLng = lng1 + f * deltaLon;
+  // Position at fraction f along the continuous unwrapped arc
+  const lng = lng1 + f * deltaLon;
   const baseLat = lat1 + f * (lat2 - lat1);
   const lift = maxLift * Math.sin(Math.PI * f) * liftSign;
   const lat = Math.max(-80, Math.min(80, baseLat + lift));
-
-  let normLng = rawLng;
-  while (normLng > 180) normLng -= 360;
-  while (normLng < -180) normLng += 360;
 
   // Tangent heading calculation: take a forward/backward step df
   const df = f < 0.99 ? 0.01 : -0.01;
@@ -268,7 +228,7 @@ export function getGeodesicPointAt(
 
   return {
     lat: Math.round(lat * 10000) / 10000,
-    lng: Math.round(normLng * 10000) / 10000,
+    lng: Math.round(lng * 10000) / 10000,
     headingDeg: Math.round(heading),
   };
 }
