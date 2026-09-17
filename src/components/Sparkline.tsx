@@ -59,14 +59,23 @@ export const Sparkline: React.FC<SparklineProps> = ({
 
   const areaD = `${pathD} L ${lastPt.x},${height} L ${firstPt.x},${height} Z`;
 
+  // Calculate actual geometric path length so stroke-dasharray / stroke-dashoffset draws smoothly
+  const approxPathLength = Math.ceil(
+    points.reduce((len, pt, idx) => {
+      if (idx === 0) return 0;
+      const prev = points[idx - 1];
+      return len + Math.hypot(pt.x - prev.x, pt.y - prev.y);
+    }, 0)
+  ) + 5;
+
   const firstVal = data[0];
   const lastVal = data[data.length - 1];
   const isUp = lastVal >= firstVal;
   const deltaPct = ((lastVal - firstVal) / (firstVal || 1)) * 100;
   const strokeColor = color || (isUp ? '#10b981' : '#f43f5e');
-  const scanColor = isUp ? '#6ee7b7' : '#fda4af';
 
   const tooltipText = `14D Trend: $${firstVal.toLocaleString()} → $${lastVal.toLocaleString()} (${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%)`;
+  const dataKey = `${firstVal}-${lastVal}-${data.length}-${approxPathLength}`;
 
   return (
     <svg
@@ -86,91 +95,87 @@ export const Sparkline: React.FC<SparklineProps> = ({
       {/* Area gradient under trendline */}
       {showArea && (
         <path
+          key={`area-${dataKey}`}
           d={areaD}
           fill={`url(#${gradientId})`}
           className="transition-opacity duration-300 opacity-70 group-hover/sparkline:opacity-100"
-        />
+        >
+          {animated && (
+            <animate
+              attributeName="opacity"
+              from="0"
+              to="0.7"
+              dur="1.2s"
+              fill="freeze"
+              calcMode="spline"
+              keyTimes="0; 1"
+              keySplines="0.25 0.1 0.25 1"
+            />
+          )}
+        </path>
       )}
 
-      {/* Base Trendline */}
+      {/* Self-drawing Trendline via stroke-dasharray & stroke-dashoffset */}
       <path
+        key={`path-${dataKey}`}
         d={pathD}
         fill="none"
         stroke={strokeColor}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="opacity-90"
-      />
-
-      {/* Animated Traveling Laser Beam Pulse */}
-      {animated && (
-        <path
-          d={pathD}
-          fill="none"
-          stroke={scanColor}
-          strokeWidth={strokeWidth + 0.6}
-          strokeDasharray="14 42"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="opacity-95"
-        >
+        strokeDasharray={approxPathLength}
+        strokeDashoffset={animated ? approxPathLength : 0}
+        className="opacity-95"
+      >
+        {animated && (
           <animate
             attributeName="stroke-dashoffset"
-            from="56"
-            to="-56"
-            dur="2.4s"
-            repeatCount="indefinite"
+            from={approxPathLength}
+            to="0"
+            dur="1.2s"
+            fill="freeze"
+            calcMode="spline"
+            keyTimes="0; 1"
+            keySplines="0.25 0.1 0.25 1"
           />
-        </path>
-      )}
+        )}
+      </path>
 
-      {/* Animated Motion Comet Bead traversing 14-Day line */}
-      {animated && (
-        <g>
-          {/* Glowing aura around tracer bead */}
-          <circle r="4" fill={strokeColor} opacity="0.35">
-            <animateMotion
-              path={pathD}
-              dur="2.8s"
-              repeatCount="indefinite"
-              rotate="auto"
-            />
-          </circle>
-          {/* Core bright comet bead */}
-          <circle r="2" fill="#ffffff">
-            <animateMotion
-              path={pathD}
-              dur="2.8s"
-              repeatCount="indefinite"
-              rotate="auto"
-            />
-          </circle>
-        </g>
-      )}
-
-      {/* Current day endpoint beacon (pulsing radar ping + core node) */}
-      <circle
-        cx={lastPt.x}
-        cy={lastPt.y}
-        r="4.5"
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth="1"
-        className="animate-ping opacity-60"
-      />
-      <circle
-        cx={lastPt.x}
-        cy={lastPt.y}
-        r="2.5"
-        fill={strokeColor}
-      />
-      <circle
-        cx={lastPt.x}
-        cy={lastPt.y}
-        r="1"
-        fill="#ffffff"
-      />
+      {/* Current day endpoint beacon (pops in as drawing reaches the finish) */}
+      <g key={`dot-${dataKey}`} opacity={animated ? 0 : 1}>
+        {animated && (
+          <animate
+            attributeName="opacity"
+            from="0"
+            to="1"
+            begin="0.9s"
+            dur="0.3s"
+            fill="freeze"
+          />
+        )}
+        <circle
+          cx={lastPt.x}
+          cy={lastPt.y}
+          r="4.5"
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="1"
+          className="animate-ping opacity-60"
+        />
+        <circle
+          cx={lastPt.x}
+          cy={lastPt.y}
+          r="2.5"
+          fill={strokeColor}
+        />
+        <circle
+          cx={lastPt.x}
+          cy={lastPt.y}
+          r="1"
+          fill="#ffffff"
+        />
+      </g>
     </svg>
   );
 };
