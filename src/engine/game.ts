@@ -362,14 +362,55 @@ export function withdrawBank(state: GameEngineState, amount: number): ActionResu
   return { success: true, message: 'Withdrawal successful' };
 }
 
+export interface EarlyRepayDetails {
+  actualPayment: number;
+  isEarly: boolean;
+  feeRate: number;
+  earlyFee: number;
+  totalCashRequired: number;
+}
+
+export function getEarlyRepayDetails(player: PlayerState, amount: number): EarlyRepayDetails {
+  const actualPayment = Math.max(0, Math.min(amount, player.debt));
+  const shark = player.loanSharkId ? SHARK_MAP.get(player.loanSharkId) : null;
+  const isEarly = (player.loanDaysLeft ?? 0) > 0 && actualPayment > 0;
+  const feeRate = isEarly ? (shark?.earlyFeeRate ?? shark?.interestRate ?? 0.10) : 0;
+  const earlyFee = isEarly ? Math.round(actualPayment * feeRate) : 0;
+  const totalCashRequired = actualPayment + earlyFee;
+
+  return {
+    actualPayment,
+    isEarly,
+    feeRate,
+    earlyFee,
+    totalCashRequired,
+  };
+}
+
 export function repayLoan(state: GameEngineState, amount: number): ActionResult {
   if (amount <= 0) return { success: false, message: 'Invalid amount' };
   if (state.player.debt <= 0) return { success: false, message: 'You have no outstanding debt' };
-  if (state.player.cash < amount) return { success: false, message: 'Not enough cash' };
 
-  const actualPayment = Math.min(amount, state.player.debt);
-  state.player.cash -= actualPayment;
+  const details = getEarlyRepayDetails(state.player, amount);
+  const { actualPayment, isEarly, feeRate, earlyFee, totalCashRequired } = details;
+
+  if (actualPayment <= 0) return { success: false, message: 'Invalid payment amount' };
+
+  if (state.player.cash < totalCashRequired) {
+    if (isEarly && earlyFee > 0) {
+      return {
+        success: false,
+        message: `Not enough cash! Repaying $${actualPayment.toLocaleString()} debt early requires $${totalCashRequired.toLocaleString()} (including a $${earlyFee.toLocaleString()} early payment charge, ${Math.round(feeRate * 100)}% fee with ${state.player.loanDaysLeft} days remaining).`,
+      };
+    }
+    return { success: false, message: 'Not enough cash' };
+  }
+
+  state.player.cash -= totalCashRequired;
   state.player.debt -= actualPayment;
+
+  const shark = state.player.loanSharkId ? SHARK_MAP.get(state.player.loanSharkId) : null;
+  const sharkName = shark?.name ?? 'Loan Shark';
 
   if (state.player.debt === 0) {
     state.player.loanSharkId = null;
@@ -380,11 +421,18 @@ export function repayLoan(state: GameEngineState, amount: number): ActionResult 
     day: state.player.currentDay,
     city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
     type: 'finance',
-    message: `Paid $${actualPayment.toLocaleString()} toward your loan shark debt. (Remaining: $${state.player.debt.toLocaleString()})`,
+    message: isEarly && earlyFee > 0
+      ? `Paid $${actualPayment.toLocaleString()} toward debt + $${earlyFee.toLocaleString()} early payment charge to ${sharkName} (${Math.round(feeRate * 100)}% prepayment penalty, ${state.player.loanDaysLeft} days left). Remaining: $${state.player.debt.toLocaleString()}.`
+      : `Paid $${actualPayment.toLocaleString()} toward your loan shark debt. (Remaining: $${state.player.debt.toLocaleString()})`,
     timestamp: Date.now(),
   });
 
-  return { success: true, message: 'Payment recorded' };
+  return {
+    success: true,
+    message: isEarly && earlyFee > 0
+      ? `Paid $${actualPayment.toLocaleString()} debt + $${earlyFee.toLocaleString()} early payment charge to ${sharkName}.`
+      : `Paid $${actualPayment.toLocaleString()} toward debt.`,
+  };
 }
 
 export function borrowLoan(state: GameEngineState, sharkId: string, amount: number): ActionResult {

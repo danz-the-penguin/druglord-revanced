@@ -58,6 +58,7 @@ export interface LoanShark {
   id: string;
   name: string;
   interestRate: number;
+  earlyFeeRate?: number;
   multiplier: number;
   maxLoan: number;
   repayDays: number;

@@ -6,6 +6,8 @@ import {
   depositBank,
   withdrawBank,
   advanceDay,
+  repayLoan,
+  getEarlyRepayDetails,
 } from '../game';
 
 describe('Game Engine State Machine', () => {
@@ -107,4 +109,68 @@ describe('Game Engine State Machine', () => {
     expect(state.player.cash).toBe(3000);
     expect(state.player.bank).toBe(2000);
   });
+
+  describe('Loan Shark & Early Payment Charges', () => {
+    it('calculates early payoff details accurately', () => {
+      const state = createInitialState();
+      // Buddles has 10% fee and 14 days
+      expect(state.player.loanDaysLeft).toBe(14);
+      expect(state.player.debt).toBe(1000);
+
+      const details = getEarlyRepayDetails(state.player, 500);
+      expect(details.actualPayment).toBe(500);
+      expect(details.isEarly).toBe(true);
+      expect(details.feeRate).toBe(0.10);
+      expect(details.earlyFee).toBe(50);
+      expect(details.totalCashRequired).toBe(550);
+    });
+
+    it('rejects repayment if player lacks cash to cover debt + early payment charge', () => {
+      const state = createInitialState();
+      // On Day 1, player has $1000 cash and $1000 debt with Buddles (10% early fee = $100)
+      // Total required to clear all $1000 debt is $1100
+      expect(state.player.cash).toBe(1000);
+      expect(state.player.debt).toBe(1000);
+
+      const res = repayLoan(state, 1000);
+      expect(res.success).toBe(false);
+      expect(res.message).toContain('early payment charge');
+      expect(state.player.cash).toBe(1000);
+      expect(state.player.debt).toBe(1000);
+    });
+
+    it('successfully repays debt early and deducts early payment charge when player has sufficient cash', () => {
+      const state = createInitialState();
+      state.player.cash = 2000;
+      state.player.debt = 1000;
+      state.player.loanSharkId = 'buddles';
+      state.player.loanDaysLeft = 10;
+
+      // Repaying $1000 debt early with Buddles: 10% of 1000 = $100 fee.
+      // Total cash deducted = $1100.
+      const res = repayLoan(state, 1000);
+      expect(res.success).toBe(true);
+      expect(res.message).toContain('early payment charge');
+      expect(state.player.debt).toBe(0);
+      expect(state.player.cash).toBe(900); // 2000 - 1100
+      expect(state.player.loanSharkId).toBeNull();
+      expect(state.player.loanDaysLeft).toBe(0);
+      expect(state.logs[0].message).toContain('early payment charge');
+    });
+
+    it('does NOT charge early payment fee if loan has reached its term (loanDaysLeft <= 0)', () => {
+      const state = createInitialState();
+      state.player.cash = 1000;
+      state.player.debt = 1000;
+      state.player.loanSharkId = 'buddles';
+      state.player.loanDaysLeft = 0; // Term expired
+
+      const res = repayLoan(state, 1000);
+      expect(res.success).toBe(true);
+      expect(res.message).toBe('Paid $1,000 toward debt.');
+      expect(state.player.debt).toBe(0);
+      expect(state.player.cash).toBe(0); // Exactly $1000 deducted, $0 fee
+    });
+  });
 });
+

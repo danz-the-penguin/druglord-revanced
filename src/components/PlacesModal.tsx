@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LOAN_SHARKS, SHARK_MAP, WEAPONS, PROPERTIES } from '../engine/constants';
+import { getEarlyRepayDetails } from '../engine/game';
 import { PropertyImage } from './PropertyImage';
 import { WeaponImage } from './WeaponImage';
 import {
@@ -12,6 +13,7 @@ import {
   ArrowRight,
   Home,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const PlacesModal: React.FC = () => {
@@ -40,6 +42,13 @@ export const PlacesModal: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const activeShark = player.loanSharkId ? SHARK_MAP.get(player.loanSharkId) : null;
+  const isEarly = (player.loanDaysLeft ?? 0) > 0;
+  const earlyFeeRate = isEarly ? (activeShark?.earlyFeeRate ?? activeShark?.interestRate ?? 0.10) : 0;
+  const repayDetails = getEarlyRepayDetails(player, loanAmount);
+  const maxAffordablePrincipal = isEarly
+    ? Math.min(player.debt, Math.floor(player.cash / (1 + earlyFeeRate)))
+    : Math.min(player.cash, player.debt);
+  const canAffordCurrent = loanAmount > 0 && player.cash >= repayDetails.totalCashRequired;
 
   // Hospital cost
   const hpNeeded = 100 - player.health;
@@ -438,47 +447,120 @@ export const PlacesModal: React.FC = () => {
               <div className="bg-rose-950/40 p-5 rounded-2xl border border-rose-800/80">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs text-rose-300 font-bold uppercase tracking-wider">Active Shark Debt</div>
+                    <div className="text-xs text-rose-300 font-bold uppercase tracking-wider">Active Syndicate Debt</div>
                     <div className="text-3xl font-black text-rose-400 mt-1">
                       ${player.debt.toLocaleString()}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-slate-400">Creditor: {activeShark?.name}</div>
+                    <div className="text-xs text-slate-400 font-medium">Creditor: <span className="text-slate-200 font-bold">{activeShark?.name ?? 'Loan Shark'}</span></div>
                     <div
                       className={`text-sm font-bold mt-1 ${
                         player.loanDaysLeft <= 1 ? 'text-red-400 animate-pulse' : 'text-amber-400'
                       }`}
                     >
-                      {player.loanDaysLeft} days remaining
+                      {player.loanDaysLeft > 0 ? `${player.loanDaysLeft} days remaining` : 'Term expired (Overdue!)'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Interest: {Math.round((activeShark?.interestRate ?? 0.1) * 100)}%/day compounding
                     </div>
                   </div>
                 </div>
 
+                {/* Early Payoff Warning Callout */}
+                {isEarly && (
+                  <div className="mt-4 p-3.5 bg-amber-950/40 border border-amber-800/60 rounded-xl flex items-start gap-3 text-xs text-amber-200/90">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-amber-300 text-sm flex items-center gap-1.5">
+                        <span>Early Payoff Surcharge ({Math.round(earlyFeeRate * 100)}% Prepayment Vig)</span>
+                      </div>
+                      <p className="mt-1 text-amber-200/80 leading-relaxed">
+                        {activeShark?.name ?? 'The loan shark'} expected {player.loanDaysLeft} more days of compounding interest. Settling debt early incurs a mandatory <strong className="text-amber-300 font-bold">{Math.round(earlyFeeRate * 100)}% early payment charge</strong> on principal settled!
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4 pt-4 border-t border-rose-900/60 space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-300 font-semibold">Repayment Amount:</span>
-                    <button
-                      onClick={() => setLoanAmount(Math.min(player.cash, player.debt))}
-                      className="text-cyan-400 hover:underline text-xs"
-                    >
-                      Max (${Math.min(player.cash, player.debt).toLocaleString()})
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setLoanAmount(maxAffordablePrincipal)}
+                        className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold hover:underline"
+                        title="Maximum debt you can repay with current cash including fee"
+                      >
+                        Max Affordable (${maxAffordablePrincipal.toLocaleString()})
+                      </button>
+                      <span className="text-slate-600">|</span>
+                      <button
+                        onClick={() => setLoanAmount(player.debt)}
+                        className="text-amber-400 hover:text-amber-300 text-xs font-semibold hover:underline"
+                        title="Set to full outstanding debt"
+                      >
+                        Full Debt (${player.debt.toLocaleString()})
+                      </button>
+                    </div>
                   </div>
+
                   <input
                     type="number"
                     min={0}
                     max={player.debt}
                     value={loanAmount || ''}
-                    onChange={(e) => setLoanAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onChange={(e) => setLoanAmount(Math.max(0, Math.min(player.debt, parseInt(e.target.value, 10) || 0)))}
+                    placeholder={`Enter principal to repay (max $${player.debt.toLocaleString()})...`}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold focus:outline-none focus:border-rose-500 text-base"
                   />
+
+                  {/* Financial Breakdown if loanAmount > 0 */}
+                  {loanAmount > 0 && (
+                    <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Debt Principal Cleared:</span>
+                        <span className="font-bold text-slate-200 font-mono">
+                          ${repayDetails.actualPayment.toLocaleString()}
+                        </span>
+                      </div>
+                      {isEarly && repayDetails.earlyFee > 0 && (
+                        <div className="flex justify-between text-amber-400">
+                          <span>Early Payment Charge ({Math.round(earlyFeeRate * 100)}%):</span>
+                          <span className="font-bold font-mono">
+                            +${repayDetails.earlyFee.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="border-t border-slate-800/80 pt-2 flex justify-between text-sm font-black">
+                        <span className="text-slate-300">Total Cash Outflow:</span>
+                        <span className={`font-mono ${player.cash >= repayDetails.totalCashRequired ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          ${repayDetails.totalCashRequired.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500 pt-0.5">
+                        <span>Cash in Pocket:</span>
+                        <span className="font-mono text-slate-400">${player.cash.toLocaleString()}</span>
+                      </div>
+                      {!canAffordCurrent && (
+                        <div className="text-[11px] text-rose-400 font-bold bg-rose-950/50 p-2 rounded-lg border border-rose-900/60 mt-1">
+                          ⚠️ Insufficient cash! Need an additional ${(repayDetails.totalCashRequired - player.cash).toLocaleString()} to cover the debt and early payment charge.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     onClick={handleRepay}
-                    disabled={loanAmount <= 0 || player.cash < loanAmount}
-                    className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 font-black text-slate-950 text-sm transition-all active:scale-95"
+                    disabled={loanAmount <= 0 || !canAffordCurrent}
+                    className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 disabled:cursor-not-allowed font-black text-slate-950 text-sm transition-all shadow-md active:scale-95"
                   >
-                    Pay Loan Shark
+                    {loanAmount <= 0
+                      ? 'Enter Amount to Repay'
+                      : !canAffordCurrent
+                      ? `Insufficient Cash ($${repayDetails.totalCashRequired.toLocaleString()} Needed)`
+                      : isEarly && repayDetails.earlyFee > 0
+                      ? `Pay $${repayDetails.totalCashRequired.toLocaleString()} ($${repayDetails.actualPayment.toLocaleString()} Debt + $${repayDetails.earlyFee.toLocaleString()} Fee)`
+                      : `Pay $${repayDetails.actualPayment.toLocaleString()} Debt`}
                   </button>
                 </div>
               </div>
@@ -490,6 +572,7 @@ export const PlacesModal: React.FC = () => {
                 <div className="space-y-2.5">
                   {LOAN_SHARKS.map((shark) => {
                     const maxLoan = Math.min(shark.maxLoan, Math.max(1000, player.cash * shark.multiplier));
+                    const earlyFee = Math.round((shark.earlyFeeRate ?? shark.interestRate) * 100);
                     return (
                       <div
                         key={shark.id}
@@ -510,6 +593,7 @@ export const PlacesModal: React.FC = () => {
                         <div className="flex justify-between items-center text-xs text-slate-400 mt-2 font-mono">
                           <span>Grace: {shark.repayDays} days</span>
                           <span>Max Credit: ${Math.round(maxLoan).toLocaleString()}</span>
+                          <span className="text-amber-400">Early Fee: {earlyFee}%</span>
                         </div>
                       </div>
                     );
