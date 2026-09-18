@@ -162,8 +162,8 @@ export const TravelModal: React.FC = () => {
       )}
 
       {/* Region Category Filter Tabs */}
-      <div className="bg-slate-950/70 px-5 py-2.5 border-b border-slate-800/80 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-slate-500 flex items-center gap-1 mr-1 text-[11px] uppercase font-bold">
+      <div className="bg-slate-950/70 px-3 sm:px-5 py-2.5 border-b border-slate-800/80 flex items-center gap-2 text-xs overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap">
+        <span className="text-slate-500 flex items-center gap-1 mr-1 text-[11px] uppercase font-bold shrink-0">
           <Globe className="w-3 h-3 text-slate-400" /> Regions:
         </span>
         {REGIONS.map((region) => {
@@ -197,7 +197,7 @@ export const TravelModal: React.FC = () => {
       </div>
 
       {/* Destinations Grid */}
-      <div className="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 max-h-[calc(100vh-280px)] overflow-y-auto">
+      <div className="p-3 sm:p-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5 max-h-[calc(100vh-280px)] overflow-y-auto">
         {filteredCities.map((city) => {
           const isCurrent = player.currentCityId === city.id;
           const canAfford = player.cash >= city.flightCost;

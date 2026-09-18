@@ -48,27 +48,33 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    if (triggerRect.width === 0 && triggerRect.height === 0) return;
-
+    const isMobile = window.innerWidth < 640;
     const padding = 16;
-    const cardWidth = 460;
+    const cardWidth = isMobile ? Math.min(460, window.innerWidth - padding * 2) : 460;
     const cardHeight = popoverRef.current ? popoverRef.current.offsetHeight : 380;
 
-    let left = triggerRect.left;
-    if (left + cardWidth > window.innerWidth - padding) {
-      left = Math.max(padding, window.innerWidth - padding - cardWidth);
-    }
-    if (left < padding) {
-      left = padding;
+    let left: number;
+    if (isMobile) {
+      left = Math.max(padding, (window.innerWidth - cardWidth) / 2);
+    } else {
+      left = triggerRect.left;
+      if (left + cardWidth > window.innerWidth - padding) {
+        left = Math.max(padding, window.innerWidth - padding - cardWidth);
+      }
+      if (left < padding) {
+        left = padding;
+      }
     }
 
-    let top = triggerRect.top + triggerRect.height / 2;
+    let top = isMobile ? window.innerHeight / 2 : triggerRect.top + triggerRect.height / 2;
     const halfHeight = cardHeight / 2;
 
-    if (top - halfHeight < padding) {
-      top = padding + halfHeight;
-    } else if (top + halfHeight > window.innerHeight - padding) {
-      top = window.innerHeight - padding - halfHeight;
+    if (!isMobile) {
+      if (top - halfHeight < padding) {
+        top = padding + halfHeight;
+      } else if (top + halfHeight > window.innerHeight - padding) {
+        top = window.innerHeight - padding - halfHeight;
+      }
     }
 
     setCoords({ left, top });
@@ -270,7 +276,7 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
               transformOrigin: 'left center',
               zIndex: 99999,
             }}
-            className="w-[440px] sm:w-[480px] max-w-[calc(100vw-2rem)] rounded-3xl border-2 border-indigo-500/80 bg-slate-950/98 p-5 shadow-[0_25px_70px_rgba(99,102,241,0.35)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 ring-1 ring-white/10 pointer-events-auto flex flex-col gap-4"
+            className="w-[calc(100vw-2rem)] sm:w-[480px] max-w-lg max-h-[85dvh] overflow-y-auto rounded-3xl border-2 border-indigo-500/80 bg-slate-950/98 p-4 sm:p-5 shadow-[0_25px_70px_rgba(99,102,241,0.35)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 ring-1 ring-white/10 pointer-events-auto flex flex-col gap-4"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={handlePopoverClick}

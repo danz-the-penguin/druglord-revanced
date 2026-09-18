@@ -1052,7 +1052,7 @@ export const SmugglingMap: React.FC = () => {
       {/* Main Grid: Interactive Leaflet Map + Briefing Dossier */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
         {/* Leaflet Map Stage */}
-        <div className="lg:col-span-8 relative h-[540px] bg-slate-950 overflow-hidden select-none border-b lg:border-b-0 lg:border-r border-slate-800">
+        <div className="lg:col-span-8 relative h-[360px] sm:h-[460px] lg:h-[580px] xl:h-[640px] bg-slate-950 overflow-hidden select-none border-b lg:border-b-0 lg:border-r border-slate-800">
           {/* Leaflet Container */}
           <div ref={mapContainerRef} className="w-full h-full z-0" />
 
@@ -1158,7 +1158,7 @@ export const SmugglingMap: React.FC = () => {
         </div>
 
         {/* Right Side: Tactical Target Briefing & Actions */}
-        <div className="lg:col-span-4 p-5 flex flex-col justify-between space-y-4 bg-slate-900/50 overflow-y-auto max-h-[540px]">
+        <div className="lg:col-span-4 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-slate-900/50 overflow-y-auto max-h-[500px] lg:max-h-[580px] xl:max-h-[640px]">
           {targetCity ? (
             <div className="space-y-4">
               {/* Target City Header */}

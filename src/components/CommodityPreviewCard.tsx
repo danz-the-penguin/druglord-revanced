@@ -43,24 +43,30 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
     const triggerRect = triggerRef.current.getBoundingClientRect();
     if (triggerRect.width === 0 && triggerRect.height === 0) return;
 
-    const padding = 16;
-    const cardWidth = 520; // expanded verbose dossier width
+    const padding = 12;
+    const isMobile = window.innerWidth < 640;
+    const cardWidth = Math.min(window.innerWidth - padding * 2, 520);
     const cardHeight = popoverRef.current ? popoverRef.current.offsetHeight : 440;
 
-    // Align left with trigger cell, keeping within viewport
-    let left = triggerRect.left;
-    if (left + cardWidth > window.innerWidth - padding) {
-      left = Math.max(padding, window.innerWidth - padding - cardWidth);
-    }
-    if (left < padding) {
-      left = padding;
+    // On mobile (<640px), center horizontally in the viewport
+    let left: number;
+    if (isMobile) {
+      left = Math.max(padding, (window.innerWidth - cardWidth) / 2);
+    } else {
+      left = triggerRect.left;
+      if (left + cardWidth > window.innerWidth - padding) {
+        left = Math.max(padding, window.innerWidth - padding - cardWidth);
+      }
+      if (left < padding) {
+        left = padding;
+      }
     }
 
     // Center vertically on the trigger row
     let top = triggerRect.top + triggerRect.height / 2;
     const halfHeight = cardHeight / 2;
 
-    // Viewport bounds clamping: only clamp if overflowing screen top or bottom
+    // Viewport bounds clamping
     if (top - halfHeight < padding) {
       top = padding + halfHeight;
     } else if (top + halfHeight > window.innerHeight - padding) {
@@ -227,13 +233,13 @@ export const CommodityPreviewCard: React.FC<CommodityPreviewCardProps> = ({
               transformOrigin: 'left center',
               zIndex: 99999,
             }}
-            className={`w-[480px] sm:w-[520px] max-w-[calc(100vw-2rem)] flex z-[99999] rounded-3xl border-2 ${borderActive} bg-slate-950/98 p-5 ${glowShadow} backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 gap-4 items-start ring-1 ring-white/10 pointer-events-auto shadow-2xl ${fontScaleClass}`}
+            className={`w-[min(520px,calc(100vw-1.5rem))] max-h-[85dvh] overflow-y-auto flex flex-col sm:flex-row z-[99999] rounded-3xl border-2 ${borderActive} bg-slate-950/98 p-4 sm:p-5 ${glowShadow} backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 gap-4 items-start ring-1 ring-white/10 pointer-events-auto shadow-2xl ${fontScaleClass}`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={handlePopoverClick}
           >
             {/* Large Image with the card */}
-            <div className="shrink-0">
+            <div className="shrink-0 flex items-center justify-center sm:justify-start w-full sm:w-auto">
               <DrugImage drug={drug} size="lg" className={`ring-2 ${ringColor} shadow-2xl rounded-2xl`} />
             </div>
 

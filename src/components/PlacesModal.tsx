@@ -340,7 +340,7 @@ export const PlacesModal: React.FC = () => {
   return (
     <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl font-mono backdrop-blur-md">
       {/* Subtab navigation */}
-      <div className="flex border-b border-slate-800 bg-slate-950/80 overflow-x-auto text-xs font-bold uppercase tracking-wider">
+      <div className="flex border-b border-slate-800 bg-slate-950/80 overflow-x-auto no-scrollbar flex-nowrap scroll-smooth text-xs font-bold uppercase tracking-wider">
         <button
           onClick={() => setPlacesSubTab('bank')}
           className={`py-3.5 px-4 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
@@ -470,7 +470,7 @@ export const PlacesModal: React.FC = () => {
       </div>
 
       {/* Feedback Banner */}
-      <div className="p-6">
+      <div className="p-3 sm:p-5 lg:p-6">
         {feedback && (
           <div
             className={`mb-5 p-3.5 rounded-xl text-sm font-bold border ${
@@ -1168,7 +1168,7 @@ export const PlacesModal: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
               {PROPERTIES.map((prop) => {
                 const isOwned = (player.ownedProperties || []).includes(prop.id);
                 const canAfford = player.cash >= prop.price;

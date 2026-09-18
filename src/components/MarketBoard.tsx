@@ -22,6 +22,8 @@ import {
   Radio,
   LineChart,
   Globe,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 
 type SortField = 'default' | 'name' | 'price' | 'quantity' | 'stash';
@@ -46,6 +48,7 @@ export const MarketBoard: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [mobileDisplayMode, setMobileDisplayMode] = useState<'cards' | 'table'>('cards');
 
   // Format formula with subscripts
   const formatFormula = (formula?: string) => {
@@ -212,10 +215,10 @@ export const MarketBoard: React.FC = () => {
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
             <button
               onClick={() => setFilterMode('all')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs ${
                 filterMode === 'all'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -226,7 +229,7 @@ export const MarketBoard: React.FC = () => {
 
             <button
               onClick={() => setFilterMode('affordable')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs ${
                 filterMode === 'affordable'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -237,7 +240,7 @@ export const MarketBoard: React.FC = () => {
 
             <button
               onClick={() => setFilterMode('in_stash')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs ${
                 filterMode === 'in_stash'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -248,7 +251,7 @@ export const MarketBoard: React.FC = () => {
 
             <button
               onClick={() => setFilterMode('surges')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs ${
                 filterMode === 'surges'
                   ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-950'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -259,73 +262,233 @@ export const MarketBoard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Quick Sort Controls */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-2.5 xl:pt-0 border-t xl:border-t-0 border-slate-800/80">
-          <span className="text-slate-500 text-[11px] font-bold uppercase flex items-center gap-1 mr-1 shrink-0">
-            <SlidersHorizontal className="w-3 h-3 text-slate-400" /> Sort:
-          </span>
+        {/* Right: Quick Sort Controls & Mobile View Switcher */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-800/80 justify-between sm:justify-start w-full xl:w-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <span className="text-slate-500 text-[11px] font-bold uppercase flex items-center gap-1 mr-0.5 shrink-0">
+              <SlidersHorizontal className="w-3 h-3 text-slate-400" /> Sort:
+            </span>
 
-          <button
-            onClick={() => handleSortToggle('name', 'asc')}
-            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
-              sortField === 'name'
-                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-            title="Sort alphabetically by name"
-          >
-            {sortField === 'name' && sortDirection === 'desc' ? (
-              <ArrowDownZA className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            ) : (
-              <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            )}
-            <span>Alphabetical {sortField === 'name' && (sortDirection === 'asc' ? '(A-Z)' : '(Z-A)')}</span>
-          </button>
-
-          <button
-            onClick={() => handleSortToggle('price', 'desc')}
-            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
-              sortField === 'price'
-                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-            title="Sort by spot price"
-          >
-            {sortField === 'price' && sortDirection === 'asc' ? (
-              <ArrowDown01 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            ) : (
-              <ArrowDown10 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            )}
-            <span>Price {sortField === 'price' && (sortDirection === 'desc' ? '▼' : '▲')}</span>
-          </button>
-
-          <button
-            onClick={() => handleSortToggle('quantity', 'desc')}
-            className={`px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
-              sortField === 'quantity'
-                ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-            title="Sort by available supply quantity"
-          >
-            <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Quantity {sortField === 'quantity' && (sortDirection === 'desc' ? '▼' : '▲')}</span>
-          </button>
-
-          {(sortField !== 'default' || filterMode !== 'all' || searchQuery) && (
             <button
-              onClick={handleResetFilters}
-              className="px-2.5 py-1 rounded-md text-[11px] font-bold text-slate-400 hover:text-rose-400 bg-slate-900 border border-slate-800 flex items-center gap-1 transition-colors ml-1 cursor-pointer shrink-0"
-              title="Reset all filters and sort order"
+              onClick={() => handleSortToggle('name', 'asc')}
+              className={`px-2 py-1 rounded-md font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0 text-xs ${
+                sortField === 'name'
+                  ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+              title="Sort alphabetically by name"
             >
-              <RotateCcw className="w-3 h-3 shrink-0" /> Reset
+              {sortField === 'name' && sortDirection === 'desc' ? (
+                <ArrowDownZA className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              ) : (
+                <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              )}
+              <span>Name {sortField === 'name' && (sortDirection === 'asc' ? 'A-Z' : 'Z-A')}</span>
             </button>
-          )}
+
+            <button
+              onClick={() => handleSortToggle('price', 'desc')}
+              className={`px-2 py-1 rounded-md font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0 text-xs ${
+                sortField === 'price'
+                  ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+              title="Sort by spot price"
+            >
+              {sortField === 'price' && sortDirection === 'asc' ? (
+                <ArrowDown01 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              ) : (
+                <ArrowDown10 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              )}
+              <span>Price {sortField === 'price' && (sortDirection === 'desc' ? '▼' : '▲')}</span>
+            </button>
+
+            <button
+              onClick={() => handleSortToggle('quantity', 'desc')}
+              className={`px-2 py-1 rounded-md font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0 text-xs ${
+                sortField === 'quantity'
+                  ? 'bg-emerald-950 border border-emerald-600 text-emerald-300 shadow-xs'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+              title="Sort by available supply quantity"
+            >
+              <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Qty {sortField === 'quantity' && (sortDirection === 'desc' ? '▼' : '▲')}</span>
+            </button>
+
+            {(sortField !== 'default' || filterMode !== 'all' || searchQuery) && (
+              <button
+                onClick={handleResetFilters}
+                className="px-2 py-1 rounded-md text-[11px] font-bold text-slate-400 hover:text-rose-400 bg-slate-900 border border-slate-800 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                title="Reset all filters and sort order"
+              >
+                <RotateCcw className="w-3 h-3 shrink-0" /> Reset
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Display Mode Toggle (Cards vs Table) */}
+          <div className="md:hidden flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shrink-0 ml-auto">
+            <button
+              onClick={() => setMobileDisplayMode('cards')}
+              className={`px-2 py-1 rounded font-bold text-xs flex items-center gap-1 transition-colors ${
+                mobileDisplayMode === 'cards'
+                  ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Cards View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Cards</span>
+            </button>
+            <button
+              onClick={() => setMobileDisplayMode('table')}
+              className={`px-2 py-1 rounded font-bold text-xs flex items-center gap-1 transition-colors ${
+                mobileDisplayMode === 'table'
+                  ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Table View"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Table</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Table Content */}
-      <div className="overflow-x-auto">
+      {/* Mobile Card-Based Trading View (Rendered for iPhone 11/15 Pro Max) */}
+      <div className={`${mobileDisplayMode === 'table' ? 'hidden' : 'block md:hidden'} space-y-3 p-3`}>
+        {processedDrugs.map((drug) => {
+          const marketItem = market[drug.id];
+          const price = marketItem?.price ?? drug.basePrice;
+          const availableUnits = marketItem?.availableUnits ?? 0;
+          const playerHolding = player.inventory[drug.id]?.units ?? 0;
+          const vaultHolding = player.vaults?.[player.currentCityId]?.[drug.id] ?? 0;
+          const canAfford = player.cash >= price && remainingCapacity > 0 && availableUnits > 0;
+          const canSell = playerHolding > 0;
+          const history = priceHistory[drug.id] || [drug.basePrice, price];
+          const diff = price - drug.basePrice;
+          const pct = Math.round((diff / drug.basePrice) * 100);
+
+          return (
+            <div
+              key={drug.id}
+              className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3 space-y-2.5 shadow-lg font-mono"
+            >
+              {/* Top Row: Name, Formula & Spot Price */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <CommodityPreviewCard
+                    drug={drug}
+                    formatFormula={formatFormula}
+                    theme="emerald"
+                    containerRef={containerRef}
+                  />
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="font-black text-slate-100 text-base leading-tight">
+                    ${price.toLocaleString()}
+                  </div>
+                  <div className="flex items-center justify-end gap-1 mt-0.5 text-[10px]">
+                    <span className="text-slate-400">Base: ${drug.basePrice.toLocaleString()}</span>
+                    {pct !== 0 && (
+                      <span
+                        className={`font-bold px-1 py-0.2 rounded text-[9px] ${
+                          diff > 0
+                            ? 'text-emerald-400 bg-emerald-950/80 border border-emerald-800/60'
+                            : 'text-rose-400 bg-rose-950/80 border border-rose-800/60'
+                        }`}
+                      >
+                        {diff > 0 ? `+${pct}%` : `${pct}%`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle Row: 14D Action Sparkline, Trend Badge, Supply & Stash */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-xs">
+                <div
+                  onClick={() => openDrugGraph(drug.id)}
+                  className="bg-slate-950/60 border border-slate-800 rounded-xl p-2 flex items-center justify-between cursor-pointer active:scale-95"
+                  title="Tap to open price history graph"
+                >
+                  <Sparkline data={history} width={75} height={22} />
+                  <div className="text-right ml-1">
+                    {marketItem?.surge === 'high' ? (
+                      <span className="text-[10px] font-black text-amber-400 uppercase">Shortage</span>
+                    ) : marketItem?.surge === 'crash' ? (
+                      <span className="text-[10px] font-black text-rose-400 uppercase">Flooded</span>
+                    ) : price > drug.basePrice ? (
+                      <span className="text-[10px] font-bold text-emerald-400">Bull ▲</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-400">Bear ▼</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2 flex flex-col justify-between text-[11px]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-[10px]">Supply:</span>
+                    <span className="font-bold text-slate-200">{availableUnits}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-0.5">
+                    <span className="text-slate-500 text-[10px]">Stash:</span>
+                    <span className="font-bold text-emerald-400">
+                      {playerHolding} {vaultHolding > 0 && <span className="text-teal-400 text-[9px] font-normal">(+{vaultHolding} vlt)</span>}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Actions: Full-Width Ergonomic Touch Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => openTradeModal(drug.id, 'buy')}
+                  disabled={!canAfford}
+                  className={`py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                    canAfford
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-950/60 cursor-pointer'
+                      : 'bg-slate-800 text-slate-600 opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>Buy</span>
+                </button>
+
+                <button
+                  onClick={() => openTradeModal(drug.id, 'sell')}
+                  disabled={!canSell}
+                  className={`py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                    canSell
+                      ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-md shadow-sky-950/60 cursor-pointer'
+                      : 'bg-slate-800 text-slate-600 opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <span>Sell ({playerHolding})</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {processedDrugs.length === 0 && (
+          <div className="py-8 text-center text-slate-500 font-mono text-xs bg-slate-950/50 rounded-2xl border border-slate-800">
+            No commodities match your filter criteria.
+            <button
+              onClick={handleResetFilters}
+              className="block mx-auto mt-2 text-emerald-400 underline hover:text-emerald-300 font-bold cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Table Content (Rendered on Tablet/Desktop, or when Mobile Table mode is selected) */}
+      <div className={`${mobileDisplayMode === 'cards' ? 'hidden md:block' : 'block'} overflow-x-auto`}>
         <table className="w-full text-left text-sm font-mono">
           <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-xs">
             <tr>

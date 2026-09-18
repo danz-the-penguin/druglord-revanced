@@ -87,15 +87,15 @@ export const TradeModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl font-mono animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 pb-safe">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg max-h-[min(90dvh,750px)] flex flex-col overflow-hidden shadow-2xl font-mono animate-in fade-in zoom-in-95 duration-200">
         {/* Header with Drug Image, Formula, and Title */}
-        <div className="p-5 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+        <div className="p-4 sm:p-5 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
             <DrugImage drug={drug} size="md" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-slate-100 uppercase tracking-wide text-lg">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="font-black text-slate-100 uppercase tracking-wide text-base sm:text-lg truncate">
                   {mode === 'buy' ? 'Acquire' : mode === 'sell' ? 'Liquidate' : 'Dump'} {drug.name}
                 </h3>
                 {drug.chemicalFormula && (
@@ -128,7 +128,7 @@ export const TradeModal: React.FC = () => {
                 })()}
               </div>
               {drug.scientificName && (
-                <p className="text-[11px] text-slate-400 mt-0.5 font-sans">
+                <p className="text-[11px] text-slate-400 mt-0.5 font-sans truncate">
                   {drug.scientificName} {drug.molecularWeight ? `• ${drug.molecularWeight}` : ''}
                 </p>
               )}
@@ -136,14 +136,14 @@ export const TradeModal: React.FC = () => {
           </div>
           <button
             onClick={closeTradeModal}
-            className="text-slate-400 hover:text-slate-200 p-2 rounded-xl hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-slate-200 p-2 rounded-xl hover:bg-slate-800 transition-colors shrink-0 ml-2"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5 text-sm">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 text-sm overflow-y-auto flex-1">
           {/* Status summary */}
           <div className="grid grid-cols-2 gap-4 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
             <div>
@@ -246,7 +246,7 @@ export const TradeModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-800/90 border-t border-slate-700 flex justify-end gap-3">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-800/90 border-t border-slate-700 flex justify-end gap-2.5 sm:gap-3 shrink-0">
           <button
             onClick={closeTradeModal}
             className="px-5 py-2.5 rounded-xl text-slate-300 hover:text-slate-100 hover:bg-slate-800 font-bold transition-colors text-sm"

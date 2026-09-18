@@ -42,6 +42,7 @@ export const App: React.FC = () => {
   } = useGameStore();
 
   const [showRestartModal, setShowRestartModal] = useState<boolean>(false);
+  const [isMobileOpsOpen, setIsMobileOpsOpen] = useState<boolean>(false);
   const [selectedDurationMode, setSelectedDurationMode] = useState<GameDurationMode>(
     player.gameDurationMode || 'classic'
   );
@@ -69,8 +70,8 @@ export const App: React.FC = () => {
       {/* Top persistent dashboard */}
       <Header />
 
-      {/* Main navigation & quick actions */}
-      <nav className="bg-slate-900/60 border-b border-slate-800 px-4 py-2 sticky top-[97px] z-30 backdrop-blur">
+      {/* Desktop & Tablet Top Navigation Bar (Hidden on Mobile) */}
+      <nav className="hidden md:block bg-slate-900/70 border-b border-slate-800 px-4 py-2.5 backdrop-blur-md">
         <div className="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between gap-3 font-mono">
           <div className="flex items-center gap-2">
             <button
@@ -109,7 +110,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={openFlightBoard}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all text-sky-300 bg-sky-950/40 hover:bg-sky-900/60 border border-sky-800/60 shadow-sm cursor-pointer"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all text-sky-300 bg-sky-950/40 hover:bg-sky-900/60 border border-sky-800/60 shadow-sm cursor-pointer"
               title="Open Real-Time Flight Board with Airport Hubs & Seat Classes"
             >
               <Plane className="w-3.5 h-3.5 text-sky-400" /> Flight Board
@@ -117,7 +118,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={openSyndicateModal}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 shadow-sm cursor-pointer"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 shadow-sm cursor-pointer"
               title="Open Cartel Syndicates & Faction Smuggling Contracts"
             >
               <Handshake className="w-3.5 h-3.5 text-rose-400" /> Syndicates
@@ -160,7 +161,7 @@ export const App: React.FC = () => {
       </nav>
 
       {/* Main Content Body */}
-      <main className="flex-1 max-w-[1750px] w-full mx-auto p-4 sm:p-5 lg:p-6 space-y-4">
+      <main className="flex-1 max-w-[1750px] w-full mx-auto p-3 sm:p-5 lg:p-6 pb-28 md:pb-6 space-y-4">
         {activeTab === 'market' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-8">
@@ -187,6 +188,188 @@ export const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Mobile iOS Bottom Navigation Bar (Tailored for iPhone 11 & 15 Pro Max) */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 border-t border-slate-800/90 backdrop-blur-xl pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-2 shadow-2xl"
+      >
+        <div className="flex items-center justify-around font-mono">
+          {/* Market Tab */}
+          <button
+            onClick={() => setActiveTab('market')}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[58px] ${
+              activeTab === 'market'
+                ? 'text-emerald-400 bg-emerald-950/50 font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ShoppingCart className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Market</span>
+          </button>
+
+          {/* Places Tab */}
+          <button
+            onClick={() => setActiveTab('places')}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[58px] ${
+              activeTab === 'places'
+                ? 'text-cyan-400 bg-cyan-950/50 font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Building className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Places</span>
+          </button>
+
+          {/* Center Prominent Advance Day Button */}
+          <button
+            onClick={nextDay}
+            className="flex flex-col items-center justify-center -mt-3.5 bg-gradient-to-tr from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 text-white p-2.5 rounded-2xl shadow-lg shadow-indigo-950/80 border border-indigo-400/40 active:scale-90 transition-all cursor-pointer min-w-[62px]"
+            title="Advance Day (+1 Day)"
+          >
+            <Moon className="w-5 h-5 text-amber-300 animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-wider mt-0.5">Next Day</span>
+          </button>
+
+          {/* Travel Tab */}
+          <button
+            onClick={() => setActiveTab('travel')}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[58px] ${
+              activeTab === 'travel'
+                ? 'text-sky-400 bg-sky-950/50 font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <MapIcon className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Travel</span>
+          </button>
+
+          {/* Underworld Ops Menu Toggle */}
+          <button
+            onClick={() => setIsMobileOpsOpen(true)}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[58px] ${
+              isMobileOpsOpen
+                ? 'text-amber-400 bg-amber-950/50 font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Terminal className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Ops</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile Underworld Operations Drawer (Slide up sheet) */}
+      {isMobileOpsOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
+          onClick={() => setIsMobileOpsOpen(false)}
+        >
+          <div
+            className="bg-slate-900 border-t border-slate-700/80 rounded-t-3xl p-5 pb-[max(env(safe-area-inset-bottom),24px)] space-y-4 font-mono shadow-2xl animate-in slide-in-from-bottom duration-250"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-slate-100 font-bold text-sm">
+                <Terminal className="w-4 h-4 text-emerald-400" />
+                <span>Underworld Operations & Consoles</span>
+              </div>
+              <button
+                onClick={() => setIsMobileOpsOpen(false)}
+                className="text-slate-400 hover:text-slate-200 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 text-left">
+              <button
+                onClick={() => {
+                  setIsMobileOpsOpen(false);
+                  openFlightBoard();
+                }}
+                className="p-3 rounded-xl bg-sky-950/50 border border-sky-800/60 hover:bg-sky-900/60 text-sky-300 font-bold text-xs flex items-center gap-2.5 transition-all text-left"
+              >
+                <Plane className="w-4 h-4 text-sky-400 shrink-0" />
+                <div>
+                  <div className="leading-tight">Flight Board</div>
+                  <div className="text-[10px] text-sky-400/70 font-normal mt-0.5">Hub Departures</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileOpsOpen(false);
+                  openSyndicateModal();
+                }}
+                className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/60 hover:bg-rose-900/60 text-rose-300 font-bold text-xs flex items-center gap-2.5 transition-all text-left"
+              >
+                <Handshake className="w-4 h-4 text-rose-400 shrink-0" />
+                <div>
+                  <div className="leading-tight">Syndicates</div>
+                  <div className="text-[10px] text-rose-400/70 font-normal mt-0.5">Cartel Contracts</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileOpsOpen(false);
+                  toggleSaveModal();
+                }}
+                className="p-3 rounded-xl bg-cyan-950/50 border border-cyan-800/60 hover:bg-cyan-900/60 text-cyan-300 font-bold text-xs flex items-center gap-2.5 transition-all text-left"
+              >
+                <HardDrive className="w-4 h-4 text-cyan-400 shrink-0" />
+                <div>
+                  <div className="leading-tight">Data Vault</div>
+                  <div className="text-[10px] text-cyan-400/70 font-normal mt-0.5">JSON & Saves</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileOpsOpen(false);
+                  openHallOfFame('leaderboard');
+                }}
+                className="p-3 rounded-xl bg-amber-950/50 border border-amber-800/60 hover:bg-amber-900/60 text-amber-300 font-bold text-xs flex items-center gap-2.5 transition-all text-left"
+              >
+                <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <div className="leading-tight">Hall of Fame</div>
+                  <div className="text-[10px] text-amber-400/70 font-normal mt-0.5">Prestige & Rank</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileOpsOpen(false);
+                  toggleTerminal();
+                }}
+                className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/60 hover:bg-emerald-900/60 text-emerald-300 font-bold text-xs flex items-center gap-2.5 transition-all text-left"
+              >
+                <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div>
+                  <div className="leading-tight">Hack [~]</div>
+                  <div className="text-[10px] text-emerald-400/70 font-normal mt-0.5">Debug Console</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileOpsOpen(false);
+                  setShowRestartModal(true);
+                }}
+                className="p-3 rounded-xl bg-slate-800/70 border border-slate-700/80 hover:bg-slate-700/80 text-slate-300 font-bold text-xs flex items-center gap-2.5 transition-all text-left"
+              >
+                <RotateCcw className="w-4 h-4 text-rose-400 shrink-0" />
+                <div>
+                  <div className="leading-tight">Restart Run</div>
+                  <div className="text-[10px] text-slate-400 font-normal mt-0.5">New Syndicate</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Restart & Lifespan Mode Selection Modal */}
       {showRestartModal && (
