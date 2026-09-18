@@ -391,7 +391,18 @@ function checkAchievementsAndUpdate(
   }
 }
 
-export const useGameStore = create<GameStore>((set, get) => {
+export const useGameStore = create<GameStore>((rawSet, get) => {
+  const set: typeof rawSet = (partial: any, replace?: any) => {
+    (rawSet as any)(partial, replace);
+    const updated = get();
+    if (updated?.player) {
+      syncStateToMemory({
+        player: updated.player,
+        market: updated.market,
+        logs: updated.logs,
+      });
+    }
+  };
   const initialPayload = getInitialStoreState();
   const storeApi = {
     ...initialPayload.state,
@@ -1607,10 +1618,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     buySwissSecurityTierAction: (tier: SwissAccountTier) => {
-      const player = { ...get().player };
-      const result = buySwissSecurityTier(player, tier);
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buySwissSecurityTier(state.player, tier);
       if (result.success) {
-        set({ player });
+        syncStateToMemory(state);
+        set({ player: state.player });
         triggerAutoSave(get, set);
         soundEngine.play('bank');
       } else {
@@ -1620,10 +1636,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     buyBearerBondAction: (bondType: BearerBond['bondType']) => {
-      const player = { ...get().player };
-      const result = buyBearerBond(player, bondType);
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyBearerBond(state.player, bondType);
       if (result.success) {
-        set({ player });
+        syncStateToMemory(state);
+        set({ player: state.player });
         triggerAutoSave(get, set);
         soundEngine.play('bank');
       } else {
@@ -1633,10 +1654,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     claimMaturedBearerBondsAction: () => {
-      const player = { ...get().player };
-      const result = claimMaturedBearerBonds(player);
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = claimMaturedBearerBonds(state.player);
       if (result.success) {
-        set({ player });
+        syncStateToMemory(state);
+        set({ player: state.player });
         triggerAutoSave(get, set);
         soundEngine.play('bank');
       } else {
@@ -1646,10 +1672,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     buyConsularImmunityAction: (level: ConsularImmunityLevel) => {
-      const player = { ...get().player };
-      const result = buyConsularImmunity(player, level);
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyConsularImmunity(state.player, level);
       if (result.success) {
-        set({ player });
+        syncStateToMemory(state);
+        set({ player: state.player });
         triggerAutoSave(get, set);
         soundEngine.play('vault');
       } else {
