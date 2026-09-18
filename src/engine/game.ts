@@ -40,6 +40,13 @@ import {
   CORRUPT_MAP,
   SOVEREIGN_SANCTUARIES,
   SANCTUARY_MAP,
+  getOrInitInformants,
+  getOrInitWiretaps,
+  bribeInformant,
+  flipInformant,
+  neutralizeInformant,
+  scrambleWiretap,
+  sellWiretapTranscript,
 } from './corruption';
 import {
   processTurfWarsAndMacroEventsDaily,
@@ -99,6 +106,13 @@ export {
   CORRUPT_MAP,
   SOVEREIGN_SANCTUARIES,
   SANCTUARY_MAP,
+  getOrInitInformants,
+  getOrInitWiretaps,
+  bribeInformant,
+  flipInformant,
+  neutralizeInformant,
+  scrambleWiretap,
+  sellWiretapTranscript,
   processTurfWarsAndMacroEventsDaily,
   getMacroCustomsMultiplier,
   triggerTurfWar,
@@ -2305,5 +2319,6 @@ export function selectActiveAircraft(state: GameEngineState, aircraftId: string 
   const name = aircraftId ? AIRCRAFT_MAP.get(aircraftId)?.name ?? 'Aircraft' : 'None (Commercial Airline)';
   return { success: true, message: `Active flight craft set to: ${name}` };
 }
+
 
 

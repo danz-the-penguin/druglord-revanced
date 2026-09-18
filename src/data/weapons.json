@@ -147,6 +147,47 @@
     "description": "Deploys thick impenetrable smoke screen (+50% escape probability during combat)."
   },
   {
+    "id": "desert_eagle",
+    "name": ".50 AE Desert Eagle Hand Cannon",
+    "type": "weapon",
+    "price": 4800,
+    "damage": 95,
+    "accuracy": 0.85,
+    "ammoRequired": "pistol_bullet",
+    "ammoCost": 12,
+    "aoe": false,
+    "description": "Iconic Israeli .50 Action Express hand cannon. Massive concussive stopping power that rips through light armor."
+  },
+  {
+    "id": "barrett_m82",
+    "name": "Barrett .50 BMG Anti-Materiel Rifle",
+    "type": "weapon",
+    "price": 55000,
+    "damage": 320,
+    "accuracy": 0.95,
+    "ammoRequired": "rocket",
+    "ammoCost": 200,
+    "aoe": false,
+    "description": "Mil-spec heavy anti-materiel sniper system. Dismantles engine blocks, SWAT barricades, and armored convoys from a mile away."
+  },
+  {
+    "id": "juggernaut_armor",
+    "name": "Class IV Titanium Juggernaut Armor",
+    "type": "armor",
+    "price": 32000,
+    "defense": 0.78,
+    "durability": 600,
+    "description": "Heavy titanium-ceramic ballistic plates with articulated composite joints. Absorbs nearly 80% of incoming gunfire."
+  },
+  {
+    "id": "emp_scrambler",
+    "name": "Military EMP Radar Scrambler",
+    "type": "utility",
+    "price": 1200,
+    "maxHold": 10,
+    "description": "Disrupts municipal police radio grids and tracking beacons, suppressing local heat."
+  },
+  {
     "id": "combat_medkit",
     "name": "Military Combat Medkit & Adrenaline Syringe",
     "type": "utility",

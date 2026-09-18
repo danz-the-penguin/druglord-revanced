@@ -61,7 +61,9 @@ import {
   Plane,
   FlaskConical,
   Wrench,
+  Star,
 } from 'lucide-react';
+import { soundEngine } from '../utils/audio';
 import {
   AIRCRAFT_FLEET,
   calculateAircraftFlightCost,
@@ -177,14 +179,20 @@ export const PlacesModal: React.FC = () => {
     setFeedback(null);
     const res = repay(loanAmount);
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
-    if (res.success) setLoanAmount(0);
+    if (res.success) {
+      soundEngine.play('bank');
+      setLoanAmount(0);
+    }
   };
 
   const handleBorrow = () => {
     setFeedback(null);
     const res = borrow(selectedSharkId, loanAmount);
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
-    if (res.success) setLoanAmount(0);
+    if (res.success) {
+      soundEngine.play('bank');
+      setLoanAmount(0);
+    }
   };
 
   const handleHeal = () => {
@@ -2263,34 +2271,123 @@ export const PlacesModal: React.FC = () => {
 
         {/* LOAN SHARK TAB */}
         {placesSubTab === 'loans' && (
-          <div className="space-y-6 max-w-xl mx-auto">
+          <div className="space-y-6 max-w-5xl mx-auto font-mono">
             {player.debt > 0 ? (
-              <div className="bg-rose-950/40 p-5 rounded-2xl border border-rose-800/80">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs text-rose-300 font-bold uppercase tracking-wider">Active Syndicate Debt</div>
-                    <div className="text-3xl font-black text-rose-400 mt-1">
-                      ${player.debt.toLocaleString()}
+              <div className="bg-rose-950/40 p-6 rounded-2xl border border-rose-800/80 space-y-5">
+                {/* Active Creditor Dossier Header */}
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    {activeShark && <SharkImage shark={activeShark} size="lg" />}
+                    <div>
+                      <div className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">
+                        Active Syndicate Creditor
+                      </div>
+                      <h3 className="text-xl font-black text-slate-100">
+                        {activeShark?.name ?? 'Syndicate Loan Shark'}
+                      </h3>
+                      <div className="text-xs text-rose-300 font-bold mt-0.5">
+                        {activeShark?.title ?? 'Underworld Creditor'}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {activeShark?.syndicate} • <span className="text-amber-400">{activeShark?.turf}</span>
+                      </div>
+                      {/* Danger Stars */}
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <span className="text-[10px] uppercase text-slate-500 mr-1">Threat Level:</span>
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <Star
+                            key={idx}
+                            className={`w-3 h-3 ${
+                              idx < (activeShark?.dangerRating ?? 3)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-slate-800'
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-slate-400 font-medium">Creditor: <span className="text-slate-200 font-bold">{activeShark?.name ?? 'Loan Shark'}</span></div>
+
+                  <div className="bg-slate-900/90 p-4 rounded-xl border border-rose-900/60 text-right min-w-[200px]">
+                    <div className="text-[10px] text-slate-400 uppercase">Outstanding Debt Balance</div>
+                    <div className="text-3xl font-black text-rose-400 mt-0.5">
+                      ${player.debt.toLocaleString()}
+                    </div>
                     <div
-                      className={`text-sm font-bold mt-1 ${
+                      className={`text-xs font-black mt-1 ${
                         player.loanDaysLeft <= 1 ? 'text-red-400 animate-pulse' : 'text-amber-400'
                       }`}
                     >
-                      {player.loanDaysLeft > 0 ? `${player.loanDaysLeft} days remaining` : 'Term expired (Overdue!)'}
+                      {player.loanDaysLeft > 0 ? `⏳ ${player.loanDaysLeft} days remaining` : '🚨 OVERDUE! Enforcers En Route'}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Interest: {Math.round((activeShark?.interestRate ?? 0.1) * 100)}%/day compounding
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      Vig: {Math.round((activeShark?.interestRate ?? 0.1) * 100)}%/day compounding
                     </div>
+                  </div>
+                </div>
+
+                {/* Warning Quote */}
+                {activeShark?.warningQuote && (
+                  <div className="p-3 bg-slate-900/70 border-l-4 border-rose-600 rounded-r-xl text-xs text-slate-300 italic">
+                    &ldquo;{activeShark.warningQuote}&rdquo;
+                  </div>
+                )}
+
+                {/* Enforcement Lore & Collection Methods */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {activeShark?.enforcementLore && (
+                    <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <div className="text-[10px] uppercase font-bold text-rose-400 flex items-center gap-1">
+                        <Skull className="w-3.5 h-3.5" /> Enforcement Protocol:
+                      </div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        {activeShark.enforcementLore}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-2">
+                    {activeShark?.collectionMethods && activeShark.collectionMethods.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+                          Collection Enforcement:
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {activeShark.collectionMethods.map((m, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-bold"
+                            >
+                              ⚡ {m}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeShark?.collateralAccepted && activeShark.collateralAccepted.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+                          Seizable Collateral:
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {activeShark.collateralAccepted.map((c, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px]"
+                            >
+                              🔒 {c}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Early Payoff Warning Callout */}
                 {isEarly && (
-                  <div className="mt-4 p-3.5 bg-amber-950/40 border border-amber-800/60 rounded-xl flex items-start gap-3 text-xs text-amber-200/90">
+                  <div className="p-3.5 bg-amber-950/40 border border-amber-800/60 rounded-xl flex items-start gap-3 text-xs text-amber-200/90">
                     <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                     <div>
                       <div className="font-bold text-amber-300 text-sm flex items-center gap-1.5">
@@ -2303,13 +2400,14 @@ export const PlacesModal: React.FC = () => {
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-rose-900/60 space-y-3">
+                {/* Repayment Form */}
+                <div className="pt-4 border-t border-rose-900/60 space-y-3">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-300 font-semibold">Repayment Amount:</span>
+                    <span className="text-slate-300 font-semibold">Repayment Principal:</span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setLoanAmount(maxAffordablePrincipal)}
-                        className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold hover:underline"
+                        className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold hover:underline cursor-pointer"
                         title="Maximum debt you can repay with current cash including fee"
                       >
                         Max Affordable (${maxAffordablePrincipal.toLocaleString()})
@@ -2317,7 +2415,7 @@ export const PlacesModal: React.FC = () => {
                       <span className="text-slate-600">|</span>
                       <button
                         onClick={() => setLoanAmount(player.debt)}
-                        className="text-amber-400 hover:text-amber-300 text-xs font-semibold hover:underline"
+                        className="text-amber-400 hover:text-amber-300 text-xs font-semibold hover:underline cursor-pointer"
                         title="Set to full outstanding debt"
                       >
                         Full Debt (${player.debt.toLocaleString()})
@@ -2340,28 +2438,28 @@ export const PlacesModal: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setLoanAmount(Math.max(0, Math.min(player.debt, Math.floor(player.debt * 0.25))))}
-                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 font-mono font-bold text-xs transition-colors shadow-sm"
+                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 font-mono font-bold text-xs transition-colors shadow-sm cursor-pointer"
                     >
                       Repay 25%
                     </button>
                     <button
                       type="button"
                       onClick={() => setLoanAmount(Math.max(0, Math.min(player.debt, Math.floor(player.debt * 0.50))))}
-                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 font-mono font-bold text-xs transition-colors shadow-sm"
+                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 font-mono font-bold text-xs transition-colors shadow-sm cursor-pointer"
                     >
                       Repay 50%
                     </button>
                     <button
                       type="button"
                       onClick={() => setLoanAmount(Math.max(0, Math.min(player.debt, Math.floor(player.debt * 0.75))))}
-                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 font-mono font-bold text-xs transition-colors shadow-sm"
+                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 font-mono font-bold text-xs transition-colors shadow-sm cursor-pointer"
                     >
                       Repay 75%
                     </button>
                     <button
                       type="button"
                       onClick={() => setLoanAmount(maxAffordablePrincipal)}
-                      className="py-1.5 px-2 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-600 text-rose-300 font-mono font-black text-xs transition-colors shadow-sm"
+                      className="py-1.5 px-2 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-600 text-rose-300 font-mono font-black text-xs transition-colors shadow-sm cursor-pointer"
                     >
                       Max Afford
                     </button>
@@ -2405,7 +2503,7 @@ export const PlacesModal: React.FC = () => {
                   <button
                     onClick={handleRepay}
                     disabled={loanAmount <= 0 || !canAffordCurrent}
-                    className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 disabled:cursor-not-allowed font-black text-slate-950 text-sm transition-all shadow-md active:scale-95"
+                    className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 disabled:cursor-not-allowed font-black text-slate-950 text-sm transition-all shadow-md active:scale-95 cursor-pointer"
                   >
                     {loanAmount <= 0
                       ? 'Enter Amount to Repay'
@@ -2418,63 +2516,267 @@ export const PlacesModal: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-slate-400">
-                  Select a loan shark syndicate to negotiate fresh working capital:
+              <div className="space-y-6">
+                {/* Top Syndicate Intelligence Banner */}
+                <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-rose-400 font-bold text-sm uppercase">
+                      <Skull className="w-5 h-5 text-rose-500" />
+                      Underworld Syndicate Credit Bureau & Loan Sharks
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                      Negotiate emergency working capital with international crime syndicates. Interest compounds daily without mercy. Defaulting will result in contract hits, kneecap shatterings, and safehouse raids across international borders.
+                    </p>
+                  </div>
+                  <div className="bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 text-right">
+                    <div className="text-[10px] text-slate-400 uppercase">Available Syndicates</div>
+                    <div className="text-xl font-black text-rose-400">{LOAN_SHARKS.length} Cartels</div>
+                  </div>
                 </div>
-                <div className="space-y-2.5">
+
+                {/* Grid of All 8 Loan Sharks */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {LOAN_SHARKS.map((shark) => {
                     const maxLoan = Math.min(shark.maxLoan, Math.max(1000, player.cash * shark.multiplier));
                     const earlyFee = Math.round((shark.earlyFeeRate ?? shark.interestRate) * 100);
+                    const isSelected = selectedSharkId === shark.id;
+
                     return (
                       <div
                         key={shark.id}
                         onClick={() => setSelectedSharkId(shark.id)}
-                        className={`p-4 rounded-xl border cursor-pointer transition-colors ${
-                          selectedSharkId === shark.id
-                            ? 'bg-rose-950/40 border-rose-500 text-slate-100'
-                            : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                        className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-rose-950/40 border-rose-500 shadow-xl shadow-rose-950/30 ring-1 ring-rose-500/50'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <SharkImage shark={shark} size="md" />
-                          <div className="flex-1">
-                            <div className="flex justify-between items-center font-bold text-sm">
-                              <span className="text-slate-200">{shark.name}</span>
-                              <span className="text-rose-400">
-                                {Math.round(shark.interestRate * 100)}% daily interest
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">{shark.description}</p>
-                            <div className="flex justify-between items-center text-xs text-slate-400 mt-2 font-mono">
-                              <span>Grace: {shark.repayDays} days</span>
-                              <span>Max Credit: ${Math.round(maxLoan).toLocaleString()}</span>
-                              <span className="text-amber-400">Early Fee: {earlyFee}%</span>
+                        <div className="space-y-3">
+                          {/* Header */}
+                          <div className="flex items-start gap-3.5">
+                            <SharkImage shark={shark} size="lg" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-1">
+                                <div>
+                                  <h4 className="font-black text-slate-100 text-base">{shark.name}</h4>
+                                  <div className="text-xs font-bold text-rose-300">{shark.title}</div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 text-xs font-black">
+                                    {Math.round(shark.interestRate * 100)}%/day Vig
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="text-[11px] text-slate-400 mt-1">
+                                {shark.syndicate} • <span className="text-amber-400">{shark.turf}</span>
+                              </div>
+
+                              {/* Danger Rating Stars */}
+                              <div className="flex items-center gap-1 mt-1.5">
+                                <span className="text-[10px] uppercase text-slate-500 mr-1">Threat:</span>
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                                  <Star
+                                    key={idx}
+                                    className={`w-3 h-3 ${
+                                      idx < (shark.dangerRating ?? 3)
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-slate-800'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
                             </div>
                           </div>
+
+                          {/* Menacing Warning Quote */}
+                          {shark.warningQuote && (
+                            <div className="p-2.5 bg-slate-900/80 border-l-2 border-rose-600 rounded-r-xl text-[11px] italic text-slate-300 leading-relaxed">
+                              &ldquo;{shark.warningQuote}&rdquo;
+                            </div>
+                          )}
+
+                          {/* Description & Lore */}
+                          <p className="text-xs text-slate-400 leading-relaxed">
+                            {shark.description}
+                          </p>
+
+                          {shark.enforcementLore && (
+                            <p className="text-[11px] text-slate-500 italic leading-tight">
+                              Enforcement: {shark.enforcementLore}
+                            </p>
+                          )}
+
+                          {/* Collection Tags */}
+                          {shark.collectionMethods && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {shark.collectionMethods.map((m, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-rose-400 font-bold"
+                                >
+                                  ⚡ {m}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Financial Specs Bar */}
+                          <div className="grid grid-cols-3 gap-2 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 text-[10px] font-mono text-center">
+                            <div>
+                              <span className="text-slate-500 uppercase block text-[9px]">Grace Term</span>
+                              <strong className="text-slate-200">{shark.repayDays} Days</strong>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 uppercase block text-[9px]">Max Credit</span>
+                              <strong className="text-emerald-400">${Math.round(maxLoan).toLocaleString()}</strong>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 uppercase block text-[9px]">Early Prepay Fee</span>
+                              <strong className="text-amber-400">{earlyFee}%</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Selected Indicator */}
+                        <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                          <span className={`text-[11px] font-bold ${isSelected ? 'text-rose-400' : 'text-slate-500'}`}>
+                            {isSelected ? '● Selected Creditor' : 'Click to Select'}
+                          </span>
+                          <span className="text-slate-500 text-[10px]">Multiplier: {shark.multiplier}x Cash</span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="pt-2 space-y-2.5">
-                  <input
-                    type="number"
-                    min={0}
-                    value={loanAmount || ''}
-                    onChange={(e) => setLoanAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    placeholder="Borrow amount..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold text-base"
-                  />
-                  <button
-                    onClick={handleBorrow}
-                    disabled={loanAmount <= 0}
-                    className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-black text-slate-950 text-sm transition-all active:scale-95"
-                  >
-                    Accept Syndicate Loan
-                  </button>
-                </div>
+                {/* Selected Shark Interactive Loan Negotiator & Calculator */}
+                {(() => {
+                  const selectedShark = LOAN_SHARKS.find((s) => s.id === selectedSharkId) || LOAN_SHARKS[0];
+                  const maxAvailableLoan = Math.min(
+                    selectedShark.maxLoan,
+                    Math.max(1000, player.cash * selectedShark.multiplier)
+                  );
+
+                  // Calculate projections
+                  const projDay1 = Math.round(loanAmount * (1 + selectedShark.interestRate));
+                  const projDay3 = Math.round(loanAmount * Math.pow(1 + selectedShark.interestRate, 3));
+                  const projDay7 = Math.round(loanAmount * Math.pow(1 + selectedShark.interestRate, 7));
+                  const projExpiry = Math.round(
+                    loanAmount * Math.pow(1 + selectedShark.interestRate, selectedShark.repayDays)
+                  );
+                  const totalVig = Math.max(0, projExpiry - loanAmount);
+
+                  return (
+                    <div className="bg-slate-950/90 p-5 rounded-2xl border-2 border-rose-500/70 shadow-2xl space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <div>
+                          <div className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">
+                            Negotiating Line of Credit
+                          </div>
+                          <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
+                            {selectedShark.name} ({selectedShark.title})
+                          </h4>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-500 uppercase block">Max Credit Limit</span>
+                          <span className="text-lg font-black text-emerald-400 font-mono">
+                            ${Math.round(maxAvailableLoan).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Presets */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-slate-400 font-bold mr-1">Quick Presets:</span>
+                        {[5000, 25000, 100000, 500000].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setLoanAmount(Math.min(maxAvailableLoan, amt))}
+                            disabled={amt > maxAvailableLoan}
+                            className="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                          >
+                            ${(amt / 1000).toLocaleString()}k
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setLoanAmount(Math.round(maxAvailableLoan))}
+                          className="px-3 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-600 text-rose-300 font-black text-xs transition-colors cursor-pointer"
+                        >
+                          MAX (${Math.round(maxAvailableLoan).toLocaleString()})
+                        </button>
+                      </div>
+
+                      {/* Custom Input */}
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxAvailableLoan}
+                        value={loanAmount || ''}
+                        onChange={(e) =>
+                          setLoanAmount(
+                            Math.max(0, Math.min(maxAvailableLoan, parseInt(e.target.value, 10) || 0))
+                          )
+                        }
+                        placeholder={`Enter loan principal (up to $${Math.round(maxAvailableLoan).toLocaleString()})...`}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 font-bold text-base focus:border-rose-500 focus:outline-none"
+                      />
+
+                      {/* Live Compounding Amortization Breakdown */}
+                      {loanAmount > 0 && (
+                        <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2.5 text-xs">
+                          <div className="text-[11px] font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" /> Projected Debt Compounding Amortization:
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center pt-1 font-mono">
+                            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                              <div className="text-[10px] text-slate-500">Day 1 Balance</div>
+                              <div className="font-bold text-slate-200 mt-0.5">
+                                ${projDay1.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                              <div className="text-[10px] text-slate-500">Day 3 Balance</div>
+                              <div className="font-bold text-slate-200 mt-0.5">
+                                ${projDay3.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                              <div className="text-[10px] text-slate-500">Day 7 Balance</div>
+                              <div className="font-bold text-amber-400 mt-0.5">
+                                ${projDay7.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="p-2 rounded-lg bg-slate-950 border border-rose-900">
+                              <div className="text-[10px] text-rose-400">Day {selectedShark.repayDays} (Due)</div>
+                              <div className="font-black text-rose-400 mt-0.5">
+                                ${projExpiry.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-800/80 flex justify-between text-slate-400 text-[11px]">
+                            <span>Total Compounded Vig Cost (Interest):</span>
+                            <span className="font-bold text-rose-400 font-mono">+${totalVig.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleBorrow}
+                        disabled={loanAmount <= 0 || loanAmount > maxAvailableLoan}
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 disabled:opacity-40 font-black text-slate-950 text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
+                      >
+                        {loanAmount <= 0
+                          ? 'Enter Loan Amount'
+                          : `Accept Syndicate Contract ($${loanAmount.toLocaleString()} Cash In Hand)`}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

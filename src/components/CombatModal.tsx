@@ -46,6 +46,53 @@ export const CombatModal: React.FC = () => {
 
   const encounter = player.activeEncounter;
 
+  const playAttackSound = () => {
+    const weapons = player.weapons || {};
+    if ((weapons['rocket_launcher'] ?? 0) > 0 || (weapons['dynamite'] ?? 0) > 0 || (weapons['hand_grenade'] ?? 0) > 0) {
+      soundEngine.play('bomb');
+    } else if ((weapons['barrett_m82'] ?? 0) > 0 || (weapons['desert_eagle'] ?? 0) > 0 || (weapons['shotgun'] ?? 0) > 0) {
+      soundEngine.play('heavy_shot');
+    } else {
+      soundEngine.play('gunshot');
+    }
+  };
+
+  const handleTacticalAction = (action: Parameters<typeof resolveTacticalCombatAction>[0]) => {
+    if (action === 'snap_fire' || action === 'aim_fire') {
+      playAttackSound();
+    } else if (action === 'suppress') {
+      soundEngine.play('heavy_shot');
+    } else if (action === 'use_flashbang') {
+      soundEngine.play('bomb');
+    } else if (action === 'use_smoke') {
+      soundEngine.play('flee');
+    } else if (action === 'use_medkit') {
+      soundEngine.play('heal');
+    } else if (action === 'bribe') {
+      soundEngine.play('bribe');
+    } else if (action === 'flee') {
+      soundEngine.play('flee');
+    } else if (action === 'take_cover') {
+      soundEngine.play('click');
+    }
+    resolveTacticalCombatAction(action);
+  };
+
+  const handleQuickFight = () => {
+    playAttackSound();
+    resolveEncounterAction('fight');
+  };
+
+  const handleQuickFlee = () => {
+    soundEngine.play('flee');
+    resolveEncounterAction('flee');
+  };
+
+  const handleQuickBribe = () => {
+    soundEngine.play('bribe');
+    resolveEncounterAction('bribe');
+  };
+
   // Play audio on hostile encounter trigger
   useEffect(() => {
     if (encounter) {
@@ -396,8 +443,8 @@ export const CombatModal: React.FC = () => {
                   <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('snap_fire')}
-                      className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-slate-950 font-bold text-xs flex flex-col items-center gap-0.5 transition-all shadow"
+                      onClick={() => handleTacticalAction('snap_fire')}
+                      className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-slate-950 font-bold text-xs flex flex-col items-center gap-0.5 transition-all shadow cursor-pointer"
                     >
                       <Crosshair className="w-3.5 h-3.5" />
                       <span>Snap Fire</span>
@@ -406,8 +453,8 @@ export const CombatModal: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('aim_fire')}
-                      className="p-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs flex flex-col items-center gap-0.5 transition-all shadow"
+                      onClick={() => handleTacticalAction('aim_fire')}
+                      className="p-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs flex flex-col items-center gap-0.5 transition-all shadow cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Careful Aim</span>
@@ -416,8 +463,8 @@ export const CombatModal: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('suppress')}
-                      className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-slate-100 font-bold text-xs flex flex-col items-center gap-0.5 transition-all shadow"
+                      onClick={() => handleTacticalAction('suppress')}
+                      className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-slate-100 font-bold text-xs flex flex-col items-center gap-0.5 transition-all shadow cursor-pointer"
                     >
                       <Shield className="w-3.5 h-3.5" />
                       <span>Suppress</span>
@@ -434,8 +481,8 @@ export const CombatModal: React.FC = () => {
                   <div className="grid grid-cols-4 gap-1.5">
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('take_cover')}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700"
+                      onClick={() => handleTacticalAction('take_cover')}
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700 cursor-pointer"
                     >
                       <span>🛡️ Cover</span>
                       <span className="text-[9px] text-slate-400">-50% Dmg</span>
@@ -443,9 +490,9 @@ export const CombatModal: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('use_flashbang')}
+                      onClick={() => handleTacticalAction('use_flashbang')}
                       disabled={(player.combatConsumables?.flashbangs ?? 0) <= 0}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-amber-300 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-amber-300 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700 cursor-pointer"
                     >
                       <span>💥 Stun</span>
                       <span className="text-[9px] text-slate-400">{player.combatConsumables?.flashbangs ?? 0} Left</span>
@@ -453,9 +500,9 @@ export const CombatModal: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('use_smoke')}
+                      onClick={() => handleTacticalAction('use_smoke')}
                       disabled={(player.combatConsumables?.smokeGrenades ?? 0) <= 0}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700 cursor-pointer"
                     >
                       <span>💨 Smoke</span>
                       <span className="text-[9px] text-slate-400">{player.combatConsumables?.smokeGrenades ?? 0} Left</span>
@@ -463,9 +510,9 @@ export const CombatModal: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => resolveTacticalCombatAction('use_medkit')}
+                      onClick={() => handleTacticalAction('use_medkit')}
                       disabled={(player.combatConsumables?.medkits ?? 0) <= 0 || player.health >= 100}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all border border-slate-700 cursor-pointer"
                     >
                       <span>💉 Medkit</span>
                       <span className="text-[9px] text-slate-400">{player.combatConsumables?.medkits ?? 0} Left</span>
@@ -477,9 +524,9 @@ export const CombatModal: React.FC = () => {
                 <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-slate-800">
                   <button
                     type="button"
-                    onClick={() => resolveTacticalCombatAction('flee')}
+                    onClick={() => handleTacticalAction('flee')}
                     disabled={!encounter.canFlee}
-                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 font-bold text-xs border border-slate-800 flex items-center justify-center gap-1"
+                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 font-bold text-xs border border-slate-800 flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Footprints className="w-3.5 h-3.5" />
                     <span>Escape</span>
@@ -487,9 +534,9 @@ export const CombatModal: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => resolveTacticalCombatAction('bribe')}
+                    onClick={() => handleTacticalAction('bribe')}
                     disabled={!encounter.canBribe || player.cash < encounter.bribeCost}
-                    className="p-2 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 disabled:opacity-40 text-emerald-300 font-bold text-xs border border-emerald-800/60 flex items-center justify-center gap-1"
+                    className="p-2 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 disabled:opacity-40 text-emerald-300 font-bold text-xs border border-emerald-800/60 flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <DollarSign className="w-3.5 h-3.5" />
                     <span>Bribe (${encounter.bribeCost.toLocaleString()})</span>
@@ -497,8 +544,8 @@ export const CombatModal: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => resolveTacticalCombatAction('surrender')}
-                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs border border-slate-800 flex items-center justify-center gap-1"
+                    onClick={() => handleTacticalAction('surrender')}
+                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs border border-slate-800 flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Flag className="w-3.5 h-3.5" />
                     <span>Surrender</span>
@@ -510,8 +557,8 @@ export const CombatModal: React.FC = () => {
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => resolveEncounterAction('fight')}
-                  className="p-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-md"
+                  onClick={handleQuickFight}
+                  className="p-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-md cursor-pointer"
                 >
                   <Crosshair className="w-5 h-5" />
                   <span>Fight Back</span>
@@ -519,9 +566,9 @@ export const CombatModal: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => resolveEncounterAction('flee')}
+                  onClick={handleQuickFlee}
                   disabled={!encounter.canFlee}
-                  className="p-3 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 transition-colors"
+                  className="p-3 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
                 >
                   <Footprints className="w-5 h-5" />
                   <span>Attempt Escape</span>
@@ -529,9 +576,9 @@ export const CombatModal: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => resolveEncounterAction('bribe')}
+                  onClick={handleQuickBribe}
                   disabled={!encounter.canBribe || player.cash < encounter.bribeCost}
-                  className="p-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 transition-colors"
+                  className="p-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
                 >
                   <DollarSign className="w-5 h-5" />
                   <span>Bribe (${encounter.bribeCost.toLocaleString()})</span>

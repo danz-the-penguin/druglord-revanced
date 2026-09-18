@@ -101,6 +101,11 @@ import {
   fireOfficial,
   bribeGrandJury,
   emergencyExtraditionEscape,
+  bribeInformant,
+  flipInformant,
+  neutralizeInformant,
+  scrambleWiretap,
+  sellWiretapTranscript,
 } from '../engine/corruption';
 
 export interface GameStore extends GameEngineState {
@@ -200,6 +205,11 @@ export interface GameStore extends GameEngineState {
   fireOfficialAction: (officialId: CorruptOfficialId) => { success: boolean; message: string };
   bribeGrandJuryAction: (amount?: number) => { success: boolean; message: string };
   emergencyExtraditionEscapeAction: (destinationCityId: string) => { success: boolean; message: string };
+  bribeInformantAction: (informantId: string) => { success: boolean; message: string };
+  flipInformantAction: (informantId: string) => { success: boolean; message: string };
+  neutralizeInformantAction: (informantId: string) => { success: boolean; message: string };
+  scrambleWiretapAction: (wiretapId: string) => { success: boolean; message: string };
+  sellWiretapAction: (wiretapId: string) => { success: boolean; message: string };
 
   // Tactical Firefight Duel Combat
   tacticalCombatRound: number;
@@ -1910,6 +1920,86 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
         soundEngine.play('travel');
+      }
+      return result;
+    },
+
+    bribeInformantAction: (informantId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = bribeInformant(state, informantId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bribe');
+      }
+      return result;
+    },
+
+    flipInformantAction: (informantId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = flipInformant(state, informantId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('wiretap');
+      }
+      return result;
+    },
+
+    neutralizeInformantAction: (informantId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = neutralizeInformant(state, informantId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('silencer');
+      }
+      return result;
+    },
+
+    scrambleWiretapAction: (wiretapId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = scrambleWiretap(state, wiretapId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('wiretap');
+      }
+      return result;
+    },
+
+    sellWiretapAction: (wiretapId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = sellWiretapTranscript(state, wiretapId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('buy');
       }
       return result;
     },

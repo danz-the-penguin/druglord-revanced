@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Weapon } from '../engine/types';
 import { WeaponImage } from './WeaponImage';
 import { useGameStore } from '../store/gameStore';
+import { soundEngine } from '../utils/audio';
 import {
   Shield,
   Crosshair,
@@ -44,6 +45,25 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
   const maxHold = item.maxHold ?? 10;
   const isMaxCapacity = isUtility && ownedCount >= maxHold;
   const isEquippedArmor = isArmor && isOwned;
+
+  const handlePurchaseWithSound = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canAfford || isEquippedArmor || isMaxCapacity) return;
+
+    if (item.id === 'rocket_launcher' || item.id === 'dynamite' || item.id === 'hand_grenade') {
+      soundEngine.play('bomb');
+    } else if (item.id === 'desert_eagle' || item.id === 'barrett_m82' || item.id === 'shotgun') {
+      soundEngine.play('heavy_shot');
+    } else if (item.type === 'weapon') {
+      soundEngine.play('gunshot');
+    } else if (item.id === 'emp_scrambler') {
+      soundEngine.play('wiretap');
+    } else {
+      soundEngine.play('reload');
+    }
+
+    onPurchase(item.id);
+  };
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
@@ -211,46 +231,43 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
       onMouseLeave={handleMouseLeave}
       onClick={handleTriggerClick}
     >
-      {/* Compact Resting Card */}
+      {/* Expanded Resting Card */}
       <div
-        className={`bg-slate-950/60 border rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 cursor-pointer ${glowBorder} ${
-          showPopover ? 'bg-slate-900/90 shadow-xl' : ''
+        className={`bg-slate-950/70 border rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 cursor-pointer ${glowBorder} ${
+          showPopover ? 'bg-slate-900/95 shadow-2xl ring-1 ring-indigo-500/50' : ''
         }`}
         title="Hover to inspect stats • Click to pin preview"
       >
-        <div className="flex items-start gap-3.5">
-          <WeaponImage item={item} size="md" />
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-start gap-2">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-slate-100 text-sm truncate">{item.name}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-tight border ${categoryColor}`}
-                >
-                  {categoryLabel}
-                </span>
-              </div>
-              <span className="text-amber-400 font-black text-sm shrink-0">
-                ${item.price.toLocaleString()}
+        {/* Prominent Showcase Weapon Visual */}
+        <WeaponImage item={item} size="showcase" className="w-full mb-3 shadow-lg" />
+
+        <div className="space-y-1.5 flex-1">
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-100 text-sm sm:text-base">{item.name}</span>
+              <span
+                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border ${categoryColor}`}
+              >
+                {categoryLabel}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-2">
-              {item.description}
-            </p>
+            <span className="text-amber-400 font-black text-sm sm:text-base shrink-0">
+              ${item.price.toLocaleString()}
+            </span>
           </div>
+          <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+            {item.description}
+          </p>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-800/70 flex items-center justify-between text-xs gap-2">
-          <span className="text-slate-300 font-semibold truncate text-[11px]">
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs gap-2">
+          <span className="text-slate-300 font-semibold truncate text-[11px] font-mono">
             {compactStatText}
           </span>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPurchase(item.id);
-            }}
+            onClick={handlePurchaseWithSound}
             disabled={!canAfford || isEquippedArmor || isMaxCapacity}
-            className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-bold text-xs transition-colors shadow-sm shrink-0 active:scale-95 cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-black text-xs transition-colors shadow-sm shrink-0 active:scale-95 cursor-pointer"
           >
             {isEquippedArmor
               ? 'Equipped'
@@ -410,10 +427,7 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
                 {canAfford ? 'Sufficient cash on hand' : 'Insufficient cash on hand'}
               </span>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPurchase(item.id);
-                }}
+                onClick={handlePurchaseWithSound}
                 disabled={!canAfford || isEquippedArmor || isMaxCapacity}
                 className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-black text-xs transition-all shadow-md shadow-indigo-950/60 active:scale-95 cursor-pointer"
               >

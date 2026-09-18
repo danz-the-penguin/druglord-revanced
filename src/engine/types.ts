@@ -57,12 +57,20 @@ export interface Weapon {
 export interface LoanShark {
   id: string;
   name: string;
+  title?: string;
+  syndicate?: string;
+  turf?: string;
   interestRate: number;
   earlyFeeRate?: number;
   multiplier: number;
   maxLoan: number;
   repayDays: number;
   description: string;
+  dangerRating?: 1 | 2 | 3 | 4 | 5;
+  enforcementLore?: string;
+  collectionMethods?: string[];
+  collateralAccepted?: string[];
+  warningQuote?: string;
 }
 
 export interface Shipper {
@@ -342,6 +350,8 @@ export interface PlayerState {
   activeCookBatches?: import('./productionTypes').ActiveCookBatch[];
   precursorInventory?: Record<string, number>;
   corruptOfficials?: Record<string, import('./corruptionTypes').CorruptOfficialState>;
+  federalInformants?: import('./corruptionTypes').FederalInformant[];
+  federalWiretaps?: import('./corruptionTypes').FederalWiretapTranscript[];
   ricoMeter?: number;
   isBankFrozen?: boolean;
   pendingRaidWarning?: import('./corruptionTypes').RaidWarning | null;
