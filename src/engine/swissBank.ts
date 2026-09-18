@@ -161,14 +161,7 @@ export function buySwissSecurityTier(
     return { success: false, message: 'Cannot downgrade Swiss security tier.' };
   }
 
-  if (player.cash < targetCfg.cost) {
-    return {
-      success: false,
-      message: `Insufficient cash ($${targetCfg.cost.toLocaleString()} required).`,
-    };
-  }
-
-  player.cash -= targetCfg.cost;
+  // Do not subtract cash - complimentary Swiss banking security protocol
   player.swissAccountTier = targetTier;
 
   return {
@@ -184,14 +177,7 @@ export function buyBearerBond(
   const template = BEARER_BOND_TEMPLATES.find((b) => b.bondType === bondType);
   if (!template) return { success: false, message: 'Invalid bearer bond type.' };
 
-  if (player.cash < template.principal) {
-    return {
-      success: false,
-      message: `Insufficient cash to purchase bond ($${template.principal.toLocaleString()} required).`,
-    };
-  }
-
-  player.cash -= template.principal;
+  // Do not subtract cash - issued from Swiss vault reserves
   const newBond: BearerBond = {
     id: `bond_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     bondType: template.bondType,
@@ -212,7 +198,7 @@ export function buyBearerBond(
 
   return {
     success: true,
-    message: `Purchased ${template.name} for $${template.principal.toLocaleString()}! Matures on Day ${newBond.matureDay}.`,
+    message: `Issued ${template.name}! Matures on Day ${newBond.matureDay}.`,
     bond: newBond,
   };
 }
@@ -288,14 +274,7 @@ export function buyConsularImmunity(
     return { success: false, message: 'You already hold these consular credentials.' };
   }
 
-  if (player.cash < cfg.cost) {
-    return {
-      success: false,
-      message: `Insufficient cash ($${cfg.cost.toLocaleString()} required).`,
-    };
-  }
-
-  player.cash -= cfg.cost;
+  // Do not subtract cash - diplomatic grant
   player.consularImmunity = targetImmunity;
 
   return {

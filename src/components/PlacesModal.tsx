@@ -675,7 +675,6 @@ export const PlacesModal: React.FC = () => {
                       const currentTierIdx = SWISS_TIERS.findIndex((t) => t.id === currentTierId);
                       const thisTierIdx = SWISS_TIERS.findIndex((t) => t.id === tier.id);
                       const isAlreadySurpassed = currentTierIdx >= thisTierIdx;
-                      const canAfford = player.cash >= tier.cost;
 
                       return (
                         <div
@@ -698,8 +697,8 @@ export const PlacesModal: React.FC = () => {
                                   {tier.badge}
                                 </div>
                               </div>
-                              <span className="text-xs font-black text-slate-200 font-mono">
-                                ${tier.cost.toLocaleString()}
+                              <span className="text-xs font-black text-emerald-400 font-mono">
+                                Complimentary
                               </span>
                             </div>
 
@@ -730,10 +729,9 @@ export const PlacesModal: React.FC = () => {
                             ) : (
                               <button
                                 onClick={() => handleBuySwissTier(tier.id)}
-                                disabled={!canAfford}
-                                className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-[11px] transition-all shadow active:scale-95"
+                                className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-[11px] transition-all shadow active:scale-95 cursor-pointer"
                               >
-                                {canAfford ? `Upgrade ($${tier.cost.toLocaleString()})` : 'Insufficient Cash'}
+                                Activate Protocol
                               </button>
                             )}
                           </div>
@@ -832,7 +830,6 @@ export const PlacesModal: React.FC = () => {
                   {/* Bearer Bond Showroom / Catalog */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {BEARER_BOND_TEMPLATES.map((tmpl) => {
-                      const canAfford = player.cash >= tmpl.principal;
                       const totalYieldEstimate = Math.round(tmpl.principal * (tmpl.dailyYieldPercent / 100) * tmpl.termDays);
 
                       return (
@@ -863,10 +860,9 @@ export const PlacesModal: React.FC = () => {
 
                             <button
                               onClick={() => handleBuyBearerBond(tmpl.bondType)}
-                              disabled={!canAfford}
-                              className="w-full mt-2 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow active:scale-95"
+                              className="w-full mt-2 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow active:scale-95 cursor-pointer"
                             >
-                              {canAfford ? `Issue Bond ($${tmpl.principal.toLocaleString()})` : 'Insufficient Cash'}
+                              Issue Certificate (Free)
                             </button>
                           </div>
                         </div>
@@ -895,7 +891,6 @@ export const PlacesModal: React.FC = () => {
                       const currentIdx = CONSULAR_IMMUNITIES.findIndex((c) => c.id === currentImmunity);
                       const thisIdx = CONSULAR_IMMUNITIES.findIndex((c) => c.id === passport.id);
                       const isAlreadySurpassed = currentIdx >= thisIdx;
-                      const canAfford = player.cash >= passport.cost;
 
                       return (
                         <div
@@ -917,8 +912,8 @@ export const PlacesModal: React.FC = () => {
                                 </span>
                               </div>
                             </div>
-                            <span className="text-xs font-black text-slate-200 font-mono block mt-1">
-                              ${passport.cost.toLocaleString()}
+                            <span className="text-xs font-black text-emerald-400 font-mono block mt-1">
+                              Complimentary
                             </span>
 
                             <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed font-sans line-clamp-3">
@@ -946,10 +941,9 @@ export const PlacesModal: React.FC = () => {
                             ) : (
                               <button
                                 onClick={() => handleBuyConsularImmunity(passport.id)}
-                                disabled={!canAfford}
-                                className="w-full py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all shadow active:scale-95"
+                                className="w-full py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-slate-950 font-black text-xs transition-all shadow active:scale-95 cursor-pointer"
                               >
-                                {canAfford ? `Acquire ($${passport.cost.toLocaleString()})` : 'Insufficient Cash'}
+                                Acquire Credentials
                               </button>
                             )}
                           </div>

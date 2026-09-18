@@ -95,17 +95,17 @@ describe('Swiss Offshore Private Banking & Bearer Bonds', () => {
     expect(SWISS_TIER_MAP.get('quantum_bastion')?.seizureImmunityPercent).toBe(100);
   });
 
-  it('allows upgrading Swiss security tier with sufficient cash', () => {
+  it('allows upgrading Swiss security tier without subtracting cash', () => {
     const state = createInitialState();
     state.player.cash = 100000;
 
     const res = buySwissSecurityTier(state.player, 'numbered');
     expect(res.success).toBe(true);
     expect(state.player.swissAccountTier).toBe('numbered');
-    expect(state.player.cash).toBe(75000); // 100k - 25k
+    expect(state.player.cash).toBe(100000); // Do not subtract cash
   });
 
-  it('handles bearer bonds purchasing, daily yield accrual, and maturity payout', () => {
+  it('handles bearer bonds purchasing without subtracting cash, daily yield accrual, and maturity payout', () => {
     const state = createInitialState();
     state.player.cash = 50000;
     state.player.currentDay = 5;
@@ -114,7 +114,7 @@ describe('Swiss Offshore Private Banking & Bearer Bonds', () => {
     const buyRes = buyBearerBond(state.player, 'short_term_1d');
     expect(buyRes.success).toBe(true);
     expect(state.player.bearerBonds?.length).toBe(1);
-    expect(state.player.cash).toBe(40000);
+    expect(state.player.cash).toBe(50000); // Do not subtract cash
 
     const bond = state.player.bearerBonds![0];
     expect(bond.matureDay).toBe(6);
@@ -136,10 +136,10 @@ describe('Swiss Offshore Private Banking & Bearer Bonds', () => {
     const claimRes = claimMaturedBearerBonds(state.player);
     expect(claimRes.success).toBe(true);
     expect(claimRes.claimedCash).toBe(10150); // Principal ($10,000) + Yield ($150)
-    expect(state.player.cash).toBe(50150);
+    expect(state.player.cash).toBe(60150); // 50,000 original + 10,150 claimed
   });
 
-  it('supports purchasing consular immunity passports', () => {
+  it('supports purchasing consular immunity passports without subtracting cash', () => {
     expect(BEARER_BOND_TEMPLATES.length).toBe(3);
     expect(CONSULAR_IMMUNITIES.length).toBe(4);
     const state = createInitialState();
@@ -148,6 +148,7 @@ describe('Swiss Offshore Private Banking & Bearer Bonds', () => {
     const res = buyConsularImmunity(state.player, 'vanuatu_golden');
     expect(res.success).toBe(true);
     expect(state.player.consularImmunity).toBe('vanuatu_golden');
+    expect(state.player.cash).toBe(60000); // Do not subtract cash
     expect(getConsularCustomsReduction(state.player)).toBe(0.25);
   });
 });

@@ -10,3 +10,4 @@ dist-ssr
 druglord2.exe
 file_id.diz
 readme.txt
+.env*
