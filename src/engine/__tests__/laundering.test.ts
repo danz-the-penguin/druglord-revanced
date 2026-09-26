@@ -18,20 +18,25 @@ import {
 
 describe('Shell Businesses & Corporate Laundering Network', () => {
   it('defines commercial shell enterprises across tiers with unique perks', () => {
-    expect(SHELL_BUSINESSES.length).toBe(14);
+    expect(SHELL_BUSINESSES.length).toBe(19);
     const ids = SHELL_BUSINESSES.map((b) => b.id);
     expect(ids).toContain('laundromat');
     expect(ids).toContain('car_wash');
     expect(ids).toContain('underground_sportsbook');
+    expect(ids).toContain('luxury_watch_boutique');
     expect(ids).toContain('nightclub');
     expect(ids).toContain('scrap_metal_foundry');
+    expect(ids).toContain('construction_contracting');
     expect(ids).toContain('private_jet_charter');
     expect(ids).toContain('art_gallery');
+    expect(ids).toContain('pharmaceutical_logistics');
     expect(ids).toContain('import_export');
     expect(ids).toContain('superyacht_brokerage');
+    expect(ids).toContain('telecom_holding');
     expect(ids).toContain('panama_trust');
     expect(ids).toContain('macau_junket');
     expect(ids).toContain('crypto_farm');
+    expect(ids).toContain('sovereign_wealth_front');
     expect(ids).toContain('swiss_bank_stake');
     expect(ids).toContain('sovereign_gold_depository');
 

@@ -36,6 +36,8 @@ export const ClandestineLabsView: React.FC = () => {
     buyPrecursorAction,
     startCookBatchAction,
     collectCookBatchAction,
+    collectAllCookBatchesAction,
+    toggleAutoRepeatCookAction,
     cancelCookBatchAction,
   } = useGameStore();
 
@@ -83,6 +85,25 @@ export const ClandestineLabsView: React.FC = () => {
     const res = collectCookBatchAction(batchId, destination);
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
   };
+
+  const handleCollectAll = (destination: 'pocket' | 'vault') => {
+    setFeedback(null);
+    const res = collectAllCookBatchesAction(destination);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const selectedRecipe = COOK_RECIPES.find((r) => r.id === selectedRecipeId);
+  const maxPossibleBatch = React.useMemo(() => {
+    if (!selectedRecipe) return 1;
+    const inv = player.precursorInventory || {};
+    let max = Infinity;
+    for (const ing of selectedRecipe.ingredients) {
+      const held = inv[ing.precursorId] || 0;
+      const possible = Math.floor(held / ing.amount);
+      if (possible < max) max = possible;
+    }
+    return max === Infinity || max <= 0 ? 1 : max;
+  }, [selectedRecipe, player.precursorInventory]);
 
   const handleCancel = (batchId: string) => {
     setFeedback(null);
@@ -216,11 +237,53 @@ export const ClandestineLabsView: React.FC = () => {
       {/* VIEW 1: ACTIVE COOK BATCHES */}
       {activeSubView === 'batches' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-bold uppercase tracking-wider text-slate-300">
-              Live Synthesis & Fermentation Vats ({activeBatches.length} In Progress)
-            </span>
-            <span>Batches advance 1 day on calendar rollover</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider text-slate-200">
+                Live Synthesis Vats ({activeBatches.length} In Progress)
+              </span>
+              {readyBatchesCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] animate-pulse">
+                  {readyBatchesCount} READY
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleAutoRepeatCookAction}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                  player.autoRepeatCook
+                    ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
+                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+                title="When enabled, finished recipes auto-restart cooking if precursors are stocked"
+              >
+                <span>Auto-Synthesizer:</span>
+                <strong className={player.autoRepeatCook ? 'text-emerald-400' : 'text-slate-500'}>
+                  {player.autoRepeatCook ? 'ACTIVE' : 'OFF'}
+                </strong>
+              </button>
+
+              {readyBatchesCount > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleCollectAll('vault')}
+                    className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-emerald-950 cursor-pointer"
+                    title="Deposit all finished yields into Safehouse Vault"
+                  >
+                    Mass Harvest to Vault
+                  </button>
+                  <button
+                    onClick={() => handleCollectAll('pocket')}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs border border-slate-700 transition-all cursor-pointer"
+                    title="Harvest to personal coat pockets"
+                  >
+                    To Stash
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {activeBatches.length === 0 ? (
@@ -497,37 +560,68 @@ export const ClandestineLabsView: React.FC = () => {
           </div>
 
           {/* Action Launch Bar */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-400 font-bold uppercase">Batch Multiplier:</span>
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                {[1, 2, 3, 5, 10].map((count) => (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-400 font-bold uppercase">Mass Batch Size:</span>
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 flex-wrap">
+                  {[1, 10, 100, 1000, 5000, 10000].map((count) => (
+                    <button
+                      key={count}
+                      onClick={() => setBatchMultiplier(count)}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        batchMultiplier === count
+                          ? 'bg-emerald-500 text-slate-950 font-black'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {count >= 1000 ? `${count / 1000}k` : `${count}x`}
+                    </button>
+                  ))}
                   <button
-                    key={count}
-                    onClick={() => setBatchMultiplier(count)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      batchMultiplier === count
-                        ? 'bg-emerald-500 text-slate-950 font-black'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    onClick={() => setBatchMultiplier(Math.max(1, maxPossibleBatch))}
+                    className="px-2.5 py-1 rounded-lg text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all cursor-pointer"
+                    title={`Cook maximum possible batches based on precursor inventory (${maxPossibleBatch}x)`}
                   >
-                    {count}x
+                    MAX ({maxPossibleBatch.toLocaleString()})
                   </button>
-                ))}
+                </div>
+
+                {/* Direct input */}
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1"
+                    value={batchMultiplier}
+                    onChange={(e) => setBatchMultiplier(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-emerald-400 font-black"
+                  />
+                  <span className="text-[10px] text-slate-500 font-bold">batches</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] text-slate-500 uppercase block">Projected Contraband Yield</span>
+                <strong className="text-emerald-400 text-sm font-black">
+                  +{( (selectedRecipe?.outputUnits || 1) * batchMultiplier ).toLocaleString()} units
+                </strong>
               </div>
             </div>
 
             <button
               onClick={handleStartCook}
               disabled={!canStartCookBatch(player, selectedPropertyId, selectedRecipeId, batchMultiplier).allowed}
-              className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all ${
+              className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
                 canStartCookBatch(player, selectedPropertyId, selectedRecipeId, batchMultiplier).allowed
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-950 cursor-pointer active:scale-95'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-950 cursor-pointer active:scale-98'
                   : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
               }`}
             >
               <FlaskConical className="w-4 h-4" />
-              <span>Commence Production Cook ({batchMultiplier}x)</span>
+              <span>
+                Commence Mass Production Run ({batchMultiplier.toLocaleString()}x Batches •{' '}
+                {( (selectedRecipe?.outputUnits || 1) * batchMultiplier ).toLocaleString()} Units)
+              </span>
             </button>
           </div>
         </div>
@@ -602,21 +696,31 @@ export const ClandestineLabsView: React.FC = () => {
                     </div>
 
                     {/* Quantity Selector */}
-                    <div className="flex items-center gap-1 pt-1">
+                    <div className="flex items-center gap-1 pt-1 flex-wrap">
                       <span className="text-[11px] text-slate-500 font-bold">Qty:</span>
-                      {[1, 5, 20, 50].map((q) => (
+                      {[1, 10, 100, 1000, 5000].map((q) => (
                         <button
                           key={q}
                           onClick={() => setPrecursorBuyQty((prev) => ({ ...prev, [prec.id]: q }))}
                           className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
                             qty === q
-                              ? 'bg-slate-700 text-white'
-                              : 'bg-slate-900 text-slate-400 hover:text-slate-200'
+                              ? 'bg-emerald-500 text-slate-950 font-black'
+                              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                           }`}
                         >
-                          +{q}
+                          {q >= 1000 ? `${q / 1000}k` : `+${q}`}
                         </button>
                       ))}
+                      <button
+                        onClick={() => {
+                          const maxAfford = Math.max(1, Math.floor(player.cash / currentPrice));
+                          setPrecursorBuyQty((prev) => ({ ...prev, [prec.id]: maxAfford }));
+                        }}
+                        className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all cursor-pointer"
+                        title="Set to max affordable with cash"
+                      >
+                        MAX
+                      </button>
                     </div>
 
                     {/* Purchase Buttons */}

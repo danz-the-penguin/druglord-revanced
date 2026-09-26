@@ -28,7 +28,7 @@ import {
 
 type SortField = 'default' | 'name' | 'price' | 'quantity' | 'stash';
 type SortDirection = 'asc' | 'desc';
-type FilterMode = 'all' | 'affordable' | 'in_stash' | 'surges';
+type FilterMode = 'all' | 'affordable' | 'in_stash' | 'surges' | 'bullish' | 'bearish';
 
 export const MarketBoard: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,6 +103,20 @@ export const MarketBoard: React.FC = () => {
     }).length;
   }, [market]);
 
+  const bullishCount = useMemo(() => {
+    return DRUGS.filter((d) => {
+      const p = market[d.id]?.price ?? d.basePrice;
+      return p > d.basePrice;
+    }).length;
+  }, [market]);
+
+  const bearishCount = useMemo(() => {
+    return DRUGS.filter((d) => {
+      const p = market[d.id]?.price ?? d.basePrice;
+      return p < d.basePrice;
+    }).length;
+  }, [market]);
+
   // Filtered and Sorted Drugs List
   const processedDrugs = useMemo(() => {
     let list = [...DRUGS];
@@ -132,6 +146,16 @@ export const MarketBoard: React.FC = () => {
       list = list.filter((d) => {
         const surge = market[d.id]?.surge;
         return surge === 'high' || surge === 'crash';
+      });
+    } else if (filterMode === 'bullish') {
+      list = list.filter((d) => {
+        const p = market[d.id]?.price ?? d.basePrice;
+        return p > d.basePrice;
+      });
+    } else if (filterMode === 'bearish') {
+      list = list.filter((d) => {
+        const p = market[d.id]?.price ?? d.basePrice;
+        return p < d.basePrice;
       });
     }
 
@@ -258,6 +282,32 @@ export const MarketBoard: React.FC = () => {
               }`}
             >
               Shocks ({surgesCount})
+            </button>
+
+            <button
+              onClick={() => setFilterMode('bullish')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs flex items-center gap-1 ${
+                filterMode === 'bullish'
+                  ? 'bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-950 font-black'
+                  : 'bg-slate-900 text-emerald-400 hover:text-emerald-300 border border-emerald-900/60'
+              }`}
+              title="Show commodities trending above base price (Bull market)"
+            >
+              <span>Bull ▲</span>
+              <span>({bullishCount})</span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode('bearish')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs flex items-center gap-1 ${
+                filterMode === 'bearish'
+                  ? 'bg-rose-500 text-slate-950 shadow-sm shadow-rose-950 font-black'
+                  : 'bg-slate-900 text-rose-400 hover:text-rose-300 border border-rose-900/60'
+              }`}
+              title="Show commodities trending below base price (Bear market / discount buy)"
+            >
+              <span>Bear ▼</span>
+              <span>({bearishCount})</span>
             </button>
           </div>
         </div>

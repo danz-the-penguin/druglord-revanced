@@ -30,6 +30,13 @@ import {
   calculateEffectiveDailyCapacity,
   calculateTotalPassiveIncome,
   calculateTotalHeatShield,
+  getBusinessSharePrice,
+  getBusinessSharesOwned,
+  hasControllingStake,
+  getControllingSynergies,
+  TOTAL_SHARES_PER_BUSINESS,
+  CONTROLLING_STAKE_SHARES,
+  BROKERAGE_FEE_RATE,
 } from '../engine/laundering';
 import { PropertyImage } from './PropertyImage';
 import { ArmoryPreviewCard } from './ArmoryPreviewCard';
@@ -113,7 +120,8 @@ export const PlacesModal: React.FC = () => {
     depositToVaultAction,
     withdrawFromVaultAction,
     dispatchCourierAction,
-    buyShellBusinessAction,
+    buyBusinessSharesAction,
+    sellBusinessSharesAction,
     buyCorporateUpgradeAction,
     executeBusinessLaunderAction,
     buySwissSecurityTierAction,
@@ -333,9 +341,15 @@ export const PlacesModal: React.FC = () => {
     }
   };
 
-  const handleBuyBusiness = (businessId: string) => {
+  const handleBuyShares = (businessId: string, shares: number) => {
     setFeedback(null);
-    const res = buyShellBusinessAction(businessId);
+    const res = buyBusinessSharesAction(businessId, shares);
+    setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+  };
+
+  const handleSellShares = (businessId: string, shares: number) => {
+    setFeedback(null);
+    const res = sellBusinessSharesAction(businessId, shares);
     setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
   };
 
@@ -2039,10 +2053,23 @@ export const PlacesModal: React.FC = () => {
                 <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
                   {SHELL_BUSINESSES.map((business) => {
                     const isOwned = player.ownedBusinesses?.includes(business.id);
+                    const sharesOwned = getBusinessSharesOwned(player, business.id);
+                    const equityPct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+                    const isControlling = sharesOwned > CONTROLLING_STAKE_SHARES;
                     const isSelected = selectedBusinessId === business.id;
                     const effectiveFee = calculateEffectiveFeeRate(business, player.corporateUpgrades);
                     const effectiveCap = calculateEffectiveDailyCapacity(business, player.corporateUpgrades);
-                    const canAfford = player.cash >= business.purchaseCost;
+                    const sharePrice = getBusinessSharePrice(business, player.currentDay);
+                    const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
+                    const volPct = Math.round(((sharePrice - baseSharePrice) / baseSharePrice) * 100);
+
+                    const cost500 = Math.round(500 * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                    const cost1000 = Math.round(1000 * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                    const remainingToControl = Math.max(0, CONTROLLING_STAKE_SHARES + 1 - sharesOwned);
+                    const costToControl = Math.round(remainingToControl * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                    const costTotal = Math.round((TOTAL_SHARES_PER_BUSINESS - sharesOwned) * sharePrice * (1 + BROKERAGE_FEE_RATE));
+
+                    const proceeds500 = Math.max(0, Math.round(Math.min(500, sharesOwned) * sharePrice * (1 - BROKERAGE_FEE_RATE)));
 
                     return (
                       <div
@@ -2051,7 +2078,9 @@ export const PlacesModal: React.FC = () => {
                         className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                           isSelected
                             ? 'bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/40'
-                            : isOwned
+                            : isControlling
+                            ? 'bg-slate-950/70 border-emerald-800/60 hover:border-emerald-700'
+                            : sharesOwned > 0
                             ? 'bg-slate-950/60 border-slate-700/80 hover:border-slate-600'
                             : 'bg-slate-950/30 border-slate-800/80 hover:border-slate-700 opacity-90'
                         }`}
@@ -2070,26 +2099,53 @@ export const PlacesModal: React.FC = () => {
                             </div>
                           </div>
 
-                          {isOwned ? (
-                            <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold uppercase shrink-0">
-                              Owned 100%
-                            </span>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleBuyBusiness(business.id);
-                              }}
-                              disabled={!canAfford}
-                              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 text-xs font-bold transition-all shadow shrink-0"
-                            >
-                              Acquire (${business.purchaseCost.toLocaleString()})
-                            </button>
-                          )}
+                          <div className="text-right shrink-0">
+                            {isOwned ? (
+                              <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold uppercase">
+                                100% Subsidiary
+                              </span>
+                            ) : isControlling ? (
+                              <span className="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/60 text-amber-300 text-[10px] font-bold uppercase">
+                                👑 Majority ({equityPct}%)
+                              </span>
+                            ) : sharesOwned > 0 ? (
+                              <span className="px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/60 text-sky-300 text-[10px] font-bold uppercase">
+                                💼 Minority ({equityPct}%)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 text-[10px] font-bold uppercase">
+                                0% Equity
+                              </span>
+                            )}
+                            <div className="mt-1 font-mono text-[10px] text-slate-400">
+                              <span>${sharePrice.toLocaleString()}/sh </span>
+                              <span className={volPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                {volPct >= 0 ? `+${volPct}%` : `${volPct}%`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Equity Progress Bar */}
+                        <div className="mt-2.5 space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                            <span>Equity: <strong className={isControlling ? 'text-emerald-400' : 'text-sky-300'}>{equityPct}%</strong> ({sharesOwned.toLocaleString()} / 10,000 shares)</span>
+                            <span>Majority Threshold: 50.0%</span>
+                          </div>
+                          <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800 relative">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                isControlling ? 'bg-emerald-400' : 'bg-sky-400'
+                              }`}
+                              style={{ width: `${Math.min(100, (sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100)}%` }}
+                            />
+                            {/* 50% line */}
+                            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-amber-500/70" />
+                          </div>
                         </div>
 
                         {/* Metrics Bar */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2 border-t border-slate-800/70 text-[11px] font-mono text-slate-400">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-800/70 text-[11px] font-mono text-slate-400">
                           <div>
                             <span>Fee: </span>
                             <strong className="text-emerald-400">{Math.round(effectiveFee * 1000) / 10}%</strong>
@@ -2099,12 +2155,88 @@ export const PlacesModal: React.FC = () => {
                             <strong className="text-slate-200">${effectiveCap.toLocaleString()}</strong>
                           </div>
                           <div>
-                            <span>Passive Rev: </span>
-                            <strong className="text-emerald-400">+${business.passiveDailyProfit.toLocaleString()}/day</strong>
+                            <span>Dividends: </span>
+                            <strong className="text-emerald-400">
+                              +${Math.round((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * business.passiveDailyProfit).toLocaleString()}/day
+                            </strong>
                           </div>
                           {business.specialPerk && (
                             <div className="text-[10px] text-amber-400 font-sans font-bold flex items-center gap-1">
                               <Sparkles className="w-3 h-3" /> {business.specialPerk}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Share Trading Action Buttons */}
+                        <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {sharesOwned < TOTAL_SHARES_PER_BUSINESS && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleBuyShares(business.id, 500);
+                                  }}
+                                  disabled={player.cash < cost500}
+                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
+                                  title={`Buy 500 shares (5%) for $${cost500.toLocaleString()} incl. 2.5% brokerage fee`}
+                                >
+                                  +5% (${cost500.toLocaleString()})
+                                </button>
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleBuyShares(business.id, 1000);
+                                  }}
+                                  disabled={player.cash < cost1000}
+                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
+                                  title={`Buy 1,000 shares (10%) for $${cost1000.toLocaleString()} incl. 2.5% brokerage fee`}
+                                >
+                                  +10% (${cost1000.toLocaleString()})
+                                </button>
+
+                                {!isControlling && remainingToControl > 0 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBuyShares(business.id, remainingToControl);
+                                    }}
+                                    disabled={player.cash < costToControl}
+                                    className="px-2.5 py-0.5 rounded bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-[10px] font-black transition-all shadow cursor-pointer"
+                                    title={`Buy ${remainingToControl.toLocaleString()} shares to reach >50% controlling interest for $${costToControl.toLocaleString()}`}
+                                  >
+                                    Take Control &gt;50% (${costToControl.toLocaleString()})
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleBuyShares(business.id, TOTAL_SHARES_PER_BUSINESS - sharesOwned);
+                                  }}
+                                  disabled={player.cash < costTotal}
+                                  className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 text-[10px] font-bold transition-all shadow cursor-pointer"
+                                  title="Buy all remaining shares to acquire 100% equity"
+                                >
+                                  Buy 100% (${costTotal.toLocaleString()})
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {sharesOwned > 0 && (
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSellShares(business.id, Math.min(500, sharesOwned));
+                                }}
+                                className="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 text-[10px] font-bold transition-all cursor-pointer"
+                                title={`Liquidate up to 500 shares for $${proceeds500.toLocaleString()} net`}
+                              >
+                                Cash Out -500 sh (+${proceeds500.toLocaleString()})
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2160,6 +2292,73 @@ export const PlacesModal: React.FC = () => {
                 {/* Wire Execution Console */}
                 {(() => {
                   const activeBusiness = SHELL_MAP.get(selectedBusinessId) || SHELL_BUSINESSES[0];
+                  const isControlling = hasControllingStake(player, activeBusiness.id);
+                  const sharesOwned = getBusinessSharesOwned(player, activeBusiness.id);
+                  const sharePct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+                  const sharesNeeded = Math.max(0, 5001 - sharesOwned);
+                  const livePrice = getBusinessSharePrice(activeBusiness, player.currentDay);
+                  const costToControl = Math.round(sharesNeeded * livePrice * (1 + BROKERAGE_FEE_RATE));
+                  const canAffordControl = player.cash >= costToControl;
+                  const synergies = getControllingSynergies(player);
+
+                  if (!isControlling) {
+                    return (
+                      <div className="bg-slate-950/90 p-5 rounded-xl border border-amber-800/60 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                            <Lock className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
+                                Corporate Governance Locked
+                              </h4>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-700/60 text-amber-300">
+                                {sharePct}% / 50.1% Required
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Falsifying ledgers and routing dirty cash requires majority executive voting control (&gt;50% equity).
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-xs font-mono">
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Current Equity:</span>
+                            <span className="font-bold text-amber-400">{sharesOwned.toLocaleString()} shares ({sharePct}%)</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Shares to Control:</span>
+                            <span className="font-bold text-slate-200">+{sharesNeeded.toLocaleString()} shares</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Capital Required:</span>
+                            <span className="font-bold text-emerald-400">${costToControl.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 pt-1">
+                          <div className="text-[11px] text-slate-400">
+                            Acquire remaining block at spot price (${livePrice.toLocaleString()}/share + 2.5% broker fee) to unlock corporate money laundering.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundEngine.play('buy');
+                              buyBusinessSharesAction(activeBusiness.id, sharesNeeded);
+                            }}
+                            disabled={!canAffordControl}
+                            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
+                          >
+                            <Building2 className="w-4 h-4" />
+                            <span>Seize Control (${costToControl.toLocaleString()})</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const effFee = calculateEffectiveFeeRate(activeBusiness, player.corporateUpgrades);
                   const effCap = calculateEffectiveDailyCapacity(activeBusiness, player.corporateUpgrades);
                   const remainingCap = Math.max(0, effCap - (player.launderedToday || 0));
@@ -2168,15 +2367,51 @@ export const PlacesModal: React.FC = () => {
                   const hasOffshoreLegal = player.corporateUpgrades?.includes('offshore_legal');
 
                   return (
-                    <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-900/60 space-y-3">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-slate-300 flex items-center gap-1.5">
                           <Landmark className="w-4 h-4 text-emerald-400" />
                           <span>Active Front: <strong className="text-emerald-300">{activeBusiness.name}</strong></span>
                         </span>
-                        <span className="font-mono text-[11px] text-emerald-400">
-                          {Math.round(effFee * 1000) / 10}% Fee
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/80 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3" />
+                            Majority Control ({sharePct}%)
+                          </span>
+                          <span className="font-mono text-[11px] text-emerald-400">
+                            {Math.round(effFee * 1000) / 10}% Fee
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Active Synergies indicator */}
+                      <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-[11px] text-emerald-300/90 flex flex-wrap items-center gap-3">
+                        <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-400 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5" /> Operational Synergies:
                         </span>
+                        {synergies.shippingDiscount > 0 && (
+                          <span className="bg-emerald-900/50 px-2 py-0.5 rounded text-[10px]">
+                            -{Math.round(synergies.shippingDiscount * 100)}% Shipping Logistics
+                          </span>
+                        )}
+                        {synergies.heatShield > 0 && (
+                          <span className="bg-emerald-900/50 px-2 py-0.5 rounded text-[10px]">
+                            +{synergies.heatShield} Heat Shield/Day
+                          </span>
+                        )}
+                        {synergies.wireFeeDiscount > 0 && (
+                          <span className="bg-emerald-900/50 px-2 py-0.5 rounded text-[10px]">
+                            -{Math.round(synergies.wireFeeDiscount * 100)}% Wash Fee Discount
+                          </span>
+                        )}
+                        {synergies.auditImmunity && (
+                          <span className="bg-cyan-900/50 text-cyan-300 px-2 py-0.5 rounded text-[10px]">
+                            100% FinCEN Audit Immunity
+                          </span>
+                        )}
+                        {!synergies.shippingDiscount && !synergies.heatShield && !synergies.wireFeeDiscount && !synergies.auditImmunity && (
+                          <span className="text-slate-400 text-[10px]">Corporate Ledger Authorization Active</span>
+                        )}
                       </div>
 
                       <div className="flex justify-between text-[11px] text-slate-400 font-mono">
@@ -2246,8 +2481,8 @@ export const PlacesModal: React.FC = () => {
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-500 pt-1">
                             <span>FinCEN Audit Threat:</span>
-                            <span className={hasOffshoreLegal ? 'text-emerald-400' : 'text-amber-400'}>
-                              {hasOffshoreLegal ? '0% (Immune via Retained Counsel)' : `${Math.round(activeBusiness.auditRisk * 100)}% Risk`}
+                            <span className={hasOffshoreLegal || synergies.auditImmunity ? 'text-emerald-400' : 'text-amber-400'}>
+                              {hasOffshoreLegal || synergies.auditImmunity ? '0% (Immune via Retained Counsel / Secrecy Trust)' : `${Math.round(activeBusiness.auditRisk * 100)}% Risk`}
                             </span>
                           </div>
                         </div>
@@ -2726,36 +2961,61 @@ export const PlacesModal: React.FC = () => {
 
                       {/* Live Compounding Amortization Breakdown */}
                       {loanAmount > 0 && (
-                        <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2.5 text-xs">
-                          <div className="text-[11px] font-bold text-amber-400 uppercase flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5" /> Projected Debt Compounding Amortization:
+                        <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+                          <div className="flex justify-between items-center text-[11px] font-bold text-amber-400 uppercase">
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" /> Compounding Vig Amortization Schedule
+                            </span>
+                            <span className="text-slate-400 font-normal">
+                              Daily Rate: {Math.round(selectedShark.interestRate * 100)}%/day
+                            </span>
                           </div>
 
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center pt-1 font-mono">
                             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                              <div className="text-[10px] text-slate-500">Day 1 Balance</div>
+                              <div className="text-[10px] text-slate-500">Day 1 (+{Math.round(selectedShark.interestRate * 100)}%)</div>
                               <div className="font-bold text-slate-200 mt-0.5">
                                 ${projDay1.toLocaleString()}
                               </div>
                             </div>
                             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                              <div className="text-[10px] text-slate-500">Day 3 Balance</div>
+                              <div className="text-[10px] text-slate-500">Day 3 Compounded</div>
                               <div className="font-bold text-slate-200 mt-0.5">
                                 ${projDay3.toLocaleString()}
                               </div>
                             </div>
                             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                              <div className="text-[10px] text-slate-500">Day 7 Balance</div>
+                              <div className="text-[10px] text-slate-500">Day 7 Compounded</div>
                               <div className="font-bold text-amber-400 mt-0.5">
                                 ${projDay7.toLocaleString()}
                               </div>
                             </div>
-                            <div className="p-2 rounded-lg bg-slate-950 border border-rose-900">
-                              <div className="text-[10px] text-rose-400">Day {selectedShark.repayDays} (Due)</div>
+                            <div className="p-2 rounded-lg bg-slate-950 border border-rose-900/80">
+                              <div className="text-[10px] text-rose-400">Day {selectedShark.repayDays} Maturity</div>
                               <div className="font-black text-rose-400 mt-0.5">
                                 ${projExpiry.toLocaleString()}
                               </div>
                             </div>
+                          </div>
+
+                          {/* Verbose Enforcement & Collateral Dossier */}
+                          <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-800 space-y-2 text-[11px]">
+                            <div className="text-rose-400 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                              <Skull className="w-3.5 h-3.5" /> Enforcement Clause & Overdue Penalty:
+                            </div>
+                            <p className="text-slate-300 leading-relaxed">
+                              Should the note mature without full settlement on Day {selectedShark.repayDays}, {selectedShark.name}&apos;s syndicate dispatch triggers immediate armed enforcement. A cartel hit team (Threat Rating: {selectedShark.dangerRating}/5) will intercept you in any global jurisdiction. Defaulting authorizes unilateral seizure of your safehouses, aircraft fleet, and street inventory.
+                            </p>
+                            {selectedShark.collateralAccepted && (
+                              <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[10px]">
+                                <span className="text-slate-500 uppercase font-bold">Designated Collateral:</span>
+                                {selectedShark.collateralAccepted.map((col, idx) => (
+                                  <span key={idx} className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
+                                    🔒 {col}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           <div className="pt-2 border-t border-slate-800/80 flex justify-between text-slate-400 text-[11px]">

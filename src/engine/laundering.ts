@@ -1,4 +1,4 @@
-import { ShellBusiness, CorporateUpgrade } from './types';
+import { ShellBusiness, CorporateUpgrade, PlayerState } from './types';
 
 export const SHELL_BUSINESSES: ShellBusiness[] = [
   {
@@ -45,6 +45,21 @@ export const SHELL_BUSINESSES: ShellBusiness[] = [
     specialPerk: 'Cash slip betting volume offsets audit paper trails',
   },
   {
+    id: 'luxury_watch_boutique',
+    name: 'Haute Horlogerie & Gray-Market Watch Boutique',
+    tier: 2,
+    purchaseCost: 125000,
+    dailyCleanCapacity: 65000,
+    feeRate: 0.068,
+    passiveDailyProfit: 1600,
+    auditRisk: 0.025,
+    heatShield: 2,
+    customsBonus: 0,
+    icon: '⌚',
+    description: 'High-value luxury timepieces (Patek, Rolex, AP) bought and resold with unrecorded cash premiums and inflated appraisal receipts.',
+    specialPerk: 'High-density physical jewelry assets facilitate non-banking transfers',
+  },
+  {
     id: 'nightclub',
     name: 'Neon VIP Nightclub & Gentlemen’s Lounge',
     tier: 3,
@@ -72,6 +87,21 @@ export const SHELL_BUSINESSES: ShellBusiness[] = [
     icon: '🏗️',
     description: 'High-tonnage scrap metal processing. Fabricates weight-scale tickets and cash invoices for raw copper and steel.',
     specialPerk: 'Heavy industrial invoices absorb high single-transaction volumes',
+  },
+  {
+    id: 'construction_contracting',
+    name: 'Civic Heavy Construction & Earthmoving Corp',
+    tier: 3,
+    purchaseCost: 350000,
+    dailyCleanCapacity: 190000,
+    feeRate: 0.058,
+    passiveDailyProfit: 4200,
+    auditRisk: 0.035,
+    heatShield: 3,
+    customsBonus: 0,
+    icon: '🚜',
+    description: 'Government infrastructure contracts, overbilled cement pours, and phantom subcontractor invoices swallow seven-figure dirty cash infusions.',
+    specialPerk: 'Municipal subcontracts provide ironclad civil commercial cover',
   },
   {
     id: 'private_jet_charter',
@@ -103,6 +133,21 @@ export const SHELL_BUSINESSES: ShellBusiness[] = [
     description: 'Subjective modern art appraisals and private dealer sales absorb six-figure cash infusions.',
   },
   {
+    id: 'pharmaceutical_logistics',
+    name: 'Biomedical Cold-Chain Logistics & Pharmacy Supply',
+    tier: 4,
+    purchaseCost: 950000,
+    dailyCleanCapacity: 700000,
+    feeRate: 0.045,
+    passiveDailyProfit: 11000,
+    auditRisk: 0.025,
+    heatShield: 5,
+    customsBonus: 0.20,
+    icon: '💊',
+    description: 'Licensed pharmaceutical distribution network. Provides medical precursor supply lines and grants -20% customs search risk.',
+    specialPerk: '-20% Customs Risk & Precursor Cost Subsidies',
+  },
+  {
     id: 'import_export',
     name: 'Global Freight Logistics & Customs Brokerage',
     tier: 5,
@@ -131,6 +176,21 @@ export const SHELL_BUSINESSES: ShellBusiness[] = [
     icon: '🛥️',
     description: 'Offshore Mediterranean luxury vessel leasing entity operating under Cayman flag of convenience in international waters.',
     specialPerk: 'High-seas maritime leasing beyond IRS territorial reach',
+  },
+  {
+    id: 'telecom_holding',
+    name: 'Pan-Caribbean Fiber & Satellite Telecom Holding',
+    tier: 5,
+    purchaseCost: 4200000,
+    dailyCleanCapacity: 3800000,
+    feeRate: 0.032,
+    passiveDailyProfit: 48000,
+    auditRisk: 0.02,
+    heatShield: 6,
+    customsBonus: 0,
+    icon: '📡',
+    description: 'Offshore telecommunications provider routing satellite bandwidth billing and undersea fiber leases with sovereign tax-sheltered cash flow.',
+    specialPerk: 'Stateless digital infrastructure shields multi-million wire velocity',
   },
   {
     id: 'panama_trust',
@@ -174,6 +234,21 @@ export const SHELL_BUSINESSES: ShellBusiness[] = [
     customsBonus: 0,
     icon: '⚡',
     description: 'Hydropower ASIC mining racks convert street cash into un-traceable on-chain privacy tokens and wire transfers.',
+  },
+  {
+    id: 'sovereign_wealth_front',
+    name: 'Liechtenstein Anstalt & Sovereign Private Equity Fund',
+    tier: 7,
+    purchaseCost: 22000000,
+    dailyCleanCapacity: 28000000,
+    feeRate: 0.015,
+    passiveDailyProfit: 220000,
+    auditRisk: 0,
+    heatShield: 9,
+    customsBonus: 0.25,
+    icon: '🏰',
+    description: 'Stateless dynastic trust structure. Fuses discretionary Liechtenstein family foundations with international private equity syndicates.',
+    specialPerk: 'Dynastic asset insulation, -25% customs scrutiny, and 1.5% wash fee',
   },
   {
     id: 'swiss_bank_stake',
@@ -297,3 +372,137 @@ export function calculateCustomsBonusFromBusinesses(ownedBusinesses: string[] = 
   }
   return highest;
 }
+
+/**
+ * Underworld Stock Market & Incremental Share Mechanics
+ */
+export const TOTAL_SHARES_PER_BUSINESS = 10000;
+export const CONTROLLING_STAKE_SHARES = 5000; // >50% (5,000 shares) grants corporate control
+export const BROKERAGE_FEE_RATE = 0.025; // 2.5% transactional fee
+
+/**
+ * Calculate dynamic share price based on company base valuation and day volatility
+ */
+export function getBusinessSharePrice(business: ShellBusiness, currentDay = 1): number {
+  const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
+  // Deterministic daily market volatility based on company name length and day number (±15%)
+  const seed = (business.id.length * 19 + currentDay * 29 + business.tier * 7) % 100;
+  const volatilityPct = ((seed - 50) / 50) * 0.15; // -15% to +15%
+  return Math.max(1, Math.round(baseSharePrice * (1 + volatilityPct)));
+}
+
+/**
+ * Returns number of shares held in a given shell enterprise (0 to 10,000)
+ */
+export function getBusinessSharesOwned(player: PlayerState, businessId: string): number {
+  if (player.ownedBusinesses?.includes(businessId)) {
+    return TOTAL_SHARES_PER_BUSINESS; // 100% equity
+  }
+  return player.businessShares?.[businessId] || 0;
+}
+
+/**
+ * Checks if the player holds a majority controlling stake (>50% equity)
+ */
+export function hasControllingStake(player: PlayerState, businessId: string): boolean {
+  return getBusinessSharesOwned(player, businessId) > CONTROLLING_STAKE_SHARES;
+}
+
+export interface ControllingSynergies {
+  customsBonus: number;
+  shippingDiscount: number;
+  heatShield: number;
+  precursorDiscount: number;
+  bonusLaunderingCapacity: number;
+  auditImmunity: boolean;
+  wireFeeDiscount: number;
+}
+
+/**
+ * Compute aggregate operational synergies granted by companies where player holds >50% control
+ */
+export function getControllingSynergies(player: PlayerState): ControllingSynergies {
+  const synergies: ControllingSynergies = {
+    customsBonus: 0,
+    shippingDiscount: 0,
+    heatShield: 0,
+    precursorDiscount: 0,
+    bonusLaunderingCapacity: 0,
+    auditImmunity: false,
+    wireFeeDiscount: 0,
+  };
+
+  for (const business of SHELL_BUSINESSES) {
+    if (!hasControllingStake(player, business.id)) continue;
+
+    // Heat Shield
+    synergies.heatShield += business.heatShield;
+
+    // Customs Bonus
+    if (business.customsBonus) {
+      synergies.customsBonus = Math.max(synergies.customsBonus, business.customsBonus);
+    }
+
+    // Specialized Sector Synergies
+    switch (business.id) {
+      case 'private_jet_charter':
+        synergies.shippingDiscount = Math.max(synergies.shippingDiscount, 0.25);
+        break;
+      case 'import_export':
+        synergies.shippingDiscount = Math.max(synergies.shippingDiscount, 0.35);
+        synergies.precursorDiscount = Math.max(synergies.precursorDiscount, 0.15);
+        break;
+      case 'superyacht_brokerage':
+        synergies.shippingDiscount = Math.max(synergies.shippingDiscount, 0.30);
+        break;
+      case 'scrap_metal_foundry':
+        synergies.bonusLaunderingCapacity += 0.20;
+        synergies.precursorDiscount = Math.max(synergies.precursorDiscount, 0.10);
+        break;
+      case 'crypto_farm':
+        synergies.bonusLaunderingCapacity += 0.50;
+        synergies.auditImmunity = true;
+        break;
+      case 'panama_trust':
+      case 'swiss_bank_stake':
+      case 'sovereign_gold_depository':
+        synergies.auditImmunity = true;
+        synergies.wireFeeDiscount = Math.max(synergies.wireFeeDiscount, 0.015);
+        break;
+      case 'macau_junket':
+        synergies.wireFeeDiscount = Math.max(synergies.wireFeeDiscount, 0.01);
+        break;
+      case 'pharmaceutical_logistics':
+        synergies.precursorDiscount = Math.max(synergies.precursorDiscount, 0.25);
+        synergies.shippingDiscount = Math.max(synergies.shippingDiscount, 0.15);
+        break;
+      case 'telecom_holding':
+        synergies.wireFeeDiscount = Math.max(synergies.wireFeeDiscount, 0.01);
+        synergies.bonusLaunderingCapacity += 0.25;
+        break;
+      case 'sovereign_wealth_front':
+        synergies.auditImmunity = true;
+        synergies.bonusLaunderingCapacity += 0.40;
+        synergies.wireFeeDiscount = Math.max(synergies.wireFeeDiscount, 0.02);
+        break;
+    }
+  }
+
+  return synergies;
+}
+
+/**
+ * Calculates pro-rata passive clean dividend payout for all owned shares
+ */
+export function calculateTotalShareDividends(player: PlayerState): number {
+  let total = 0;
+  for (const b of SHELL_BUSINESSES) {
+    const shares = getBusinessSharesOwned(player, b.id);
+    if (shares > 0) {
+      const shareRatio = shares / TOTAL_SHARES_PER_BUSINESS;
+      total += Math.round(shareRatio * b.passiveDailyProfit);
+    }
+  }
+  return total;
+}
+

@@ -24,6 +24,14 @@ import {
   calculateTotalPassiveIncome,
   calculateTotalHeatShield,
   calculateCustomsBonusFromBusinesses,
+  TOTAL_SHARES_PER_BUSINESS,
+  CONTROLLING_STAKE_SHARES,
+  BROKERAGE_FEE_RATE,
+  getBusinessSharePrice,
+  getBusinessSharesOwned,
+  hasControllingStake,
+  getControllingSynergies,
+  calculateTotalShareDividends,
 } from './laundering';
 import { AIRCRAFT_MAP, calculateAircraftFlightCost } from './aviation';
 import { advanceCookBatches } from './production';
@@ -1471,21 +1479,26 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
     }
   }
 
-  // 2b. Corporate Shell Businesses Passive Income
-  const passiveProfit = calculateTotalPassiveIncome(state.player.ownedBusinesses);
+  // 2b. Corporate Shell Businesses Passive Income & Share Dividends
+  const shareDividends = calculateTotalShareDividends(state.player);
+  const passiveProfit = Math.max(calculateTotalPassiveIncome(state.player.ownedBusinesses), shareDividends);
   if (passiveProfit > 0) {
     state.player.bank += passiveProfit;
     state.logs.unshift({
       day: state.player.currentDay,
       city: currentCity,
       type: 'finance',
-      message: `CORPORATE REVENUE: Received $${passiveProfit.toLocaleString()} clean dividends from ${state.player.ownedBusinesses?.length || 0} owned shell companies (credited to Bank).`,
+      message: `CORPORATE REVENUE: Received $${passiveProfit.toLocaleString()} clean dividends/profits from underworld shell corporations (credited to Bank).`,
       timestamp: Date.now(),
     });
   }
 
-  // 2c. Corporate Heat Cooling
-  const corporateHeatCooling = calculateTotalHeatShield(state.player.ownedBusinesses);
+  // 2c. Corporate Heat Cooling & Operational Synergies
+  const controllingSynergies = getControllingSynergies(state.player);
+  const corporateHeatCooling = Math.max(
+    calculateTotalHeatShield(state.player.ownedBusinesses),
+    controllingSynergies.heatShield
+  );
   if (corporateHeatCooling > 0) {
     modifyCityHeat(state, state.player.currentCityId, -corporateHeatCooling);
   }
@@ -2077,6 +2090,7 @@ export function buyShellBusiness(state: GameEngineState, businessId: string): Ac
   const business = SHELL_MAP.get(businessId);
   if (!business) return { success: false, message: 'Shell business not found' };
   if (!state.player.ownedBusinesses) state.player.ownedBusinesses = [];
+  if (!state.player.businessShares) state.player.businessShares = {};
   if (state.player.ownedBusinesses.includes(businessId)) {
     return { success: false, message: 'You already own this shell business' };
   }
@@ -2086,6 +2100,7 @@ export function buyShellBusiness(state: GameEngineState, businessId: string): Ac
 
   state.player.cash -= business.purchaseCost;
   state.player.ownedBusinesses.push(businessId);
+  state.player.businessShares[businessId] = TOTAL_SHARES_PER_BUSINESS;
   state.player.stats = state.player.stats || {};
   state.player.stats.businessesAcquiredCount = (state.player.stats.businessesAcquiredCount || 0) + 1;
 
@@ -2098,6 +2113,134 @@ export function buyShellBusiness(state: GameEngineState, businessId: string): Ac
   });
 
   return { success: true, message: `Acquired ${business.name}!` };
+}
+
+/**
+ * Buy partial share blocks incrementally with brokerage fees
+ */
+export function buyBusinessShares(
+  state: GameEngineState,
+  businessId: string,
+  sharesToBuy: number
+): ActionResult {
+  if (sharesToBuy <= 0) return { success: false, message: 'Invalid share quantity' };
+  const business = SHELL_MAP.get(businessId);
+  if (!business) return { success: false, message: 'Shell enterprise not found' };
+
+  if (!state.player.businessShares) state.player.businessShares = {};
+  if (!state.player.ownedBusinesses) state.player.ownedBusinesses = [];
+
+  const currentShares = getBusinessSharesOwned(state.player, businessId);
+  if (currentShares >= TOTAL_SHARES_PER_BUSINESS) {
+    return { success: false, message: 'You already hold 100% equity in this enterprise.' };
+  }
+
+  const actualShares = Math.min(sharesToBuy, TOTAL_SHARES_PER_BUSINESS - currentShares);
+  const sharePrice = getBusinessSharePrice(business, state.player.currentDay);
+  const grossCost = actualShares * sharePrice;
+  const brokerFee = Math.round(grossCost * BROKERAGE_FEE_RATE);
+  const totalCost = grossCost + brokerFee;
+
+  if (state.player.cash < totalCost) {
+    return {
+      success: false,
+      message: `Insufficient cash. Need $${totalCost.toLocaleString()} ($${grossCost.toLocaleString()} + $${brokerFee.toLocaleString()} broker commission).`,
+    };
+  }
+
+  state.player.cash -= totalCost;
+  const newShares = currentShares + actualShares;
+  state.player.businessShares[businessId] = newShares;
+
+  const wasControlling = currentShares > CONTROLLING_STAKE_SHARES;
+  const isControllingNow = newShares > CONTROLLING_STAKE_SHARES;
+
+  if (newShares >= TOTAL_SHARES_PER_BUSINESS && !state.player.ownedBusinesses.includes(businessId)) {
+    state.player.ownedBusinesses.push(businessId);
+    state.player.stats = state.player.stats || {};
+    state.player.stats.businessesAcquiredCount = (state.player.stats.businessesAcquiredCount || 0) + 1;
+  }
+
+  const currentCity = CITY_MAP.get(state.player.currentCityId)?.name ?? 'City';
+  const equityPct = (newShares / 100).toFixed(1);
+
+  if (!wasControlling && isControllingNow) {
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: currentCity,
+      type: 'finance',
+      message: `👑 MAJORITY CONTROL ACHIEVED: Acquired ${actualShares.toLocaleString()} shares of ${business.name} (Total Equity: ${equityPct}%). Corporate Governance Ledger unlocked for dirty cash laundering and operational synergies!`,
+      timestamp: Date.now(),
+    });
+    return {
+      success: true,
+      message: `Acquired majority controlling stake (${equityPct}%) in ${business.name}! Laundering ledger unlocked!`,
+    };
+  }
+
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: currentCity,
+    type: 'finance',
+    message: `📈 SHARE ACQUISITION: Purchased ${actualShares.toLocaleString()} shares of ${business.name} at $${sharePrice.toLocaleString()}/share + $${brokerFee.toLocaleString()} broker fee. Equity: ${equityPct}%.`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    success: true,
+    message: `Purchased ${actualShares.toLocaleString()} shares of ${business.name} (${equityPct}% equity).`,
+  };
+}
+
+/**
+ * Sell partial share blocks with market volatility and brokerage commission
+ */
+export function sellBusinessShares(
+  state: GameEngineState,
+  businessId: string,
+  sharesToSell: number
+): ActionResult {
+  if (sharesToSell <= 0) return { success: false, message: 'Invalid share quantity' };
+  const business = SHELL_MAP.get(businessId);
+  if (!business) return { success: false, message: 'Shell enterprise not found' };
+
+  if (!state.player.businessShares) state.player.businessShares = {};
+  if (!state.player.ownedBusinesses) state.player.ownedBusinesses = [];
+
+  const currentShares = getBusinessSharesOwned(state.player, businessId);
+  if (currentShares <= 0) {
+    return { success: false, message: 'You do not hold any shares in this enterprise.' };
+  }
+
+  const actualSell = Math.min(sharesToSell, currentShares);
+  const sharePrice = getBusinessSharePrice(business, state.player.currentDay);
+  const grossProceeds = actualSell * sharePrice;
+  const brokerFee = Math.round(grossProceeds * BROKERAGE_FEE_RATE);
+  const netProceeds = Math.max(0, grossProceeds - brokerFee);
+
+  state.player.cash += netProceeds;
+  const newShares = currentShares - actualSell;
+  state.player.businessShares[businessId] = newShares;
+
+  if (newShares < TOTAL_SHARES_PER_BUSINESS) {
+    state.player.ownedBusinesses = state.player.ownedBusinesses.filter((id) => id !== businessId);
+  }
+
+  const currentCity = CITY_MAP.get(state.player.currentCityId)?.name ?? 'City';
+  const equityPct = (newShares / 100).toFixed(1);
+
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: currentCity,
+    type: 'finance',
+    message: `📉 SHARE LIQUIDATION: Cashed out ${actualSell.toLocaleString()} shares of ${business.name} at $${sharePrice.toLocaleString()}/share for $${netProceeds.toLocaleString()} net ($${brokerFee.toLocaleString()} broker fee). Remaining Equity: ${equityPct}%.`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    success: true,
+    message: `Liquidated ${actualSell.toLocaleString()} shares for $${netProceeds.toLocaleString()} net!`,
+  };
 }
 
 export function buyCorporateUpgrade(state: GameEngineState, upgradeId: string): ActionResult {
@@ -2136,6 +2279,15 @@ export function executeBusinessLaundering(
   const business = SHELL_MAP.get(businessId);
   if (!business) return { success: false, message: 'Business not found' };
 
+  // Controlling stake (>50%) verification
+  const sharesOwned = getBusinessSharesOwned(state.player, businessId);
+  if (!hasControllingStake(state.player, businessId)) {
+    return {
+      success: false,
+      message: `Corporate Governance Locked: You hold only ${(sharesOwned / 100).toFixed(1)}% equity. You must acquire a controlling majority (>50% shares) to falsify corporate ledgers and authorize laundering transfers.`,
+    };
+  }
+
   const effectiveCapacity = calculateEffectiveDailyCapacity(business, state.player.corporateUpgrades);
   const currentLaundered = state.player.launderedToday || 0;
   if (currentLaundered + amount > effectiveCapacity) {
@@ -2153,10 +2305,13 @@ export function executeBusinessLaundering(
   state.player.stats = state.player.stats || {};
   state.player.stats.totalCleanMoneyLaundered = (state.player.stats.totalCleanMoneyLaundered || 0) + cleanAmount;
 
-  // IRS / FinCEN Audit check
+  // IRS / FinCEN Audit check with synergies
+  const synergies = getControllingSynergies(state.player);
   const hasOffshoreLegal = state.player.corporateUpgrades?.includes('offshore_legal');
   const hasFincenAuditor = hasActiveOfficial(state.player, 'fincen_auditor');
-  if (!hasOffshoreLegal && !hasFincenAuditor && business.auditRisk > 0 && Math.random() < business.auditRisk) {
+  const isAuditImmune = synergies.auditImmunity || hasOffshoreLegal || hasFincenAuditor;
+
+  if (!isAuditImmune && business.auditRisk > 0 && Math.random() < business.auditRisk) {
     const penalty = Math.round(cleanAmount * 0.25);
     state.player.bank = Math.max(0, state.player.bank - penalty);
     state.logs.unshift({
@@ -2166,12 +2321,14 @@ export function executeBusinessLaundering(
       message: `🚨 IRS AUDIT NOTICE: FinCEN flagged unusual cash flow at ${business.name}! Disgorgement fine of $${penalty.toLocaleString()} deducted from offshore bank.`,
       timestamp: Date.now(),
     });
-  } else if (hasFincenAuditor && business.auditRisk > 0) {
+  } else if ((hasFincenAuditor || synergies.auditImmunity) && business.auditRisk > 0) {
     state.logs.unshift({
       day: state.player.currentDay,
       city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
       type: 'corruption',
-      message: `🏛️ FINCEN AUDITOR SHIELD: Senior regulatory auditor quashed Suspicious Activity Reports (SARs) for ${business.name}. 100% audit immunity verified.`,
+      message: hasFincenAuditor
+        ? `🏛️ FINCEN AUDITOR SHIELD: Quashed Suspicious Activity Reports (SARs) for ${business.name}. 100% audit immunity verified.`
+        : `🏛️ REGULATORY SHIELD: Offshore secrecy trust quashed Suspicious Activity Reports (SARs) for ${business.name}. 100% audit immunity verified.`,
       timestamp: Date.now(),
     });
   }

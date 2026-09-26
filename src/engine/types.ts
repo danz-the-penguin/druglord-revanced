@@ -341,6 +341,7 @@ export interface PlayerState {
   syndicateReputations?: Record<string, number>;
   syndicateContracts?: SyndicateContract[];
   ownedBusinesses?: string[];
+  businessShares?: Record<string, number>;
   corporateUpgrades?: string[];
   launderedToday?: number;
   combatConsumables?: PlayerCombatConsumables;
@@ -348,6 +349,7 @@ export interface PlayerState {
   selectedAircraftId?: string | null;
   installedLabs?: Record<string, import('./productionTypes').LabType[]>;
   activeCookBatches?: import('./productionTypes').ActiveCookBatch[];
+  autoRepeatCook?: boolean;
   precursorInventory?: Record<string, number>;
   corruptOfficials?: Record<string, import('./corruptionTypes').CorruptOfficialState>;
   federalInformants?: import('./corruptionTypes').FederalInformant[];

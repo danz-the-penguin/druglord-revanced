@@ -102,6 +102,66 @@ export const PRECURSORS: Record<string, PrecursorChemical> = {
     description: 'Cryogenically stabilized synthetic peptide broth. Clandestine military nootropic reactant.',
     hazardRating: 'Severe',
   },
+  coca_paste: {
+    id: 'coca_paste',
+    name: 'Raw Andean Coca Paste & Alkaloids',
+    chemicalFormula: 'C17H21NO4-Raw',
+    casNumber: '53-21-4',
+    basePrice: 1800,
+    seaportDiscount: 0.35,
+    description: 'Macerated coca leaf base alkaloid paste extracted with kerosene and sulfuric acid.',
+    hazardRating: 'Moderate',
+  },
+  morphine_base: {
+    id: 'morphine_base',
+    name: 'Crude Morphine Base Extract',
+    chemicalFormula: 'C17H19NO3-Base',
+    casNumber: '57-27-2',
+    basePrice: 850,
+    seaportDiscount: 0.30,
+    description: 'Poppy straw concentrate alkaloid precipitated with lime and ammonium chloride.',
+    hazardRating: 'High',
+  },
+  industrial_solvents: {
+    id: 'industrial_solvents',
+    name: 'Industrial Ethyl Ether & Solvents',
+    chemicalFormula: '(C2H5)2O / C3H6O',
+    casNumber: '67-64-1',
+    basePrice: 45,
+    seaportDiscount: 0.35,
+    description: 'Reagent-grade wash solvents for crystallization, freebasing, and precipitation.',
+    hazardRating: 'Moderate',
+  },
+  dissociative_catalyst: {
+    id: 'dissociative_catalyst',
+    name: 'Arylcyclohexylamine Reaction Precursor',
+    chemicalFormula: 'C12H16ClNO-Pre',
+    casNumber: '77-10-1',
+    basePrice: 160,
+    seaportDiscount: 0.30,
+    description: 'Precursor salt used in the synthesis of ketamine, phencyclidine, and dissociative tranquilizers.',
+    hazardRating: 'High',
+  },
+  botanical_seeds: {
+    id: 'botanical_seeds',
+    name: 'Rare Botanical Genetics & Spores',
+    chemicalFormula: 'Flora-Bio-Spore',
+    casNumber: '1404-93-9',
+    basePrice: 28,
+    seaportDiscount: 0.30,
+    description: 'Exotic botanical genetics for opium poppies, mescaline peyote buttons, and catha edulis.',
+    hazardRating: 'Low',
+  },
+  synthetic_opioid_precursor: {
+    id: 'synthetic_opioid_precursor',
+    name: '4-Anilino-N-phenethylpiperidine (ANPP)',
+    chemicalFormula: 'C19H24N2',
+    casNumber: '21409-26-7',
+    basePrice: 650,
+    seaportDiscount: 0.25,
+    description: 'Direct synthetic intermediate for illicit fentanyl and ultra-potent opioid analogues.',
+    hazardRating: 'Severe',
+  },
 };
 
 /**
@@ -286,6 +346,241 @@ export const COOK_RECIPES: CookRecipe[] = [
     ],
     heatProduced: 6,
     description: 'Ultra-lethal synthetic opioid concentrate. Extreme value and high margins.',
+  },
+  {
+    id: 'recipe_cocaine',
+    labType: 'chemical_reflux',
+    name: 'High-Purity Cocaine Hydrochloride',
+    outputDrugId: 'cocaine',
+    outputUnits: 4,
+    cookDays: 2,
+    ingredients: [
+      { precursorId: 'coca_paste', amount: 2 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 6,
+    description: 'Solvent recrystallization producing pharmaceutical-grade 99% pure white flake.',
+  },
+  {
+    id: 'recipe_crack',
+    labType: 'chemical_reflux',
+    name: 'Freebase Crack Cocaine Cook',
+    outputDrugId: 'crack',
+    outputUnits: 8,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'coca_paste', amount: 1 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 4,
+    description: 'Freebase reduction yielding dense smokable rock chunks with rapid turnover.',
+  },
+  {
+    id: 'recipe_heroin',
+    labType: 'chemical_reflux',
+    name: 'Diacetylmorphine "China White" Heroin',
+    outputDrugId: 'heroin',
+    outputUnits: 5,
+    cookDays: 2,
+    ingredients: [
+      { precursorId: 'morphine_base', amount: 2 },
+      { precursorId: 'acetic_anhydride', amount: 1 },
+    ],
+    heatProduced: 5,
+    description: 'Morphine base acetylation under reflux yielding premium injectable diacetylmorphine.',
+  },
+  {
+    id: 'recipe_opium',
+    labType: 'hydro_greenhouse',
+    name: 'Papaver Somniferum Poppy Cultivation',
+    outputDrugId: 'opium',
+    outputUnits: 12,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'botanical_seeds', amount: 2 },
+      { precursorId: 'hydro_nutrients', amount: 2 },
+    ],
+    heatProduced: 2,
+    description: 'Score flowering poppy pods to extract raw, unrefined golden-brown alkaloid latex.',
+  },
+  {
+    id: 'recipe_hashish',
+    labType: 'hydro_greenhouse',
+    name: 'Solventless Ice-Water Hashish Extraction',
+    outputDrugId: 'hashish',
+    outputUnits: 8,
+    cookDays: 1,
+    ingredients: [{ precursorId: 'hydro_nutrients', amount: 2 }],
+    heatProduced: 1,
+    description: 'Trichome separation pressed into aromatic, highly stable international blonde slabs.',
+  },
+  {
+    id: 'recipe_peyote',
+    labType: 'hydro_greenhouse',
+    name: 'Mescaline Peyote Button Grow Bay',
+    outputDrugId: 'peyote',
+    outputUnits: 10,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'botanical_seeds', amount: 1 },
+      { precursorId: 'hydro_nutrients', amount: 1 },
+    ],
+    heatProduced: 1,
+    description: 'Desert-climate greenhouse beds curing dried psychedelic mescaline cactus buttons.',
+  },
+  {
+    id: 'recipe_kat',
+    labType: 'hydro_greenhouse',
+    name: 'Fresh Catha Edulis "Kat" Harvest',
+    outputDrugId: 'kat',
+    outputUnits: 16,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'botanical_seeds', amount: 1 },
+      { precursorId: 'hydro_nutrients', amount: 1 },
+    ],
+    heatProduced: 1,
+    description: 'Fresh succulent leaves packed with active monoamine alkaloid cathinone.',
+  },
+  {
+    id: 'recipe_pcp',
+    labType: 'chemical_reflux',
+    name: 'Phencyclidine "Angel Dust" Synthesis',
+    outputDrugId: 'pcp',
+    outputUnits: 6,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'dissociative_catalyst', amount: 2 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 4,
+    description: 'Volatile Grignard reaction yielding potent dissociative anesthetic liquid.',
+  },
+  {
+    id: 'recipe_special_k',
+    labType: 'chemical_reflux',
+    name: 'Ketamine Hydrochloride "Special K" Shards',
+    outputDrugId: 'special_k',
+    outputUnits: 10,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'dissociative_catalyst', amount: 1 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 2,
+    description: 'Veterinary anesthetic evaporation into translucent needle-fine crystalline shards.',
+  },
+  {
+    id: 'recipe_tranq',
+    labType: 'chemical_reflux',
+    name: 'Xylazine "Tranq" Street Sedative Batch',
+    outputDrugId: 'tranq',
+    outputUnits: 12,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'dissociative_catalyst', amount: 1 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 2,
+    description: 'Potent veterinary alpha-2 agonist synthesis commonly cut into urban narcotics.',
+  },
+  {
+    id: 'recipe_krokodil',
+    labType: 'chemical_reflux',
+    name: 'Desomorphine "Krokodil" Quick-Cook',
+    outputDrugId: 'krokodil',
+    outputUnits: 10,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'ephedrine', amount: 1 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 4,
+    description: 'Rapid solvent reduction yielding highly volatile desomorphine.',
+  },
+  {
+    id: 'recipe_dmt',
+    labType: 'chemical_reflux',
+    name: 'N,N-DMT "Spirit Molecule" Extraction',
+    outputDrugId: 'dmt',
+    outputUnits: 4,
+    cookDays: 2,
+    ingredients: [
+      { precursorId: 'ergot_solvents', amount: 1 },
+      { precursorId: 'industrial_solvents', amount: 1 },
+    ],
+    heatProduced: 3,
+    description: 'High-vacuum solvent extraction crystallizing brilliant golden psychedelic freebase.',
+  },
+  {
+    id: 'recipe_fentanyl',
+    labType: 'bio_reactor',
+    name: 'ANPP Synthetic Fentanyl Synthesis',
+    outputDrugId: 'fentanyl',
+    outputUnits: 6,
+    cookDays: 2,
+    ingredients: [
+      { precursorId: 'synthetic_opioid_precursor', amount: 1 },
+      { precursorId: 'acetic_anhydride', amount: 1 },
+    ],
+    heatProduced: 6,
+    description: 'Advanced piperidine reduction yielding lethal-grade concentrated synthetic opioid.',
+  },
+  {
+    id: 'recipe_lsd',
+    labType: 'pill_press',
+    name: 'LSD-25 Perforated Blotter Acid & Microdots',
+    outputDrugId: 'lsd',
+    outputUnits: 8,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'ergot_solvents', amount: 2 },
+      { precursorId: 'pill_binder', amount: 1 },
+    ],
+    heatProduced: 2,
+    description: 'Ergoline solution precisely calibrated onto absorbent blotter sheets and microdots.',
+  },
+  {
+    id: 'recipe_morphine',
+    labType: 'pill_press',
+    name: 'Counterfeit Morphine Extended-Release Pills',
+    outputDrugId: 'morphine',
+    outputUnits: 6,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'morphine_base', amount: 1 },
+      { precursorId: 'pill_binder', amount: 1 },
+    ],
+    heatProduced: 2,
+    description: 'Pure morphine sulfate excipient pressed into counterfeit hospital-grade tablets.',
+  },
+  {
+    id: 'recipe_codeine',
+    labType: 'pill_press',
+    name: 'Codeine & Promethazine Syrup / Tablet Compounding',
+    outputDrugId: 'codeine',
+    outputUnits: 10,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'morphine_base', amount: 1 },
+      { precursorId: 'pill_binder', amount: 2 },
+    ],
+    heatProduced: 2,
+    description: 'Pharmaceutical cough syrup and tablet compounding with huge cultural demand.',
+  },
+  {
+    id: 'recipe_mda',
+    labType: 'pill_press',
+    name: 'High-Dose Tenamfetamine (MDA) Party Tablets',
+    outputDrugId: 'mda',
+    outputUnits: 8,
+    cookDays: 1,
+    ingredients: [
+      { precursorId: 'ephedrine', amount: 1 },
+      { precursorId: 'pill_binder', amount: 1 },
+    ],
+    heatProduced: 2,
+    description: 'Heavy psychedelic entactogen tablets stamped with iconic festival dies.',
   },
 ];
 
@@ -734,3 +1029,41 @@ export function cancelCookBatch(
     message: `Scrapped batch for ${batch.recipeName}. Chemical precursors were liquidated.`,
   };
 }
+
+/**
+ * Mass collect all ready production batches in a single operation
+ */
+export function collectAllCookBatches(
+  state: GameEngineState,
+  destination: 'pocket' | 'vault' = 'vault'
+): ActionResult {
+  const readyBatches = (state.player.activeCookBatches || []).filter((b) => b.status === 'ready');
+  if (readyBatches.length === 0) {
+    return { success: false, message: 'No finished production batches waiting for collection.' };
+  }
+
+  let totalCollected = 0;
+  let batchCount = 0;
+
+  for (const batch of [...readyBatches]) {
+    const units = batch.outputUnits;
+    const res = collectCookBatch(state, batch.id, destination);
+    if (res.success) {
+      totalCollected += units;
+      batchCount++;
+    } else if (destination === 'pocket') {
+      // Stash capacity full
+      break;
+    }
+  }
+
+  if (batchCount === 0) {
+    return { success: false, message: 'Stash capacity exceeded. Choose "Store in Vault" to mass-collect all.' };
+  }
+
+  return {
+    success: true,
+    message: `Mass Harvest Complete: Collected ${batchCount} batch(es) totaling ${totalCollected.toLocaleString()} units into ${destination === 'pocket' ? 'stash' : 'vault'}!`,
+  };
+}
+

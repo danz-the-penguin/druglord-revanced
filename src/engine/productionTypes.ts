@@ -57,4 +57,5 @@ export interface ActiveCookBatch {
   status: 'cooking' | 'ready' | 'collected';
   startedAtDay: number;
   batchCount: number;
+  autoRepeat?: boolean;
 }

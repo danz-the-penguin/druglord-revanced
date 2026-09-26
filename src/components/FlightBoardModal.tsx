@@ -10,11 +10,14 @@ import {
   Luggage,
   Crown,
   Compass,
+  Radar,
+  Fuel,
 } from 'lucide-react';
 import { generateAirportFlightBoard, AIRPORT_REGISTRY } from '../engine/flightNetwork';
-import { CITY_MAP } from '../engine/constants';
+import { CITY_MAP, CITIES } from '../engine/constants';
 import { FlightSeatClass, RealFlightSchedule } from '../engine/types';
-import { AIRCRAFT_MAP, calculateAircraftFlightCost } from '../engine/aviation';
+import { AIRCRAFT_MAP, calculateAircraftFlightCost, getAircraftState } from '../engine/aviation';
+import { soundEngine } from '../utils/audio';
 
 export const FlightBoardModal: React.FC = () => {
   const isFlightBoardOpen = useGameStore((s) => s.isFlightBoardOpen);
@@ -33,12 +36,67 @@ export const FlightBoardModal: React.FC = () => {
   const currentCity = CITY_MAP.get(currentCityId);
 
   const activeAircraft = player.selectedAircraftId ? AIRCRAFT_MAP.get(player.selectedAircraftId) : null;
-  const aircraftFuelCost = activeAircraft ? calculateAircraftFlightCost(activeAircraft, player.ownedProperties || []) : 0;
+  const currentAircraft = activeAircraft || (player.ownedAircraft?.[0] ? AIRCRAFT_MAP.get(player.ownedAircraft[0]) : null);
+  const aircraftState = currentAircraft ? getAircraftState(player, currentAircraft.id) : null;
+  const aircraftFuelCost = currentAircraft ? calculateAircraftFlightCost(currentAircraft, player.ownedProperties || [], aircraftState ?? undefined) : 0;
+  const hasPersonalAircraft = !!currentAircraft;
 
-  // Generate real-world flight schedule from current airport
-  const flightSchedules = useMemo(() => {
+  // Generate real-world commercial flight schedules
+  const commercialSchedules = useMemo(() => {
     return generateAirportFlightBoard(currentCityId, player.currentDay);
   }, [currentCityId, player.currentDay]);
+
+  // Generate Direct Point-to-Point Hangar schedules for personal aircraft (all 29 destinations direct!)
+  const hangarSchedules = useMemo(() => {
+    if (!currentAircraft || !currentAirport) return [];
+    return CITIES.filter((c) => c.id !== currentCityId).map((dest) => {
+      const destAirport = AIRPORT_REGISTRY[dest.id] || {
+        iata: dest.id.slice(0, 3).toUpperCase(),
+        airportName: `${dest.name} Executive Airstrip`,
+        coordinates: { lat: 0, lng: 0 },
+      };
+
+      const lat1 = currentAirport.coordinates.lat;
+      const lon1 = currentAirport.coordinates.lng;
+      const lat2 = destAirport.coordinates.lat;
+      const lon2 = destAirport.coordinates.lng;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distanceKm = Math.round(6371 * c);
+      const durationMinutes = Math.max(45, Math.round(distanceKm / 15.5));
+
+      return {
+        flightId: `HANGAR-${currentAircraft.id}-${dest.id}-${player.currentDay}`,
+        flightNumber: `EXEC-${currentAircraft.id.slice(0, 4).toUpperCase()}`,
+        airline: `${currentAircraft.name} (Direct Point-to-Point)`,
+        originCityId: currentCityId,
+        originIata: currentAirport.iata,
+        originAirport: `${currentAirport.airportName} (VIP Hangar)`,
+        destinationCityId: dest.id,
+        destinationIata: destAirport.iata,
+        destinationAirport: destAirport.airportName,
+        destinationCityName: dest.name,
+        departureTime: 'Direct Point-to-Point',
+        durationMinutes,
+        gate: 'FBO VIP Ramp',
+        terminal: 'Executive Hangar',
+        status: 'Gate Open' as const,
+        ticketCost: aircraftFuelCost,
+        isDirect: true,
+        transitCityId: undefined,
+        transitCityName: undefined,
+        policeAlertRisk: 0,
+      };
+    }).sort((a, b) => a.destinationCityName.localeCompare(b.destinationCityName));
+  }, [currentAircraft, currentAirport, currentCityId, player.currentDay, aircraftFuelCost]);
+
+  // Determine active schedules based on whether personal aircraft dispatch is enabled
+  const flightSchedules = useFlagship && hasPersonalAircraft ? hangarSchedules : commercialSchedules;
 
   // Set default selected flight on open
   const activeFlight = selectedSchedule || flightSchedules[0] || null;
@@ -46,19 +104,21 @@ export const FlightBoardModal: React.FC = () => {
   if (!isFlightBoardOpen || !currentAirport || !currentCity) return null;
 
   const filteredFlights = flightSchedules.filter((flight) => {
+    if (useFlagship && hasPersonalAircraft) return true;
     if (selectedCategory === 'direct') return flight.isDirect;
     if (selectedCategory === 'connecting') return !flight.isDirect;
     return true;
   });
 
   const getEffectiveCost = (flight: RealFlightSchedule, seatClass: FlightSeatClass) => {
+    if (useFlagship && currentAircraft) return aircraftFuelCost;
     if (seatClass === 'business') return Math.round(flight.ticketCost * 2.2 + 650);
     if (seatClass === 'private_narco') return Math.max(18000, Math.round(flight.ticketCost * 12 + 15000));
     return flight.ticketCost;
   };
 
   const currentCost =
-    useFlagship && activeAircraft
+    useFlagship && currentAircraft
       ? aircraftFuelCost
       : activeFlight
       ? getEffectiveCost(activeFlight, selectedSeatClass)
@@ -68,16 +128,18 @@ export const FlightBoardModal: React.FC = () => {
   const handleBookFlight = () => {
     if (!activeFlight) return;
     const res =
-      useFlagship && activeAircraft
+      useFlagship && currentAircraft
         ? bookFlightAction(activeFlight.destinationCityId, 'economy', aircraftFuelCost, true)
         : bookFlightAction(activeFlight.destinationCityId, selectedSeatClass, activeFlight.ticketCost, false);
     if (res.success) {
+      soundEngine.play('travel');
       setFeedbackMsg({ text: res.message, error: false });
       setTimeout(() => {
         setFeedbackMsg(null);
         closeFlightBoard();
       }, 1000);
     } else {
+      soundEngine.play('defeat');
       setFeedbackMsg({ text: res.message, error: true });
       setTimeout(() => setFeedbackMsg(null), 3000);
     }
@@ -119,28 +181,72 @@ export const FlightBoardModal: React.FC = () => {
 
         {/* Airport Status Bar & Filter Pills */}
         <div className="px-6 py-3 bg-slate-950/40 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px]">Flight Corridor:</span>
-            {(['all', 'direct', 'connecting', 'private'] as const).map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setSelectedCategory(cat);
-                  if (cat === 'private') setSelectedSeatClass('private_narco');
-                  else if (selectedSeatClass === 'private_narco') setSelectedSeatClass('economy');
-                }}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs ${
-                  selectedCategory === cat
-                    ? 'bg-sky-500 text-slate-950 shadow-md'
-                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {cat === 'all' && 'All Destinations (29)'}
-                {cat === 'direct' && `Non-Stop Routes (${currentAirport.directDestinations.length})`}
-                {cat === 'connecting' && 'Connecting Flights'}
-                {cat === 'private' && 'Private Narco Charter'}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            {hasPersonalAircraft && (
+              <div className="flex items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800 mr-2">
+                <button
+                  onClick={() => {
+                    setUseFlagship(false);
+                    setSelectedSchedule(null);
+                  }}
+                  className={`px-3 py-1 rounded-md font-bold transition-all text-xs flex items-center gap-1.5 ${
+                    !useFlagship
+                      ? 'bg-sky-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Plane className="w-3.5 h-3.5" />
+                  <span>Commercial Schedules</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setUseFlagship(true);
+                    setSelectedSchedule(null);
+                  }}
+                  className={`px-3 py-1 rounded-md font-bold transition-all text-xs flex items-center gap-1.5 ${
+                    useFlagship
+                      ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                      : 'text-emerald-400 hover:text-emerald-300'
+                  }`}
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  <span>Personal Hangar (Point-to-Point)</span>
+                </button>
+              </div>
+            )}
+
+            {!useFlagship && (
+              <>
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px]">Flight Corridor:</span>
+                {(['all', 'direct', 'connecting', 'private'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      if (cat === 'private') setSelectedSeatClass('private_narco');
+                      else if (selectedSeatClass === 'private_narco') setSelectedSeatClass('economy');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs ${
+                      selectedCategory === cat
+                        ? 'bg-sky-500 text-slate-950 shadow-md'
+                        : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {cat === 'all' && 'All Destinations (29)'}
+                    {cat === 'direct' && `Non-Stop Routes (${currentAirport.directDestinations.length})`}
+                    {cat === 'connecting' && 'Connecting Flights'}
+                    {cat === 'private' && 'Private Narco Charter'}
+                  </button>
+                ))}
+              </>
+            )}
+
+            {useFlagship && currentAircraft && (
+              <span className="text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5">
+                <Radar className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                Direct Great-Circle Vectoring • All 29 Destinations Non-Stop • Bypassing All Layovers
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-4 text-[11px] text-slate-400 font-mono">
@@ -277,100 +383,155 @@ export const FlightBoardModal: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {/* Owned Flagship Option if available */}
-                    {activeAircraft && (
-                      <div
-                        onClick={() => setUseFlagship(true)}
-                        className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                          useFlagship
-                            ? 'bg-emerald-950/50 border-emerald-500 ring-1 ring-emerald-500/50 text-slate-100 shadow-md shadow-emerald-950/40'
-                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                        }`}
-                      >
+                    {useFlagship && currentAircraft ? (
+                      <div className="bg-slate-900/90 p-4 rounded-xl border border-emerald-500/60 space-y-3">
                         <div className="flex justify-between items-center text-xs font-bold">
-                          <span className="text-emerald-300 flex items-center gap-1.5">
-                            <Plane className="w-3.5 h-3.5 text-emerald-400" /> Personal Flagship: {activeAircraft.name}
+                          <span className="text-emerald-300 flex items-center gap-1.5 text-sm">
+                            <Crown className="w-4 h-4 text-emerald-400" />
+                            <span>{currentAircraft.name}</span>
                           </span>
-                          <span className="text-emerald-400 font-mono font-black">
-                            {aircraftFuelCost === 0 ? 'FREE FUEL' : `$${aircraftFuelCost.toLocaleString()}`}
+                          <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-600/60 text-emerald-400 font-mono text-[10px]">
+                            PRIVATE FLEET
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          Personal flight bypassing standard customs queues. <strong className="text-cyan-300">-{Math.round(activeAircraft.customsReduction * 100)}%</strong> canine/inspection risk.
-                        </p>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] font-mono bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Flight Vector:</span>
+                            <span className="text-emerald-400 font-bold">Direct Point-to-Point</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Layover Hubs:</span>
+                            <span className="text-slate-200 font-bold">Bypassed (0 Stops)</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Radar / Dog Evasion:</span>
+                            <span className="text-cyan-400 font-bold">-{Math.round(currentAircraft.customsReduction * 100)}% Risk</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Cargo Payload Bonus:</span>
+                            <span className="text-amber-400 font-bold">+{currentAircraft.cargoBonus} Units</span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-1 text-xs font-mono">
+                          <span className="text-slate-400 flex items-center gap-1">
+                            <Fuel className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Fuel Burn Expense:</span>
+                          </span>
+                          <strong className="text-emerald-400 text-sm">
+                            {aircraftFuelCost === 0 ? 'FREE ($0 via Hangar Storage)' : `$${aircraftFuelCost.toLocaleString()}`}
+                          </strong>
+                        </div>
+
+                        {aircraftState?.hasTransponderSpoofer && (
+                          <div className="text-[10px] text-cyan-300 bg-cyan-950/40 p-2 rounded border border-cyan-800/60 flex items-center gap-1.5">
+                            <Radar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span>ICAO Ghost Transponder Ready ({aircraftState.transponderSpoofsRemaining} ghost flights remaining)</span>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      <>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Luggage className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Select Travel Tier:</span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {/* Owned Flagship Option if available */}
+                          {hasPersonalAircraft && currentAircraft && (
+                            <div
+                              onClick={() => setUseFlagship(true)}
+                              className="p-3 rounded-xl border cursor-pointer transition-all bg-slate-900 border-slate-800 text-slate-400 hover:border-emerald-600/70"
+                            >
+                              <div className="flex justify-between items-center text-xs font-bold">
+                                <span className="text-emerald-300 flex items-center gap-1.5">
+                                  <Plane className="w-3.5 h-3.5 text-emerald-400" /> Dispatch Personal Fleet: {currentAircraft.name}
+                                </span>
+                                <span className="text-emerald-400 font-mono font-black">
+                                  {aircraftFuelCost === 0 ? 'FREE FUEL' : `$${aircraftFuelCost.toLocaleString()}`}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Switch to personal hangar launch. Direct point-to-point anywhere with <strong className="text-cyan-300">-{Math.round(currentAircraft.customsReduction * 100)}%</strong> canine/inspection risk.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Economy */}
+                          <div
+                            onClick={() => {
+                              setSelectedSeatClass('economy');
+                              setUseFlagship(false);
+                            }}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                              !useFlagship && selectedSeatClass === 'economy'
+                                ? 'bg-sky-950/40 border-sky-500 ring-1 ring-sky-500/40 text-slate-100'
+                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center text-xs font-bold">
+                              <span className="text-slate-200">Commercial Economy Coach</span>
+                              <span className="text-emerald-400 font-mono">${activeFlight.ticketCost.toLocaleString()}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Standard coach boarding. Standard customs dog search probability.
+                            </p>
+                          </div>
+
+                          {/* Business Smuggler */}
+                          <div
+                            onClick={() => {
+                              setSelectedSeatClass('business');
+                              setUseFlagship(false);
+                            }}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                              !useFlagship && selectedSeatClass === 'business'
+                                ? 'bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/40 text-slate-100'
+                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center text-xs font-bold">
+                              <span className="text-emerald-300 flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Business Class Smuggler
+                              </span>
+                              <span className="text-emerald-400 font-mono">
+                                ${getEffectiveCost(activeFlight, 'business').toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Priority diplomatic fast-track lane. Reduces airport customs canine risk by <strong className="text-emerald-400">-25%</strong>.
+                            </p>
+                          </div>
+
+                          {/* Private Narco Jet */}
+                          <div
+                            onClick={() => {
+                              setSelectedSeatClass('private_narco');
+                              setUseFlagship(false);
+                            }}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                              !useFlagship && selectedSeatClass === 'private_narco'
+                                ? 'bg-amber-950/40 border-amber-500 ring-1 ring-amber-500/40 text-slate-100'
+                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center text-xs font-bold">
+                              <span className="text-amber-300 flex items-center gap-1">
+                                <Crown className="w-3.5 h-3.5 text-amber-400" /> Sub Rosa Private Jet Charter
+                              </span>
+                              <span className="text-amber-400 font-mono">
+                                ${getEffectiveCost(activeFlight, 'private_narco').toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Chartered Gulfstream out of private executive hangar. Direct flight anywhere, reduces customs risk by <strong className="text-amber-400">-60%</strong>.
+                            </p>
+                          </div>
+                        </div>
+                      </>
                     )}
-
-                    {/* Economy */}
-                    <div
-                      onClick={() => {
-                        setSelectedSeatClass('economy');
-                        setUseFlagship(false);
-                      }}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                        !useFlagship && selectedSeatClass === 'economy'
-                          ? 'bg-sky-950/40 border-sky-500 ring-1 ring-sky-500/40 text-slate-100'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center text-xs font-bold">
-                        <span className="text-slate-200">Commercial Economy Coach</span>
-                        <span className="text-emerald-400 font-mono">${activeFlight.ticketCost.toLocaleString()}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        Standard coach boarding. Standard customs dog search probability.
-                      </p>
-                    </div>
-
-                    {/* Business Smuggler */}
-                    <div
-                      onClick={() => {
-                        setSelectedSeatClass('business');
-                        setUseFlagship(false);
-                      }}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                        !useFlagship && selectedSeatClass === 'business'
-                          ? 'bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/40 text-slate-100'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center text-xs font-bold">
-                        <span className="text-emerald-300 flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Business Class Smuggler
-                        </span>
-                        <span className="text-emerald-400 font-mono">
-                          ${getEffectiveCost(activeFlight, 'business').toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        Priority diplomatic fast-track lane. Reduces airport customs canine risk by <strong className="text-emerald-400">-25%</strong>.
-                      </p>
-                    </div>
-
-                    {/* Private Narco Jet */}
-                    <div
-                      onClick={() => {
-                        setSelectedSeatClass('private_narco');
-                        setUseFlagship(false);
-                      }}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                        !useFlagship && selectedSeatClass === 'private_narco'
-                          ? 'bg-amber-950/40 border-amber-500 ring-1 ring-amber-500/40 text-slate-100'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center text-xs font-bold">
-                        <span className="text-amber-300 flex items-center gap-1">
-                          <Crown className="w-3.5 h-3.5 text-amber-400" /> Sub Rosa Private Jet Charter
-                        </span>
-                        <span className="text-amber-400 font-mono">
-                          ${getEffectiveCost(activeFlight, 'private_narco').toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        Chartered Gulfstream out of private executive hangar. Direct flight anywhere, reduces customs risk by <strong className="text-amber-400">-60%</strong>.
-                      </p>
-                    </div>
                   </div>
                 </div>
 

@@ -12,6 +12,7 @@ import {
   Check,
   Flame,
   ShieldCheck,
+  Volume2,
 } from 'lucide-react';
 
 interface ArmoryPreviewCardProps {
@@ -46,10 +47,8 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
   const isMaxCapacity = isUtility && ownedCount >= maxHold;
   const isEquippedArmor = isArmor && isOwned;
 
-  const handlePurchaseWithSound = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!canAfford || isEquippedArmor || isMaxCapacity) return;
-
+  const playWeaponSound = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (item.id === 'rocket_launcher' || item.id === 'dynamite' || item.id === 'hand_grenade') {
       soundEngine.play('bomb');
     } else if (item.id === 'desert_eagle' || item.id === 'barrett_m82' || item.id === 'shotgun') {
@@ -61,7 +60,12 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
     } else {
       soundEngine.play('reload');
     }
+  };
 
+  const handlePurchaseWithSound = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canAfford || isEquippedArmor || isMaxCapacity) return;
+    playWeaponSound();
     onPurchase(item.id);
   };
 
@@ -264,17 +268,27 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
           <span className="text-slate-300 font-semibold truncate text-[11px] font-mono">
             {compactStatText}
           </span>
-          <button
-            onClick={handlePurchaseWithSound}
-            disabled={!canAfford || isEquippedArmor || isMaxCapacity}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-black text-xs transition-colors shadow-sm shrink-0 active:scale-95 cursor-pointer"
-          >
-            {isEquippedArmor
-              ? 'Equipped'
-              : isMaxCapacity
-              ? 'Max Held'
-              : 'Purchase'}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={playWeaponSound}
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-400 hover:text-rose-300 transition-all cursor-pointer active:scale-90"
+              title="Test Fire Audio (Gunshot / Bomb Blast FX)"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handlePurchaseWithSound}
+              disabled={!canAfford || isEquippedArmor || isMaxCapacity}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 font-black text-xs transition-colors shadow-sm active:scale-95 cursor-pointer"
+            >
+              {isEquippedArmor
+                ? 'Equipped'
+                : isMaxCapacity
+                ? 'Max Held'
+                : 'Purchase'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -420,6 +434,24 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
                 </span>
               </div>
             </div>
+
+            {/* Audio Test Trigger Bar */}
+            <button
+              type="button"
+              onClick={playWeaponSound}
+              className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-300 hover:text-rose-200 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 shadow-inner"
+            >
+              <Volume2 className="w-4 h-4 text-rose-400" />
+              <span>
+                {item.id === 'rocket_launcher' || item.id === 'dynamite' || item.id === 'hand_grenade'
+                  ? 'DETONATE ORDNANCE (EXPLOSION FX)'
+                  : item.type === 'weapon'
+                  ? 'TEST FIRE BALLISTIC (GUNSHOT FX)'
+                  : item.id === 'emp_scrambler'
+                  ? 'TEST SIGINT SCRAMBLER (WIRETAP FX)'
+                  : 'CYCLE ACTION / EQUIP FX'}
+              </span>
+            </button>
 
             {/* Popover Footer Action */}
             <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">

@@ -16,7 +16,7 @@ export const WeaponImage: React.FC<WeaponImageProps> = ({ item, className = '', 
     md: 'w-14 h-14',
     lg: 'w-20 h-20',
     xl: 'w-28 h-28',
-    showcase: 'w-full h-40 sm:h-48',
+    showcase: 'w-full h-56 sm:h-64 md:h-72',
   };
 
   const getCaliberSpec = () => {
@@ -119,7 +119,7 @@ export const WeaponImage: React.FC<WeaponImageProps> = ({ item, className = '', 
               src={imageSrc}
               alt={item.name}
               onError={() => setImgError(true)}
-              className="max-h-24 sm:max-h-28 w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]"
+              className="max-h-40 sm:max-h-48 md:max-h-52 w-auto object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:scale-105"
               loading="lazy"
             />
           ) : (

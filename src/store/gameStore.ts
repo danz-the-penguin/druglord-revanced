@@ -26,6 +26,8 @@ import {
   dispatchCourier,
   purchaseIntelTip,
   buyShellBusiness,
+  buyBusinessShares,
+  sellBusinessShares,
   buyCorporateUpgrade,
   executeBusinessLaundering,
   acceptSyndicateContract,
@@ -93,6 +95,7 @@ import {
   buyPrecursor,
   startCookBatch,
   collectCookBatch,
+  collectAllCookBatches,
   cancelCookBatch,
 } from '../engine/production';
 import { CorruptOfficialId } from '../engine/corruptionTypes';
@@ -190,6 +193,8 @@ export interface GameStore extends GameEngineState {
 
   // Shell Businesses & Corporate Laundering
   buyShellBusinessAction: (businessId: string) => { success: boolean; message: string };
+  buyBusinessSharesAction: (businessId: string, shares: number) => { success: boolean; message: string };
+  sellBusinessSharesAction: (businessId: string, shares: number) => { success: boolean; message: string };
   buyCorporateUpgradeAction: (upgradeId: string) => { success: boolean; message: string };
   executeBusinessLaunderAction: (businessId: string, amount: number) => { success: boolean; message: string };
 
@@ -198,6 +203,8 @@ export interface GameStore extends GameEngineState {
   buyPrecursorAction: (precursorId: string, units: number, payFrom?: 'cash' | 'bank') => { success: boolean; message: string };
   startCookBatchAction: (propertyId: string, recipeId: string, batchCount?: number) => { success: boolean; message: string };
   collectCookBatchAction: (batchId: string, destination?: 'pocket' | 'vault') => { success: boolean; message: string };
+  collectAllCookBatchesAction: (destination?: 'pocket' | 'vault') => { success: boolean; message: string };
+  toggleAutoRepeatCookAction: () => void;
   cancelCookBatchAction: (batchId: string) => { success: boolean; message: string };
 
   // Corruption & Federal Grand Jury RICO Indictment Actions
@@ -1754,6 +1761,38 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
       return result;
     },
 
+    buyBusinessSharesAction: (businessId: string, shares: number) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = buyBusinessShares(state, businessId, shares);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    sellBusinessSharesAction: (businessId: string, shares: number) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = sellBusinessShares(state, businessId, shares);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
+    },
+
     buyCorporateUpgradeAction: (upgradeId: string) => {
       const state = {
         player: { ...get().player },
@@ -1844,6 +1883,29 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
         triggerAutoSave(get, set);
       }
       return result;
+    },
+
+    collectAllCookBatchesAction: (destination: 'pocket' | 'vault' = 'vault') => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = collectAllCookBatches(state, destination);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('vault');
+      }
+      return result;
+    },
+
+    toggleAutoRepeatCookAction: () => {
+      const p = get().player;
+      const current = !!p.autoRepeatCook;
+      set({ player: { ...p, autoRepeatCook: !current } });
+      soundEngine.play('click');
     },
 
     cancelCookBatchAction: (batchId: string) => {
