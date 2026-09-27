@@ -382,8 +382,7 @@ export const FlightBoardModal: React.FC = () => {
                     <span>Select Travel Tier:</span>
                   </div>
 
-                  <div className="space-y-2">
-                    {useFlagship && currentAircraft ? (
+                  {useFlagship && currentAircraft ? (
                       <div className="bg-slate-900/90 p-4 rounded-xl border border-emerald-500/60 space-y-3">
                         <div className="flex justify-between items-center text-xs font-bold">
                           <span className="text-emerald-300 flex items-center gap-1.5 text-sm">
@@ -432,14 +431,8 @@ export const FlightBoardModal: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Luggage className="w-3.5 h-3.5 text-sky-400" />
-                          <span>Select Travel Tier:</span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {/* Owned Flagship Option if available */}
+                      <div className="space-y-2">
+                        {/* Owned Flagship Option if available */}
                           {hasPersonalAircraft && currentAircraft && (
                             <div
                               onClick={() => setUseFlagship(true)}
@@ -530,10 +523,8 @@ export const FlightBoardModal: React.FC = () => {
                             </p>
                           </div>
                         </div>
-                      </>
                     )}
                   </div>
-                </div>
 
                 {/* Smuggling Advisory */}
                 <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 text-[11px] space-y-1 font-mono text-slate-400">
