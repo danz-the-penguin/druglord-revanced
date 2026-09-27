@@ -7,10 +7,14 @@ import {
   calculateTotalPassiveIncome,
   calculateTotalHeatShield,
   calculateCustomsBonusFromBusinesses,
+  calculateTotalShareDividends,
+  getBusinessSharePrice,
 } from '../laundering';
 import {
   createInitialState,
   buyShellBusiness,
+  buyBusinessShares,
+  sellBusinessShares,
   buyCorporateUpgrade,
   executeBusinessLaundering,
   advanceDay,
@@ -151,5 +155,51 @@ describe('Shell Businesses & Corporate Laundering Network', () => {
     expect(state.player.launderedToday).toBe(0);
     // Heat cooled by base + business shield (2)
     expect(state.player.cityHeat.new_york).toBeLessThan(30);
+  });
+
+  it('tracks moving average cost basis on incremental share purchases', () => {
+    const state = createInitialState();
+    state.player.cash = 100000;
+
+    // Buy 10 shares of laundromat
+    const res1 = buyBusinessShares(state, 'laundromat', 10);
+    expect(res1.success).toBe(true);
+    expect(state.player.businessShares?.laundromat).toBe(10);
+    const price1 = getBusinessSharePrice(SHELL_BUSINESSES.find((b) => b.id === 'laundromat')!, state.player.currentDay);
+    expect(state.player.businessCostBasis?.laundromat).toBe(price1);
+
+    // Buy 10 more shares
+    const res2 = buyBusinessShares(state, 'laundromat', 10);
+    expect(res2.success).toBe(true);
+    expect(state.player.businessShares?.laundromat).toBe(20);
+    expect(state.player.businessCostBasis?.laundromat).toBe(price1);
+  });
+
+  it('calculates realized P&L on share sales and clears cost basis on full liquidation', () => {
+    const state = createInitialState();
+    state.player.cash = 100000;
+    state.player.businessShares = { laundromat: 20 };
+    state.player.businessCostBasis = { laundromat: 35 };
+
+    // Partial sale of 10 shares
+    const sell1 = sellBusinessShares(state, 'laundromat', 10);
+    expect(sell1.success).toBe(true);
+    expect(state.player.businessShares.laundromat).toBe(10);
+    expect(state.player.businessCostBasis.laundromat).toBe(35);
+
+    // Full liquidation of remaining 10 shares
+    const sell2 = sellBusinessShares(state, 'laundromat', 10);
+    expect(sell2.success).toBe(true);
+    expect(state.player.businessShares.laundromat).toBe(0);
+    expect(state.player.businessCostBasis.laundromat).toBeUndefined();
+  });
+
+  it('accurately calculates share dividends proportionally to total float', () => {
+    const state = createInitialState();
+    const laundromat = SHELL_BUSINESSES.find((b) => b.id === 'laundromat')!;
+    // 5,000 shares out of 10,000 = 50% of 450 = 225
+    state.player.businessShares = { laundromat: 5000 };
+    const div = calculateTotalShareDividends(state.player);
+    expect(div).toBe(Math.round(0.5 * laundromat.passiveDailyProfit));
   });
 });

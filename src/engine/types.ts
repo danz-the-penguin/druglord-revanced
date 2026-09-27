@@ -342,6 +342,7 @@ export interface PlayerState {
   syndicateContracts?: SyndicateContract[];
   ownedBusinesses?: string[];
   businessShares?: Record<string, number>;
+  businessCostBasis?: Record<string, number>;
   corporateUpgrades?: string[];
   launderedToday?: number;
   combatConsumables?: PlayerCombatConsumables;

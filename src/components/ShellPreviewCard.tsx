@@ -13,7 +13,7 @@ import {
   CONTROLLING_STAKE_SHARES,
   BROKERAGE_FEE_RATE,
 } from '../engine/laundering';
-import { SHELL_TICKERS, SHELL_SECTORS } from './PlacesModal';
+import { SHELL_TICKERS, SHELL_SECTORS } from './ShellExchangeView';
 import {
   TrendingUp,
   TrendingDown,

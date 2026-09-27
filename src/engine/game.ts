@@ -2101,6 +2101,8 @@ export function buyShellBusiness(state: GameEngineState, businessId: string): Ac
   state.player.cash -= business.purchaseCost;
   state.player.ownedBusinesses.push(businessId);
   state.player.businessShares[businessId] = TOTAL_SHARES_PER_BUSINESS;
+  if (!state.player.businessCostBasis) state.player.businessCostBasis = {};
+  state.player.businessCostBasis[businessId] = Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS);
   state.player.stats = state.player.stats || {};
   state.player.stats.businessesAcquiredCount = (state.player.stats.businessesAcquiredCount || 0) + 1;
 
@@ -2151,6 +2153,13 @@ export function buyBusinessShares(
   state.player.cash -= totalCost;
   const newShares = currentShares + actualShares;
   state.player.businessShares[businessId] = newShares;
+
+  if (!state.player.businessCostBasis) state.player.businessCostBasis = {};
+  const prevBasis = state.player.businessCostBasis[businessId] ?? sharePrice;
+  const newCostBasis = currentShares > 0
+    ? Math.round(((currentShares * prevBasis) + (actualShares * sharePrice)) / (currentShares + actualShares))
+    : sharePrice;
+  state.player.businessCostBasis[businessId] = newCostBasis;
 
   const wasControlling = currentShares > CONTROLLING_STAKE_SHARES;
   const isControllingNow = newShares > CONTROLLING_STAKE_SHARES;
@@ -2222,6 +2231,13 @@ export function sellBusinessShares(
   const newShares = currentShares - actualSell;
   state.player.businessShares[businessId] = newShares;
 
+  const costBasis = state.player.businessCostBasis?.[businessId] ?? sharePrice;
+  const realizedPnl = Math.round(netProceeds - (actualSell * costBasis));
+
+  if (newShares <= 0 && state.player.businessCostBasis) {
+    delete state.player.businessCostBasis[businessId];
+  }
+
   if (newShares < TOTAL_SHARES_PER_BUSINESS) {
     state.player.ownedBusinesses = state.player.ownedBusinesses.filter((id) => id !== businessId);
   }
@@ -2233,13 +2249,13 @@ export function sellBusinessShares(
     day: state.player.currentDay,
     city: currentCity,
     type: 'finance',
-    message: `📉 SHARE LIQUIDATION: Cashed out ${actualSell.toLocaleString()} shares of ${business.name} at $${sharePrice.toLocaleString()}/share for $${netProceeds.toLocaleString()} net ($${brokerFee.toLocaleString()} broker fee). Remaining Equity: ${equityPct}%.`,
+    message: `📉 SHARE LIQUIDATION: Cashed out ${actualSell.toLocaleString()} shares of ${business.name} at $${sharePrice.toLocaleString()}/share for $${netProceeds.toLocaleString()} net (${realizedPnl >= 0 ? '+' : ''}$${realizedPnl.toLocaleString()} P&L, $${brokerFee.toLocaleString()} commission). Remaining Equity: ${equityPct}%.`,
     timestamp: Date.now(),
   });
 
   return {
     success: true,
-    message: `Liquidated ${actualSell.toLocaleString()} shares for $${netProceeds.toLocaleString()} net!`,
+    message: `Liquidated ${actualSell.toLocaleString()} shares for $${netProceeds.toLocaleString()} net (${realizedPnl >= 0 ? '+' : ''}$${realizedPnl.toLocaleString()} P&L)!`,
   };
 }
 
