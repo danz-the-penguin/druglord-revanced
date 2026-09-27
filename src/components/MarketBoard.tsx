@@ -24,11 +24,13 @@ import {
   Globe,
   LayoutGrid,
   List,
+  Flame,
+  Zap,
 } from 'lucide-react';
 
 type SortField = 'default' | 'name' | 'price' | 'quantity' | 'stash';
 type SortDirection = 'asc' | 'desc';
-type FilterMode = 'all' | 'affordable' | 'in_stash' | 'surges' | 'bullish' | 'bearish';
+type FilterMode = 'all' | 'affordable' | 'in_stash' | 'bullish' | 'bearish' | 'surges' | 'gluts' | 'volatile';
 
 export const MarketBoard: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,9 +99,21 @@ export const MarketBoard: React.FC = () => {
   }, [player.inventory]);
 
   const surgesCount = useMemo(() => {
+    return DRUGS.filter((d) => market[d.id]?.surge === 'high').length;
+  }, [market]);
+
+  const glutsCount = useMemo(() => {
     return DRUGS.filter((d) => {
+      const p = market[d.id]?.price ?? d.basePrice;
       const surge = market[d.id]?.surge;
-      return surge === 'high' || surge === 'crash';
+      return surge === 'crash' || p <= d.basePrice * 0.75;
+    }).length;
+  }, [market]);
+
+  const volatileCount = useMemo(() => {
+    return DRUGS.filter((d) => {
+      const p = market[d.id]?.price ?? d.basePrice;
+      return Math.abs(p - d.basePrice) / d.basePrice >= 0.35;
     }).length;
   }, [market]);
 
@@ -133,7 +147,7 @@ export const MarketBoard: React.FC = () => {
       );
     }
 
-    // Category filter
+    // Category & Market Trend filter
     if (filterMode === 'affordable') {
       list = list.filter((d) => {
         const p = market[d.id]?.price ?? d.basePrice;
@@ -142,11 +156,6 @@ export const MarketBoard: React.FC = () => {
       });
     } else if (filterMode === 'in_stash') {
       list = list.filter((d) => (player.inventory[d.id]?.units ?? 0) > 0);
-    } else if (filterMode === 'surges') {
-      list = list.filter((d) => {
-        const surge = market[d.id]?.surge;
-        return surge === 'high' || surge === 'crash';
-      });
     } else if (filterMode === 'bullish') {
       list = list.filter((d) => {
         const p = market[d.id]?.price ?? d.basePrice;
@@ -156,6 +165,19 @@ export const MarketBoard: React.FC = () => {
       list = list.filter((d) => {
         const p = market[d.id]?.price ?? d.basePrice;
         return p < d.basePrice;
+      });
+    } else if (filterMode === 'surges') {
+      list = list.filter((d) => market[d.id]?.surge === 'high');
+    } else if (filterMode === 'gluts') {
+      list = list.filter((d) => {
+        const p = market[d.id]?.price ?? d.basePrice;
+        const surge = market[d.id]?.surge;
+        return surge === 'crash' || p <= d.basePrice * 0.75;
+      });
+    } else if (filterMode === 'volatile') {
+      list = list.filter((d) => {
+        const p = market[d.id]?.price ?? d.basePrice;
+        return Math.abs(p - d.basePrice) / d.basePrice >= 0.35;
       });
     }
 
@@ -273,17 +295,9 @@ export const MarketBoard: React.FC = () => {
               In Stash ({inStashCount})
             </button>
 
-            <button
-              onClick={() => setFilterMode('surges')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs ${
-                filterMode === 'surges'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-950'
-                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-              }`}
-            >
-              Shocks ({surgesCount})
-            </button>
+            <span className="text-slate-700 text-xs select-none">|</span>
 
+            {/* Market Trend Filter Pills */}
             <button
               onClick={() => setFilterMode('bullish')}
               className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs flex items-center gap-1 ${
@@ -291,10 +305,10 @@ export const MarketBoard: React.FC = () => {
                   ? 'bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-950 font-black'
                   : 'bg-slate-900 text-emerald-400 hover:text-emerald-300 border border-emerald-900/60'
               }`}
-              title="Show commodities trending above base price (Bull market)"
+              title="Show commodities trending above base price (Bullish momentum)"
             >
-              <span>Bull ▲</span>
-              <span>({bullishCount})</span>
+              <TrendingUp className="w-3 h-3" />
+              <span>Bull ▲ ({bullishCount})</span>
             </button>
 
             <button
@@ -304,10 +318,49 @@ export const MarketBoard: React.FC = () => {
                   ? 'bg-rose-500 text-slate-950 shadow-sm shadow-rose-950 font-black'
                   : 'bg-slate-900 text-rose-400 hover:text-rose-300 border border-rose-900/60'
               }`}
-              title="Show commodities trending below base price (Bear market / discount buy)"
+              title="Show commodities trending below base price (Bearish momentum)"
             >
-              <span>Bear ▼</span>
-              <span>({bearishCount})</span>
+              <TrendingDown className="w-3 h-3" />
+              <span>Bear ▼ ({bearishCount})</span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode('surges')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs flex items-center gap-1 ${
+                filterMode === 'surges'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-950 font-black'
+                  : 'bg-slate-900 text-amber-400 hover:text-amber-300 border border-amber-900/60'
+              }`}
+              title="Show commodities with acute supply shortage / price shock"
+            >
+              <Flame className="w-3 h-3" />
+              <span>Spikes 🔥 ({surgesCount})</span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode('gluts')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs flex items-center gap-1 ${
+                filterMode === 'gluts'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm shadow-cyan-950 font-black'
+                  : 'bg-slate-900 text-cyan-400 hover:text-cyan-300 border border-cyan-900/60'
+              }`}
+              title="Show commodities with market flood / heavy price crash discounts"
+            >
+              <ArrowDownRight className="w-3 h-3" />
+              <span>Gluts 📉 ({glutsCount})</span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode('volatile')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer shrink-0 text-xs flex items-center gap-1 ${
+                filterMode === 'volatile'
+                  ? 'bg-purple-500 text-slate-950 shadow-sm shadow-purple-950 font-black'
+                  : 'bg-slate-900 text-purple-400 hover:text-purple-300 border border-purple-900/60'
+              }`}
+              title="Show highly volatile commodities with price deviation >= 35%"
+            >
+              <Zap className="w-3 h-3" />
+              <span>Volatile ⚡ ({volatileCount})</span>
             </button>
           </div>
         </div>
@@ -468,13 +521,13 @@ export const MarketBoard: React.FC = () => {
                   <Sparkline data={history} width={75} height={22} />
                   <div className="text-right ml-1">
                     {marketItem?.surge === 'high' ? (
-                      <span className="text-[10px] font-black text-amber-400 uppercase">Shortage</span>
-                    ) : marketItem?.surge === 'crash' ? (
-                      <span className="text-[10px] font-black text-rose-400 uppercase">Flooded</span>
+                      <span className="text-[10px] font-black text-amber-400 uppercase">Spike 🔥</span>
+                    ) : marketItem?.surge === 'crash' || price <= drug.basePrice * 0.75 ? (
+                      <span className="text-[10px] font-black text-cyan-400 uppercase">Glut 📉</span>
                     ) : price > drug.basePrice ? (
                       <span className="text-[10px] font-bold text-emerald-400">Bull ▲</span>
                     ) : (
-                      <span className="text-[10px] font-bold text-slate-400">Bear ▼</span>
+                      <span className="text-[10px] font-bold text-rose-400">Bear ▼</span>
                     )}
                   </div>
                 </div>
@@ -677,19 +730,19 @@ export const MarketBoard: React.FC = () => {
                     <div className="flex flex-col items-center gap-1">
                       {marketItem?.surge === 'high' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-950/90 border border-amber-600 text-amber-300 animate-pulse">
-                          <TrendingUp className="w-3.5 h-3.5 text-amber-400" /> Shortage
+                          <Flame className="w-3.5 h-3.5 text-amber-400" /> Spike 🔥
                         </span>
-                      ) : marketItem?.surge === 'crash' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-rose-950/90 border border-rose-600 text-rose-300">
-                          <TrendingDown className="w-3.5 h-3.5 text-rose-400" /> Flooded
+                      ) : marketItem?.surge === 'crash' || price <= drug.basePrice * 0.75 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-cyan-950/90 border border-cyan-600 text-cyan-300">
+                          <ArrowDownRight className="w-3.5 h-3.5 text-cyan-400" /> Glut 📉
                         </span>
                       ) : price > drug.basePrice ? (
                         <span className="text-emerald-400 inline-flex items-center gap-0.5 text-xs font-semibold">
-                          <ArrowUpRight className="w-3.5 h-3.5" /> Bull
+                          <ArrowUpRight className="w-3.5 h-3.5" /> Bull ▲
                         </span>
                       ) : (
-                        <span className="text-slate-400 inline-flex items-center gap-0.5 text-xs font-semibold">
-                          <ArrowDownRight className="w-3.5 h-3.5" /> Bear
+                        <span className="text-rose-400 inline-flex items-center gap-0.5 text-xs font-semibold">
+                          <ArrowDownRight className="w-3.5 h-3.5" /> Bear ▼
                         </span>
                       )}
 

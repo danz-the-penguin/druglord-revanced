@@ -39,6 +39,8 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [isFiring, setIsFiring] = useState(false);
+
   const isUtility = item.type === 'utility';
   const isArmor = item.type === 'armor';
   const isWeapon = item.type === 'weapon';
@@ -49,14 +51,31 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
 
   const playWeaponSound = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    setIsFiring(true);
+    setTimeout(() => setIsFiring(false), 240);
+
     if (item.id === 'rocket_launcher' || item.id === 'dynamite' || item.id === 'hand_grenade') {
       soundEngine.play('bomb');
-    } else if (item.id === 'desert_eagle' || item.id === 'barrett_m82' || item.id === 'shotgun') {
+    } else if (item.id === 'shotgun') {
+      soundEngine.play('shotgun');
+    } else if (item.id === 'machine_gun') {
+      soundEngine.play('machine_gun');
+    } else if (item.id === 'flame_thrower') {
+      soundEngine.play('flame_thrower');
+    } else if (item.id === 'knife') {
+      soundEngine.play('combat_knife');
+    } else if (item.id === 'flashbang') {
+      soundEngine.play('flashbang');
+    } else if (item.id === 'smoke_grenade') {
+      soundEngine.play('flame_thrower');
+    } else if (item.id === 'desert_eagle' || item.id === 'barrett_m82') {
       soundEngine.play('heavy_shot');
     } else if (item.type === 'weapon') {
       soundEngine.play('gunshot');
     } else if (item.id === 'emp_scrambler') {
       soundEngine.play('wiretap');
+    } else if (item.id === 'combat_medkit') {
+      soundEngine.play('heal');
     } else {
       soundEngine.play('reload');
     }
@@ -243,7 +262,7 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
         title="Hover to inspect stats • Click to pin preview"
       >
         {/* Prominent Showcase Weapon Visual */}
-        <WeaponImage item={item} size="showcase" className="w-full mb-3 shadow-lg" />
+        <WeaponImage item={item} size="showcase" isFiring={isFiring} className="w-full mb-3 shadow-lg" />
 
         <div className="space-y-1.5 flex-1">
           <div className="flex justify-between items-start gap-2">
@@ -272,10 +291,15 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
             <button
               type="button"
               onClick={playWeaponSound}
-              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-rose-400 hover:text-rose-300 transition-all cursor-pointer active:scale-90"
-              title="Test Fire Audio (Gunshot / Bomb Blast FX)"
+              className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer active:scale-90 font-mono text-xs font-bold ${
+                isFiring
+                  ? 'bg-rose-600 text-white border-rose-400 shadow-md shadow-rose-900/80 animate-pulse'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700/80 text-rose-400 hover:text-rose-300'
+              }`}
+              title="Test Fire Audio (Synthesized Gunshot / Blast FX)"
             >
               <Volume2 className="w-3.5 h-3.5" />
+              <span>{isWeapon ? 'Test Fire' : 'Audition'}</span>
             </button>
             <button
               onClick={handlePurchaseWithSound}
@@ -315,18 +339,32 @@ export const ArmoryPreviewCard: React.FC<ArmoryPreviewCardProps> = ({
             {/* Top Header Row */}
             <div className="flex items-start gap-4">
               <div className="shrink-0 p-1 rounded-2xl bg-slate-900 border border-slate-700/80 shadow-inner">
-                <WeaponImage item={item} size="lg" className="rounded-xl ring-1 ring-indigo-400/40" />
+                <WeaponImage item={item} size="lg" isFiring={isFiring} className="rounded-xl ring-1 ring-indigo-400/40" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${categoryColor}`}>
                     {categoryLabel}
                   </span>
-                  {isPinned && (
-                    <span className="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700 text-[10px] font-bold">
-                      Pinned
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={playWeaponSound}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border flex items-center gap-1 cursor-pointer transition-colors ${
+                        isFiring
+                          ? 'bg-rose-600 text-white border-rose-400'
+                          : 'bg-slate-900 text-rose-300 border-slate-700 hover:bg-slate-800'
+                      }`}
+                    >
+                      <Volume2 className="w-3 h-3" />
+                      <span>{isWeapon ? 'Fire' : 'Play'}</span>
+                    </button>
+                    {isPinned && (
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700 text-[10px] font-bold">
+                        Pinned
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <h4 className="text-base font-black text-slate-100 mt-1">{item.name}</h4>
                 <div className="text-xl font-black text-amber-400 mt-0.5">

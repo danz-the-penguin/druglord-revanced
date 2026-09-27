@@ -14,6 +14,12 @@ export type SoundEffect =
   | 'gunshot'
   | 'bomb'
   | 'heavy_shot'
+  | 'shotgun'
+  | 'machine_gun'
+  | 'flame_thrower'
+  | 'flashbang'
+  | 'combat_knife'
+  | 'explosion'
   | 'silencer'
   | 'wiretap'
   | 'reload'
@@ -180,6 +186,24 @@ export class SoundEngine {
           break;
         case 'heavy_shot':
           this.playHeavyShot();
+          break;
+        case 'shotgun':
+          this.playShotgun();
+          break;
+        case 'machine_gun':
+          this.playMachineGun();
+          break;
+        case 'flame_thrower':
+          this.playFlameThrower();
+          break;
+        case 'flashbang':
+          this.playFlashbang();
+          break;
+        case 'combat_knife':
+          this.playCombatKnife();
+          break;
+        case 'explosion':
+          this.playBomb();
           break;
         case 'silencer':
           this.playSilencer();
@@ -561,6 +585,284 @@ export class SoundEngine {
 
     noise.start(now);
     noise.stop(now + 0.4);
+  }
+
+  /**
+   * 12-Gauge Tactical Shotgun (Heavy buckshot concussive blast + mechanical racking pump)
+   */
+  private playShotgun(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Initial concussive sub boom (120Hz -> 24Hz)
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'triangle';
+    sub.frequency.setValueAtTime(120, now);
+    sub.frequency.exponentialRampToValueAtTime(24, now + 0.35);
+
+    subGain.gain.setValueAtTime(0.9, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+    sub.connect(subGain);
+    subGain.connect(this.masterGain);
+    sub.start(now);
+    sub.stop(now + 0.4);
+
+    // 2. Buckshot muzzle roar (wide noise burst)
+    const noiseSize = Math.floor(this.ctx.sampleRate * 0.32);
+    const noiseBuffer = this.ctx.createBuffer(1, noiseSize, this.ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseSize; i++) {
+      noiseData[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(1800, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.95, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start(now);
+    noise.stop(now + 0.33);
+
+    // 3. Mechanical slide racking back (+0.24s) and forward chambering (+0.36s)
+    [0.24, 0.36].forEach((timeOffset, idx) => {
+      if (!this.ctx || !this.masterGain) return;
+      const rack = this.ctx.createOscillator();
+      const rackGain = this.ctx.createGain();
+      rack.type = 'sawtooth';
+      rack.frequency.setValueAtTime(idx === 0 ? 950 : 1450, now + timeOffset);
+      rack.frequency.exponentialRampToValueAtTime(idx === 0 ? 550 : 850, now + timeOffset + 0.05);
+
+      rackGain.gain.setValueAtTime(0.3, now + timeOffset);
+      rackGain.gain.exponentialRampToValueAtTime(0.0001, now + timeOffset + 0.06);
+
+      rack.connect(rackGain);
+      rackGain.connect(this.masterGain);
+      rack.start(now + timeOffset);
+      rack.stop(now + timeOffset + 0.07);
+    });
+  }
+
+  /**
+   * Submachine Gun / Assault Rifle Burst (Rapid 4-round cycling burst + brass ejection)
+   */
+  private playMachineGun(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const numShots = 4;
+    const shotInterval = 0.072; // ~830 RPM cyclic rate
+
+    for (let s = 0; s < numShots; s++) {
+      const shotTime = now + s * shotInterval;
+
+      // Snappy muzzle crack
+      const noiseSize = Math.floor(this.ctx.sampleRate * 0.06);
+      const noiseBuffer = this.ctx.createBuffer(1, noiseSize, this.ctx.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseSize; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+
+      const noiseFilter = this.ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(2600, shotTime);
+      noiseFilter.Q.setValueAtTime(1.8, shotTime);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.7, shotTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, shotTime + 0.055);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(this.masterGain);
+      noise.start(shotTime);
+      noise.stop(shotTime + 0.06);
+
+      // Concussive pop
+      const thump = this.ctx.createOscillator();
+      const thumpGain = this.ctx.createGain();
+      thump.type = 'sine';
+      thump.frequency.setValueAtTime(200, shotTime);
+      thump.frequency.exponentialRampToValueAtTime(45, shotTime + 0.05);
+
+      thumpGain.gain.setValueAtTime(0.65, shotTime);
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, shotTime + 0.055);
+
+      thump.connect(thumpGain);
+      thumpGain.connect(this.masterGain);
+      thump.start(shotTime);
+      thump.stop(shotTime + 0.06);
+    }
+
+    // Brass shell casing tinkling on pavement at end of burst
+    const shellTime = now + numShots * shotInterval + 0.05;
+    const shell = this.ctx.createOscillator();
+    const shellGain = this.ctx.createGain();
+    shell.type = 'sine';
+    shell.frequency.setValueAtTime(4200, shellTime);
+    shell.frequency.exponentialRampToValueAtTime(2800, shellTime + 0.04);
+    shellGain.gain.setValueAtTime(0.15, shellTime);
+    shellGain.gain.exponentialRampToValueAtTime(0.0001, shellTime + 0.05);
+    shell.connect(shellGain);
+    shellGain.connect(this.masterGain);
+    shell.start(shellTime);
+    shell.stop(shellTime + 0.06);
+  }
+
+  /**
+   * Military Flamethrower (Igniter click + roaring pressurized napalm combustion whoosh)
+   */
+  private playFlameThrower(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Piezo igniter spark
+    const click = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    click.type = 'triangle';
+    click.frequency.setValueAtTime(2400, now);
+    clickGain.gain.setValueAtTime(0.4, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    click.connect(clickGain);
+    clickGain.connect(this.masterGain);
+    click.start(now);
+    click.stop(now + 0.035);
+
+    // 2. Roaring pressurized fuel combustion
+    const duration = 0.55;
+    const roarSize = Math.floor(this.ctx.sampleRate * duration);
+    const roarBuffer = this.ctx.createBuffer(1, roarSize, this.ctx.sampleRate);
+    const roarData = roarBuffer.getChannelData(0);
+    for (let i = 0; i < roarSize; i++) {
+      roarData[i] = Math.random() * 2 - 1;
+    }
+
+    const roarSource = this.ctx.createBufferSource();
+    roarSource.buffer = roarBuffer;
+
+    const roarFilter = this.ctx.createBiquadFilter();
+    roarFilter.type = 'lowpass';
+    roarFilter.frequency.setValueAtTime(350, now);
+    roarFilter.frequency.linearRampToValueAtTime(1400, now + 0.15);
+    roarFilter.frequency.exponentialRampToValueAtTime(220, now + duration);
+
+    const roarGain = this.ctx.createGain();
+    roarGain.gain.setValueAtTime(0.01, now);
+    roarGain.gain.linearRampToValueAtTime(0.85, now + 0.08);
+    roarGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    roarSource.connect(roarFilter);
+    roarFilter.connect(roarGain);
+    roarGain.connect(this.masterGain);
+    roarSource.start(now);
+    roarSource.stop(now + duration + 0.02);
+
+    // Low turbulent rumble
+    const rumble = this.ctx.createOscillator();
+    const rumbleGain = this.ctx.createGain();
+    rumble.type = 'sawtooth';
+    rumble.frequency.setValueAtTime(65, now + 0.05);
+    rumble.frequency.linearRampToValueAtTime(95, now + 0.2);
+    rumble.frequency.exponentialRampToValueAtTime(35, now + duration);
+    rumbleGain.gain.setValueAtTime(0.35, now + 0.05);
+    rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    rumble.connect(rumbleGain);
+    rumbleGain.connect(this.masterGain);
+    rumble.start(now + 0.05);
+    rumble.stop(now + duration + 0.02);
+  }
+
+  /**
+   * M84 Stun Flashbang (Concussive detonating crack + high-frequency 3.9kHz ear-ringing tinnitus)
+   */
+  private playFlashbang(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // Sharp blast pop
+    const popSize = Math.floor(this.ctx.sampleRate * 0.1);
+    const popBuffer = this.ctx.createBuffer(1, popSize, this.ctx.sampleRate);
+    const popData = popBuffer.getChannelData(0);
+    for (let i = 0; i < popSize; i++) {
+      popData[i] = Math.random() * 2 - 1;
+    }
+    const pop = this.ctx.createBufferSource();
+    pop.buffer = popBuffer;
+
+    const popFilter = this.ctx.createBiquadFilter();
+    popFilter.type = 'bandpass';
+    popFilter.frequency.setValueAtTime(1600, now);
+    popFilter.Q.setValueAtTime(2.0, now);
+
+    const popGain = this.ctx.createGain();
+    popGain.gain.setValueAtTime(0.85, now);
+    popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    pop.connect(popFilter);
+    popFilter.connect(popGain);
+    popGain.connect(this.masterGain);
+    pop.start(now);
+    pop.stop(now + 0.1);
+
+    // High tinnitus ear ringing (3900Hz decaying tone)
+    const ring = this.ctx.createOscillator();
+    const ringGain = this.ctx.createGain();
+    ring.type = 'sine';
+    ring.frequency.setValueAtTime(3920, now + 0.03);
+    ringGain.gain.setValueAtTime(0.35, now + 0.03);
+    ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+
+    ring.connect(ringGain);
+    ringGain.connect(this.masterGain);
+    ring.start(now + 0.03);
+    ring.stop(now + 0.72);
+  }
+
+  /**
+   * Tactical Combat Knife (High-speed metallic slash whoosh)
+   */
+  private playCombatKnife(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    const size = Math.floor(this.ctx.sampleRate * 0.16);
+    const buffer = this.ctx.createBuffer(1, size, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < size; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(3200, now);
+    filter.frequency.exponentialRampToValueAtTime(800, now + 0.14);
+    filter.Q.setValueAtTime(4.0, now);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.65, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    src.start(now);
+    src.stop(now + 0.16);
   }
 
   /**

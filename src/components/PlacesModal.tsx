@@ -2949,21 +2949,67 @@ export const PlacesModal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-900/90 p-4 rounded-xl border border-rose-900/60 text-right min-w-[200px]">
+                  <div className="bg-slate-900/90 p-4 rounded-xl border border-rose-900/60 text-right min-w-[240px]">
                     <div className="text-[10px] text-slate-400 uppercase">Outstanding Debt Balance</div>
                     <div className="text-3xl font-black text-rose-400 mt-0.5">
                       ${player.debt.toLocaleString()}
                     </div>
                     <div
-                      className={`text-xs font-black mt-1 ${
+                      className={`text-xs font-black mt-1 flex items-center justify-end gap-1.5 ${
                         player.loanDaysLeft <= 1 ? 'text-red-400 animate-pulse' : 'text-amber-400'
                       }`}
                     >
-                      {player.loanDaysLeft > 0 ? `⏳ ${player.loanDaysLeft} days remaining` : '🚨 OVERDUE! Enforcers En Route'}
+                      {player.loanDaysLeft > 0 ? (
+                        <span>⏳ {player.loanDaysLeft} days remaining in grace period</span>
+                      ) : (
+                        <span>🚨 OVERDUE! Armed Hit Squad En Route</span>
+                      )}
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
-                      Vig: {Math.round((activeShark?.interestRate ?? 0.1) * 100)}%/day compounding
+                    <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-end gap-2 border-t border-slate-800 pt-1">
+                      <span>Daily Compounding Vig:</span>
+                      <strong className="text-rose-300 font-mono">
+                        +${Math.round(player.debt * (activeShark?.interestRate ?? 0.1)).toLocaleString()} / day
+                      </strong>
                     </div>
+                  </div>
+                </div>
+
+                {/* Threat Proximity & Default Radar */}
+                <div className="bg-slate-900/80 p-3.5 rounded-xl border border-rose-900/40 space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase">
+                    <span className="text-rose-400 flex items-center gap-1.5">
+                      <Skull className="w-3.5 h-3.5" /> Enforcer Proximity & Threat Radar
+                    </span>
+                    <span className="font-mono text-slate-400">
+                      Threat Index: {activeShark?.dangerRating ?? 3}/5 Stars
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        player.loanDaysLeft <= 0
+                          ? 'w-full bg-red-600 animate-pulse'
+                          : player.loanDaysLeft === 1
+                          ? 'w-4/5 bg-amber-500'
+                          : player.loanDaysLeft === 2
+                          ? 'w-3/5 bg-yellow-500'
+                          : 'w-1/4 bg-emerald-500'
+                      }`}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-400 pt-0.5">
+                    <span>
+                      {player.loanDaysLeft > 2
+                        ? '🟢 Safe Window: No immediate armed action'
+                        : player.loanDaysLeft === 2
+                        ? '🟡 Warning Issued: Harassment of front accounts'
+                        : player.loanDaysLeft === 1
+                        ? '🟠 Critical: Hit team staging at regional airport'
+                        : '🔴 ARMED AMBUSH ACTIVE: Enforcers hunting you across all cities!'}
+                    </span>
+                    <span className="text-rose-400 font-bold">
+                      Collateral: {activeShark?.collateralAccepted?.join(', ') || 'Liquid Cash & Assets'}
+                    </span>
                   </div>
                 </div>
 
@@ -3182,6 +3228,17 @@ export const PlacesModal: React.FC = () => {
                     const earlyFee = Math.round((shark.earlyFeeRate ?? shark.interestRate) * 100);
                     const isSelected = selectedSharkId === shark.id;
 
+                    const threatLevelTitle =
+                      shark.dangerRating === 1
+                        ? 'Level 1 Threat • Street Muscle & Bats'
+                        : shark.dangerRating === 2
+                        ? 'Level 2 Threat • Dockyard Stevedores'
+                        : shark.dangerRating === 3
+                        ? 'Level 3 Threat • Armed Chop-Shop Recovery'
+                        : shark.dangerRating === 4
+                        ? 'Level 4 Threat • Cartel Sicario Death Squad'
+                        : 'Level 5 Threat • Military Spetsnaz / Triad Red Pole';
+
                     return (
                       <div
                         key={shark.id}
@@ -3213,54 +3270,78 @@ export const PlacesModal: React.FC = () => {
                                 {shark.syndicate} • <span className="text-amber-400">{shark.turf}</span>
                               </div>
 
-                              {/* Danger Rating Stars */}
-                              <div className="flex items-center gap-1 mt-1.5">
-                                <span className="text-[10px] uppercase text-slate-500 mr-1">Threat:</span>
-                                {Array.from({ length: 5 }).map((_, idx) => (
-                                  <Star
-                                    key={idx}
-                                    className={`w-3 h-3 ${
-                                      idx < (shark.dangerRating ?? 3)
-                                        ? 'fill-amber-400 text-amber-400'
-                                        : 'text-slate-800'
-                                    }`}
-                                  />
-                                ))}
+                              {/* Threat Level & Danger Rating Stars */}
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] font-bold text-slate-300">
+                                  {threatLevelTitle}
+                                </span>
+                                <div className="flex items-center gap-0.5">
+                                  {Array.from({ length: 5 }).map((_, idx) => (
+                                    <Star
+                                      key={idx}
+                                      className={`w-3 h-3 ${
+                                        idx < (shark.dangerRating ?? 3)
+                                          ? 'fill-amber-400 text-amber-400'
+                                          : 'text-slate-800'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           </div>
 
                           {/* Menacing Warning Quote */}
                           {shark.warningQuote && (
-                            <div className="p-2.5 bg-slate-900/80 border-l-2 border-rose-600 rounded-r-xl text-[11px] italic text-slate-300 leading-relaxed">
+                            <div className="p-2.5 bg-slate-900/80 border-l-2 border-rose-600 rounded-r-xl text-[11px] italic text-slate-300 leading-relaxed font-mono">
                               &ldquo;{shark.warningQuote}&rdquo;
                             </div>
                           )}
 
                           {/* Description & Lore */}
-                          <p className="text-xs text-slate-400 leading-relaxed">
+                          <p className="text-xs text-slate-300 leading-relaxed">
                             {shark.description}
                           </p>
 
                           {shark.enforcementLore && (
-                            <p className="text-[11px] text-slate-500 italic leading-tight">
-                              Enforcement: {shark.enforcementLore}
-                            </p>
-                          )}
-
-                          {/* Collection Tags */}
-                          {shark.collectionMethods && (
-                            <div className="flex flex-wrap gap-1 pt-1">
-                              {shark.collectionMethods.map((m, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-rose-400 font-bold"
-                                >
-                                  ⚡ {m}
-                                </span>
-                              ))}
+                            <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+                              <strong className="text-rose-400 block text-[10px] uppercase font-bold mb-0.5">
+                                Enforcement Muscle Protocol:
+                              </strong>
+                              {shark.enforcementLore}
                             </div>
                           )}
+
+                          {/* Collection Tags & Seizable Collateral */}
+                          <div className="space-y-1.5 pt-1">
+                            {shark.collectionMethods && (
+                              <div className="flex flex-wrap gap-1">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase self-center mr-1">Methods:</span>
+                                {shark.collectionMethods.map((m, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-rose-400 font-bold"
+                                  >
+                                    ⚡ {m}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {shark.collateralAccepted && (
+                              <div className="flex flex-wrap gap-1">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase self-center mr-1">Collateral:</span>
+                                {shark.collateralAccepted.map((c, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-slate-300"
+                                  >
+                                    🔒 {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
 
                           {/* Financial Specs Bar */}
                           <div className="grid grid-cols-3 gap-2 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 text-[10px] font-mono text-center">
@@ -3300,13 +3381,16 @@ export const PlacesModal: React.FC = () => {
                   );
 
                   // Calculate projections
-                  const projDay1 = Math.round(loanAmount * (1 + selectedShark.interestRate));
-                  const projDay3 = Math.round(loanAmount * Math.pow(1 + selectedShark.interestRate, 3));
-                  const projDay7 = Math.round(loanAmount * Math.pow(1 + selectedShark.interestRate, 7));
+                  const calcAmount = loanAmount > 0 ? loanAmount : 10000;
+                  const projDay1 = Math.round(calcAmount * (1 + selectedShark.interestRate));
+                  const projDay2 = Math.round(calcAmount * Math.pow(1 + selectedShark.interestRate, 2));
+                  const projDay3 = Math.round(calcAmount * Math.pow(1 + selectedShark.interestRate, 3));
+                  const projDay5 = Math.round(calcAmount * Math.pow(1 + selectedShark.interestRate, 5));
                   const projExpiry = Math.round(
-                    loanAmount * Math.pow(1 + selectedShark.interestRate, selectedShark.repayDays)
+                    calcAmount * Math.pow(1 + selectedShark.interestRate, selectedShark.repayDays)
                   );
-                  const totalVig = Math.max(0, projExpiry - loanAmount);
+                  const totalVig = Math.max(0, projExpiry - calcAmount);
+                  const dailyVigRate = Math.round(calcAmount * selectedShark.interestRate);
 
                   return (
                     <div className="bg-slate-950/90 p-5 rounded-2xl border-2 border-rose-500/70 shadow-2xl space-y-4">
@@ -3318,9 +3402,12 @@ export const PlacesModal: React.FC = () => {
                           <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
                             {selectedShark.name} ({selectedShark.title})
                           </h4>
+                          <div className="text-xs text-slate-400 mt-0.5">
+                            {selectedShark.syndicate} • {selectedShark.turf}
+                          </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-slate-500 uppercase block">Max Credit Limit</span>
+                          <span className="text-[10px] text-slate-500 uppercase block">Max Syndicate Credit Limit</span>
                           <span className="text-lg font-black text-emerald-400 font-mono">
                             ${Math.round(maxAvailableLoan).toLocaleString()}
                           </span>
@@ -3330,7 +3417,7 @@ export const PlacesModal: React.FC = () => {
                       {/* Presets */}
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-slate-400 font-bold mr-1">Quick Presets:</span>
-                        {[5000, 25000, 100000, 500000].map((amt) => (
+                        {[5000, 25000, 100000, 250000, 500000, 1000000, 2500000].map((amt) => (
                           <button
                             key={amt}
                             type="button"
@@ -3366,70 +3453,92 @@ export const PlacesModal: React.FC = () => {
                       />
 
                       {/* Live Compounding Amortization Breakdown */}
-                      {loanAmount > 0 && (
-                        <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
-                          <div className="flex justify-between items-center text-[11px] font-bold text-amber-400 uppercase">
-                            <span className="flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5" /> Compounding Vig Amortization Schedule
-                            </span>
-                            <span className="text-slate-400 font-normal">
-                              Daily Rate: {Math.round(selectedShark.interestRate * 100)}%/day
-                            </span>
-                          </div>
+                      <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3 text-xs font-mono">
+                        <div className="flex justify-between items-center text-[11px] font-bold text-amber-400 uppercase">
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" /> Compounding Vig Amortization Schedule {loanAmount <= 0 && '(Baseline $10k Example)'}
+                          </span>
+                          <span className="text-slate-400 font-normal">
+                            Daily Rate: {Math.round(selectedShark.interestRate * 100)}%/day • +${dailyVigRate.toLocaleString()}/day
+                          </span>
+                        </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center pt-1 font-mono">
-                            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                              <div className="text-[10px] text-slate-500">Day 1 (+{Math.round(selectedShark.interestRate * 100)}%)</div>
-                              <div className="font-bold text-slate-200 mt-0.5">
-                                ${projDay1.toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                              <div className="text-[10px] text-slate-500">Day 3 Compounded</div>
-                              <div className="font-bold text-slate-200 mt-0.5">
-                                ${projDay3.toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                              <div className="text-[10px] text-slate-500">Day 7 Compounded</div>
-                              <div className="font-bold text-amber-400 mt-0.5">
-                                ${projDay7.toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="p-2 rounded-lg bg-slate-950 border border-rose-900/80">
-                              <div className="text-[10px] text-rose-400">Day {selectedShark.repayDays} Maturity</div>
-                              <div className="font-black text-rose-400 mt-0.5">
-                                ${projExpiry.toLocaleString()}
-                              </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center pt-1 font-mono">
+                          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                            <div className="text-[10px] text-slate-500">Day 1 (+{Math.round(selectedShark.interestRate * 100)}%)</div>
+                            <div className="font-bold text-slate-200 mt-0.5">
+                              ${projDay1.toLocaleString()}
                             </div>
                           </div>
-
-                          {/* Verbose Enforcement & Collateral Dossier */}
-                          <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-800 space-y-2 text-[11px]">
-                            <div className="text-rose-400 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                              <Skull className="w-3.5 h-3.5" /> Enforcement Clause & Overdue Penalty:
+                          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                            <div className="text-[10px] text-slate-500">Day 2 Compounded</div>
+                            <div className="font-bold text-slate-200 mt-0.5">
+                              ${projDay2.toLocaleString()}
                             </div>
-                            <p className="text-slate-300 leading-relaxed">
-                              Should the note mature without full settlement on Day {selectedShark.repayDays}, {selectedShark.name}&apos;s syndicate dispatch triggers immediate armed enforcement. A cartel hit team (Threat Rating: {selectedShark.dangerRating}/5) will intercept you in any global jurisdiction. Defaulting authorizes unilateral seizure of your safehouses, aircraft fleet, and street inventory.
-                            </p>
-                            {selectedShark.collateralAccepted && (
-                              <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[10px]">
-                                <span className="text-slate-500 uppercase font-bold">Designated Collateral:</span>
-                                {selectedShark.collateralAccepted.map((col, idx) => (
-                                  <span key={idx} className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
-                                    🔒 {col}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
                           </div>
-
-                          <div className="pt-2 border-t border-slate-800/80 flex justify-between text-slate-400 text-[11px]">
-                            <span>Total Compounded Vig Cost (Interest):</span>
-                            <span className="font-bold text-rose-400 font-mono">+${totalVig.toLocaleString()}</span>
+                          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                            <div className="text-[10px] text-slate-500">Day 3 Compounded</div>
+                            <div className="font-bold text-slate-200 mt-0.5">
+                              ${projDay3.toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                            <div className="text-[10px] text-slate-500">Day 5 Compounded</div>
+                            <div className="font-bold text-amber-400 mt-0.5">
+                              ${projDay5.toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-slate-950 border border-rose-900/80">
+                            <div className="text-[10px] text-rose-400 font-bold">Day {selectedShark.repayDays} Maturity</div>
+                            <div className="font-black text-rose-400 mt-0.5">
+                              ${projExpiry.toLocaleString()}
+                            </div>
                           </div>
                         </div>
-                      )}
+
+                        {/* Step-by-Step Retaliation Protocol Roadmap */}
+                        <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-800 space-y-2 text-[11px]">
+                          <div className="text-rose-400 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                            <Skull className="w-3.5 h-3.5" /> Syndicate Enforcement Escalation Roadmap (Delinquency Protocol):
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                            <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                              <span className="text-[10px] text-amber-400 font-bold block uppercase">Phase 1: Grace Expiry (Day 0)</span>
+                              <p className="text-[10px] text-slate-300 leading-tight">
+                                Title III wiretaps intercept communications. Punitive daily vig charges applied immediately.
+                              </p>
+                            </div>
+                            <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                              <span className="text-[10px] text-orange-400 font-bold block uppercase">Phase 2: Days 1–2 Overdue</span>
+                              <p className="text-[10px] text-slate-300 leading-tight">
+                                Safehouses locked out with property liens; local safehouse vaults frozen by cartel crews.
+                              </p>
+                            </div>
+                            <div className="p-2 rounded-lg bg-slate-900 border border-rose-900 space-y-1">
+                              <span className="text-[10px] text-rose-400 font-bold block uppercase">Phase 3: Days 3+ Overdue</span>
+                              <p className="text-[10px] text-slate-300 leading-tight">
+                                Cartel hit squads (Rating {selectedShark.dangerRating}/5) intercept airport arrivals and attack on sight!
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedShark.collateralAccepted && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[10px]">
+                              <span className="text-slate-500 uppercase font-bold">Designated Collateral Seizable:</span>
+                              {selectedShark.collateralAccepted.map((col, idx) => (
+                                <span key={idx} className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
+                                  🔒 {col}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-800/80 flex justify-between text-slate-400 text-[11px]">
+                          <span>Total Compounded Vig Cost (Interest):</span>
+                          <span className="font-bold text-rose-400 font-mono">+${totalVig.toLocaleString()}</span>
+                        </div>
+                      </div>
 
                       <button
                         onClick={handleBorrow}
