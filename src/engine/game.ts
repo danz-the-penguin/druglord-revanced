@@ -102,6 +102,10 @@ import {
   getStrikeContracts,
   executeStrikeContract,
 } from './syndicateWarRoom';
+import {
+  INITIAL_BURNER_MESSAGES,
+  generateDailyBurnerMessages,
+} from './burnerPhone';
 
 export {
   hasActiveOfficial,
@@ -157,6 +161,8 @@ export {
   collectProtectionRacket,
   getStrikeContracts,
   executeStrikeContract,
+  INITIAL_BURNER_MESSAGES,
+  generateDailyBurnerMessages,
 };
 
 export interface GameEngineState {
@@ -333,6 +339,7 @@ export function createInitialState(durationMode: GameDurationMode = 'classic'): 
       godMode: false,
       extraCapacity: 0,
     },
+    burnerMessages: [...INITIAL_BURNER_MESSAGES],
   };
 
   memoryMirror.syncFromState(player, 0, 0);
@@ -1987,6 +1994,15 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
   // 8. Random daily encounters (only if not already in combat)
   if (!state.player.activeEncounter && !isTravel) {
     rollRandomEncounter(state);
+  }
+
+  // 9. Generate Daily Encrypted Burner Transmissions
+  const dailyBurner = generateDailyBurnerMessages(state.player);
+  if (dailyBurner.length > 0) {
+    state.player.burnerMessages = [
+      ...(state.player.burnerMessages || []),
+      ...dailyBurner,
+    ];
   }
 }
 

@@ -16,12 +16,15 @@ import {
   Crown,
   Share2,
   Check,
+  Skull,
+  User,
 } from 'lucide-react';
 import { getTotalWealth } from '../engine/game';
-import { RANK_MAP } from '../engine/constants';
-import { DURATION_MODES, GameDurationMode } from '../engine/types';
+import { RANK_MAP, WEAPON_MAP } from '../engine/constants';
+import { DURATION_MODES, GameDurationMode, Weapon } from '../engine/types';
 import { soundEngine } from '../utils/audio';
 import { calculateKingpinScore, generateShareableDossierText } from '../engine/hallOfFame';
+import { WeaponImage } from './WeaponImage';
 
 export const CombatModal: React.FC = () => {
   const player = useGameStore((s) => s.player);
@@ -44,10 +47,14 @@ export const CombatModal: React.FC = () => {
   const [alias, setAlias] = useState('Kingpin');
   const [submittedEntry, setSubmittedEntry] = useState<any>(null);
   const [copiedDossier, setCopiedDossier] = useState(false);
+  const [isFiringTracer, setIsFiringTracer] = useState(false);
 
   const encounter = player.activeEncounter;
 
   const playAttackSound = () => {
+    setIsFiringTracer(true);
+    setTimeout(() => setIsFiringTracer(false), 450);
+
     const weapons = player.weapons || {};
     if ((weapons['rocket_launcher'] ?? 0) > 0 || (weapons['dynamite'] ?? 0) > 0 || (weapons['hand_grenade'] ?? 0) > 0) {
       soundEngine.play('bomb');
@@ -347,16 +354,85 @@ export const CombatModal: React.FC = () => {
 
   if (!encounter) return null;
 
+  // Determine highest-tier primary weapon equipped
+  const weaponPriority = [
+    'rocket_launcher',
+    'barrett_m82',
+    'flame_thrower',
+    'dynamite',
+    'hand_grenade',
+    'shotgun',
+    'machine_gun',
+    'desert_eagle',
+    'pistol',
+    'knife',
+  ];
+  const equippedWeaponId = weaponPriority.find((wId) => (player.weapons?.[wId] ?? 0) > 0) || 'pistol';
+  const primaryWeapon: Weapon = WEAPON_MAP.get(equippedWeaponId) ?? {
+    id: 'pistol',
+    name: '9mm Service Pistol',
+    price: 250,
+    damage: 20,
+    type: 'weapon',
+    description: 'Standard issue tactical firearm',
+  };
+  const equippedArmor = player.armor ? WEAPON_MAP.get(player.armor.id) : null;
+
+  const getEnemyVisual = (enemyId: string) => {
+    switch (enemyId) {
+      case 'dea_tactical':
+        return {
+          title: 'FEDERAL DEA TACTICAL STRIKE',
+          badgeColor: 'text-amber-400 bg-amber-950/80 border-amber-600',
+          borderColor: 'border-amber-600/80',
+          icon: ShieldAlert,
+        };
+      case 'federal_customs':
+      case 'airport_security':
+        return {
+          title: 'AIRPORT CUSTOMS INTERDICTION',
+          badgeColor: 'text-red-400 bg-red-950/80 border-red-600',
+          borderColor: 'border-red-600/80',
+          icon: ShieldAlert,
+        };
+      case 'police':
+      case 'swat':
+        return {
+          title: 'METRO SWAT RIOT SQUAD',
+          badgeColor: 'text-sky-400 bg-sky-950/80 border-sky-600',
+          borderColor: 'border-sky-600/80',
+          icon: ShieldAlert,
+        };
+      case 'shark_enforcers':
+        return {
+          title: 'LOAN SHARK ENFORCERS',
+          badgeColor: 'text-rose-400 bg-rose-950/80 border-rose-600',
+          borderColor: 'border-rose-600/80',
+          icon: Skull,
+        };
+      default:
+        return {
+          title: 'RIVAL SYNDICATE HIT SQUAD',
+          badgeColor: 'text-purple-400 bg-purple-950/80 border-purple-600',
+          borderColor: 'border-purple-600/80',
+          icon: Crosshair,
+        };
+    }
+  };
+
+  const enemyVisual = getEnemyVisual(encounter.enemyId);
+  const EnemyIcon = enemyVisual.icon;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 font-mono">
-      <div className="bg-slate-900 border-2 border-amber-600/80 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-3 sm:p-4 font-mono">
+      <div className="bg-slate-900 border-2 border-amber-600/80 rounded-3xl w-full max-w-2xl sm:max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[92vh]">
           {/* Header */}
-          <div className="px-5 py-3.5 bg-amber-950/40 border-b border-amber-800/80 flex items-center justify-between shrink-0">
+          <div className="px-5 py-3.5 bg-gradient-to-r from-amber-950/70 via-slate-900 to-slate-900 border-b border-amber-800/80 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <ShieldAlert className="w-6 h-6 text-amber-400 animate-pulse" />
               <div>
                 <h3 className="font-black text-amber-300 uppercase tracking-wider text-sm">
-                  Hostile Encounter!
+                  Tactical Combat Arena
                 </h3>
                 <p className="text-xs text-amber-400/80">
                   {encounter.count}x {encounter.enemyName}
@@ -364,11 +440,11 @@ export const CombatModal: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded bg-slate-950 border border-slate-800 p-0.5 text-[10px]">
+              <div className="flex rounded-xl bg-slate-950 border border-slate-800 p-0.5 text-[10px]">
                 <button
                   type="button"
                   onClick={() => setCombatMode('tactical')}
-                  className={`px-2 py-0.5 rounded font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded-lg font-bold transition-all ${
                     combatMode === 'tactical' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
                   }`}
                 >
@@ -377,55 +453,157 @@ export const CombatModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCombatMode('quick')}
-                  className={`px-2 py-0.5 rounded font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded-lg font-bold transition-all ${
                     combatMode === 'quick' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
                   }`}
                 >
                   Quick
                 </button>
               </div>
-              <span className="px-2 py-0.5 rounded bg-amber-900/60 border border-amber-700 text-amber-200 text-[10px] font-bold uppercase">
+              <span className="px-2.5 py-1 rounded-xl bg-amber-900/60 border border-amber-700 text-amber-200 text-[10px] font-bold uppercase">
                 Danger {encounter.danger}/10
               </span>
             </div>
           </div>
 
           {/* Body */}
-          <div className="p-4 space-y-3.5 text-xs overflow-y-auto">
-            {/* Status Bars */}
-            <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-bold">Player Vitals:</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-rose-400 font-bold font-mono">{player.health}% HP</span>
-                  {player.armor && (
-                    <span className="text-sky-400 text-[10px] font-mono">
-                      Armor: {player.armor.durability} DEF
-                    </span>
+          <div className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto">
+            {/* Visual Combat Arena Standoff */}
+            <div className="relative p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800 overflow-hidden">
+              {/* Animated Bullet Tracer FX */}
+              {isFiringTracer && (
+                <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+                  <div className="absolute top-1/2 left-10 right-10 h-1 bg-gradient-to-r from-amber-400 via-yellow-200 to-transparent shadow-[0_0_12px_#fbbf24] animate-ping" />
+                  <div className="absolute top-[48%] left-16 right-16 h-0.5 bg-white shadow-[0_0_8px_#ffffff]" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 relative z-10">
+                {/* Left Side: Player Commander Card */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/60 flex items-center justify-center text-emerald-400 font-black">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-100 text-xs">{alias || 'Cartel Commander'}</div>
+                        <div className="text-[10px] text-emerald-400 font-semibold uppercase">Cartel Commander</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">R{tacticalCombatRound}</span>
+                  </div>
+
+                  {/* HP & Armor Gauges */}
+                  <div className="space-y-1.5">
+                    <div>
+                      <div className="flex justify-between text-[10px] font-mono">
+                        <span className="text-slate-400">Vitals</span>
+                        <span className={`font-bold ${player.health > 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {player.health}% HP
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-0.5">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            player.health > 50 ? 'bg-emerald-500' : player.health > 25 ? 'bg-amber-500' : 'bg-red-600 animate-pulse'
+                          }`}
+                          style={{ width: `${Math.max(0, player.health)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {player.armor && (
+                      <div>
+                        <div className="flex justify-between text-[10px] font-mono">
+                          <span className="text-sky-400">{equippedArmor?.name ?? 'Armor Protection'}</span>
+                          <span className="text-sky-300 font-bold">{player.armor.durability} DEF</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-0.5">
+                          <div
+                            className="h-full bg-sky-500 transition-all duration-300"
+                            style={{ width: `${Math.min(100, (player.armor.durability / 100) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Equipped Weapon Badge */}
+                  <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-2.5">
+                    <WeaponImage item={primaryWeapon} size="sm" isFiring={isFiringTracer} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-200 text-xs truncate">{primaryWeapon.name}</div>
+                      <div className="text-[10px] text-amber-400 font-mono">
+                        DMG: {primaryWeapon.damage ?? 20} Power
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cover Status Badge */}
+                  {combatCoverActive && (
+                    <div className="px-2 py-1 rounded-lg bg-sky-950/90 border border-sky-500/60 text-sky-300 text-[10px] font-bold flex items-center gap-1.5">
+                      <Shield className="w-3 h-3 text-sky-400" />
+                      <span>Behind Cover: -50% Incoming Damage</span>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-bold">Hostiles:</span>
-                <span className="text-amber-400 font-bold font-mono">{encounter.count}x {encounter.enemyName}</span>
-              </div>
+                {/* Right Side: Hostile Enemy Card */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-500/60 flex items-center justify-center text-red-400 font-black">
+                        <EnemyIcon className="w-4 h-4 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-100 text-xs truncate max-w-[140px] sm:max-w-none">
+                          {encounter.enemyName}
+                        </div>
+                        <div className="text-[10px] text-red-400 font-semibold uppercase">{enemyVisual.title}</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-300 font-bold">
+                      {encounter.count} Hostiles
+                    </span>
+                  </div>
 
-              {/* Status Badges */}
-              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-800/80 text-[10px] font-mono">
-                {combatCoverActive && (
-                  <span className="px-2 py-0.5 rounded bg-sky-950 border border-sky-500/60 text-sky-300 font-bold">
-                    🛡️ IN COVER (-50% DMG)
-                  </span>
-                )}
-                {enemyBlindedRounds > 0 && (
-                  <span className="px-2 py-0.5 rounded bg-amber-950 border border-amber-500/60 text-amber-300 font-bold animate-pulse">
-                    🕶️ ENEMY BLINDED ({enemyBlindedRounds}R)
-                  </span>
-                )}
-                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
-                  Round {tacticalCombatRound}
-                </span>
+                  {/* Enemy Threat Danger Gauge */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-mono">
+                      <span className="text-slate-400">Threat Rating</span>
+                      <span className="text-rose-400 font-bold">{encounter.danger} / 10 Danger</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 to-rose-600 transition-all duration-300"
+                        style={{ width: `${Math.min(100, (encounter.danger / 10) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Squad Count Indicators */}
+                  <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">Active Squad Formation:</span>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(6, encounter.count) }).map((_, i) => (
+                        <span key={i} className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hostile Debuff Badges */}
+                  <div className="flex flex-wrap gap-1">
+                    {enemyBlindedRounds > 0 && (
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-950 border border-amber-500/60 text-amber-300 text-[10px] font-bold animate-pulse">
+                        🕶️ BLINDED ({enemyBlindedRounds}R)
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 text-[10px]">
+                      Engaged in Firefight
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 

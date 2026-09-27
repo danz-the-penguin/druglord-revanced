@@ -376,6 +376,7 @@ export interface PlayerState {
   aircraftFleetState?: Record<string, AircraftState>;
   syndicateStrikeContracts?: SyndicateStrikeContract[];
   lastRacketCollectedDay?: number;
+  burnerMessages?: BurnerMessage[];
   stats?: PlayerStats;
   cheats: {
     godMode: boolean;
@@ -506,4 +507,16 @@ export interface HostileTakeoverEvent {
   daysLeft: number;
   status: 'active' | 'repelled' | 'bought_out' | 'tendered';
 }
+
+export interface BurnerMessage {
+  id: string;
+  sender: string;
+  role: 'shark' | 'syndicate' | 'informant' | 'banker' | 'police' | 'front';
+  text: string;
+  day: number;
+  read: boolean;
+  actionType?: 'pay_shark' | 'open_syndicate' | 'open_market' | 'dismiss';
+  actionLabel?: string;
+}
+
 

@@ -187,6 +187,16 @@ export interface GameStore extends GameEngineState {
     useOwnedAircraft?: boolean
   ) => { success: boolean; message: string };
 
+  // Cartel Executive Penthouse Modal
+  isPenthouseOpen: boolean;
+  openPenthouse: () => void;
+  closePenthouse: () => void;
+
+  // Encrypted Burner Phone Messages
+  markBurnerMessageRead: (messageId: string) => void;
+  dismissBurnerMessage: (messageId: string) => void;
+  clearReadBurnerMessages: () => void;
+
   // Private Aircraft Fleet & Hangars
   buyAircraftAction: (aircraftId: string) => { success: boolean; message: string };
   selectActiveAircraftAction: (aircraftId: string | null) => { success: boolean; message: string };
@@ -527,6 +537,56 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
     closeFlightBoard: () => {
       soundEngine.play('click');
       set({ isFlightBoardOpen: false });
+    },
+
+    // Cartel Executive Penthouse Modal
+    isPenthouseOpen: false,
+    openPenthouse: () => {
+      soundEngine.play('click');
+      set({ isPenthouseOpen: true });
+    },
+    closePenthouse: () => {
+      soundEngine.play('click');
+      set({ isPenthouseOpen: false });
+    },
+
+    // Encrypted Burner Phone Messages
+    markBurnerMessageRead: (messageId: string) => {
+      set((state) => {
+        const msgs = (state.player.burnerMessages || []).map((m) =>
+          m.id === messageId ? { ...m, read: true } : m
+        );
+        return {
+          player: {
+            ...state.player,
+            burnerMessages: msgs,
+          },
+        };
+      });
+    },
+
+    dismissBurnerMessage: (messageId: string) => {
+      set((state) => {
+        const msgs = (state.player.burnerMessages || []).filter((m) => m.id !== messageId);
+        return {
+          player: {
+            ...state.player,
+            burnerMessages: msgs,
+          },
+        };
+      });
+    },
+
+    clearReadBurnerMessages: () => {
+      set((state) => {
+        const msgs = (state.player.burnerMessages || []).filter((m) => !m.read);
+        return {
+          player: {
+            ...state.player,
+            burnerMessages: msgs,
+          },
+        };
+      });
     },
 
     // Daily Challenge & Cartel Bounty Board Modal

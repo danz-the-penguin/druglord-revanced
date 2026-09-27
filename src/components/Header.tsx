@@ -33,6 +33,7 @@ import {
   ChevronDown,
   ChevronUp,
   Tv,
+  Crown,
 } from 'lucide-react';
 import { AnimatedCounter } from './AnimatedCounter';
 
@@ -46,6 +47,7 @@ export const Header: React.FC = () => {
   const openGlobalAnalytics = useGameStore((s) => s.openGlobalAnalytics);
   const openFlightBoard = useGameStore((s) => s.openFlightBoard);
   const openSyndicateModal = useGameStore((s) => s.openSyndicateModal);
+  const openPenthouse = useGameStore((s) => s.openPenthouse);
   const lastSavedAt = useGameStore((s) => s.lastSavedAt);
   const fontScale = useGameStore((s) => s.fontScale);
   const setFontScale = useGameStore((s) => s.setFontScale);
@@ -300,6 +302,19 @@ export const Header: React.FC = () => {
               >
                 <Handshake className="w-4 h-4 text-rose-400" />
                 <span>Cartels</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPenthouse();
+                  setIsToolsOpen(false);
+                }}
+                className="py-2 px-1.5 rounded-xl bg-amber-950/70 hover:bg-amber-900 border border-amber-600/80 text-amber-300 text-[11px] font-bold flex flex-col items-center justify-center gap-1 active:scale-95 col-span-3"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span>Cartel Executive Penthouse [👑]</span>
+                </div>
               </button>
 
               <button
@@ -614,6 +629,15 @@ export const Header: React.FC = () => {
             >
               <Handshake className="w-3.5 h-3.5 text-rose-400" />
               <span>CARTELS</span>
+            </button>
+
+            <button
+              onClick={() => openPenthouse()}
+              className="px-2.5 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-600/80 text-amber-300 text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+              title="Cartel Executive Penthouse & Trophy Suite"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <span>PENTHOUSE</span>
             </button>
           </div>
 

@@ -17,6 +17,9 @@ import { GlobalAnalyticsModal } from './components/GlobalAnalyticsModal';
 import { FlightBoardModal } from './components/FlightBoardModal';
 import { SyndicateModal } from './components/SyndicateModal';
 import { DailyChallengeModal } from './components/DailyChallengeModal';
+import { BurnerPhoneWidget } from './components/BurnerPhoneWidget';
+import { PenthouseShowcaseModal } from './components/PenthouseShowcaseModal';
+import { CustomsCheckpointModal } from './components/CustomsCheckpointModal';
 import { EventLog } from './components/EventLog';
 import { CityAtmosphere } from './components/CityAtmosphere';
 import { FloatingCashManager } from './components/FloatingCashManager';
@@ -41,6 +44,8 @@ export const App: React.FC = () => {
     openHallOfFame,
     openFlightBoard,
     openSyndicateModal,
+    isPenthouseOpen,
+    closePenthouse,
     recentlyUnlockedAchievement,
     dismissAchievementToast,
     screenShake,
@@ -48,9 +53,17 @@ export const App: React.FC = () => {
 
   const [showRestartModal, setShowRestartModal] = useState<boolean>(false);
   const [isMobileOpsOpen, setIsMobileOpsOpen] = useState<boolean>(false);
+  const [customsFirefightEngaged, setCustomsFirefightEngaged] = useState<boolean>(false);
   const [selectedDurationMode, setSelectedDurationMode] = useState<GameDurationMode>(
     player.gameDurationMode || 'classic'
   );
+
+  // Reset customs firefight mode when active encounter clears
+  useEffect(() => {
+    if (!player.activeEncounter) {
+      setCustomsFirefightEngaged(false);
+    }
+  }, [player.activeEncounter?.id]);
 
   // Auto-dismiss achievement toast after 5 seconds
   useEffect(() => {
@@ -474,7 +487,16 @@ export const App: React.FC = () => {
 
       {/* Floating Modals & Debug Terminal */}
       <TradeModal />
-      <CombatModal />
+      {player.activeEncounter &&
+      (player.activeEncounter.enemyId === 'federal_customs' ||
+        player.activeEncounter.enemyId === 'airport_security') &&
+      !customsFirefightEngaged &&
+      !player.isGameOver ? (
+        <CustomsCheckpointModal onEngageFirefight={() => setCustomsFirefightEngaged(true)} />
+      ) : (
+        <CombatModal />
+      )}
+      <PenthouseShowcaseModal isOpen={isPenthouseOpen} onClose={closePenthouse} />
       <CartelDebugTerminal />
       <SaveLoadModal />
       {isHallOfFameOpen && (
@@ -490,6 +512,9 @@ export const App: React.FC = () => {
       <FlightBoardModal />
       <SyndicateModal />
       <DailyChallengeModal />
+
+      {/* Encrypted Underworld Burner Phone Widget */}
+      <BurnerPhoneWidget />
 
       {/* Achievement Unlocked Toast Notification */}
       {recentlyUnlockedAchievement && (
