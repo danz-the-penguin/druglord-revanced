@@ -8,6 +8,7 @@ import {
   calculateTotalHeatShield,
   calculateCustomsBonusFromBusinesses,
   calculateTotalShareDividends,
+  calculateCorporateDiversification,
   getBusinessSharePrice,
 } from '../laundering';
 import {
@@ -18,6 +19,12 @@ import {
   buyCorporateUpgrade,
   executeBusinessLaundering,
   advanceDay,
+  placeShellLimitOrder,
+  cancelShellLimitOrder,
+  tenderHostileShares,
+  defendHostileTakeover,
+  toggleBusinessDrip,
+  setAllBusinessDrip,
 } from '../game';
 
 describe('Shell Businesses & Corporate Laundering Network', () => {
@@ -201,5 +208,133 @@ describe('Shell Businesses & Corporate Laundering Network', () => {
     state.player.businessShares = { laundromat: 5000 };
     const div = calculateTotalShareDividends(state.player);
     expect(div).toBe(Math.round(0.5 * laundromat.passiveDailyProfit));
+  });
+
+  it('calculates corporate diversification index across sectors with capacity and heat bonuses', () => {
+    const state = createInitialState();
+    // Initially 0 sectors -> D rating
+    const emptyRating = calculateCorporateDiversification(state.player);
+    expect(emptyRating.rating).toBe('D');
+    expect(emptyRating.sectorCount).toBe(0);
+    expect(emptyRating.capacityMultiplier).toBe(1.0);
+    expect(emptyRating.heatReductionBonus).toBe(0);
+
+    // Holding shares in multiple sectors
+    state.player.businessShares = {
+      laundromat: 500, // Consumer Services
+      car_wash: 200, // Automotive Services
+      art_gallery: 100, // Fine Arts & Antiquities
+      telecom_holding: 300, // Telecommunications
+      crypto_farm: 150, // Digital Assets & FinTech
+      import_export: 250, // Maritime Logistics
+      panama_trust: 100, // Offshore Wealth
+    };
+
+    const rating = calculateCorporateDiversification(state.player);
+    expect(rating.sectorCount).toBe(7);
+    expect(rating.rating).toBe('AAA');
+    expect(rating.capacityMultiplier).toBe(1.25);
+    expect(rating.heatReductionBonus).toBe(3);
+  });
+
+  it('automatically reinvests dividends via DRIP without commission and updates cost basis', () => {
+    const state = createInitialState();
+    state.player.currentDay = 1;
+    state.player.bank = 0;
+    // Set 5000 shares of macau_junket (passiveDailyProfit is high)
+    const casino = SHELL_BUSINESSES.find((b) => b.id === 'macau_junket')!;
+    state.player.businessShares = { [casino.id]: 5000 };
+    state.player.businessCostBasis = { [casino.id]: 1000 };
+    // Turn on DRIP for casino
+    toggleBusinessDrip(state, casino.id);
+    // Test setAllBusinessDrip
+    setAllBusinessDrip(state, false);
+    expect(state.player.businessDrip?.[casino.id]).toBe(false);
+    setAllBusinessDrip(state, true);
+    expect(state.player.businessDrip?.[casino.id]).toBe(true);
+
+    const initialShares = state.player.businessShares[casino.id];
+    advanceDay(state);
+
+    // In advanceDay, DRIP should have purchased shares using dividend
+    const newShares = state.player.businessShares[casino.id];
+    expect(newShares).toBeGreaterThan(initialShares);
+    // Cost basis should be updated
+    expect(state.player.businessCostBasis?.[casino.id]).toBeDefined();
+  });
+
+  it('executes automated buy limit orders when spot price meets or falls below target price and allows cancellation', () => {
+    const state = createInitialState();
+    state.player.currentDay = 1;
+    state.player.cash = 50000;
+    state.player.businessShares = {};
+
+    const b = SHELL_BUSINESSES[0];
+    const spot = getBusinessSharePrice(b, 2);
+
+    // Place a buy limit order targeting a price above or equal to spot
+    const targetPrice = spot + 500;
+    const res = placeShellLimitOrder(state, b.id, 'buy_limit', targetPrice, 5);
+    expect(res.success).toBe(true);
+    expect(state.player.shellLimitOrders?.length).toBe(1);
+
+    // Cancel order test
+    const orderId = state.player.shellLimitOrders![0].id;
+    cancelShellLimitOrder(state, orderId);
+    expect(state.player.shellLimitOrders![0].active).toBe(false);
+
+    // Re-place order to test execution
+    placeShellLimitOrder(state, b.id, 'buy_limit', targetPrice, 5);
+    advanceDay(state);
+
+    // Order should have triggered and executed
+    const remainingOrders = state.player.shellLimitOrders?.filter((o) => o.active) ?? [];
+    expect(remainingOrders.length).toBe(0);
+    expect(state.player.businessShares[b.id]).toBe(5);
+  });
+
+  it('resolves hostile corporate takeovers via tender buyout or poison pill defense', () => {
+    const state = createInitialState();
+    state.player.cash = 20000;
+    state.player.businessShares = { laundromat: 1000 };
+
+    state.player.activeHostileTakeover = {
+      id: 'test_raid_1',
+      businessId: 'laundromat',
+      syndicateId: 'cali',
+      syndicateName: 'Cali Cartel',
+      sharesAtRisk: 1000,
+      offerPricePerShare: 15,
+      defenseCost: 5000,
+      daysLeft: 2,
+      status: 'active',
+    };
+
+    // Test Defend Front
+    const defendRes = defendHostileTakeover(state);
+    expect(defendRes.success).toBe(true);
+    expect(state.player.cash).toBe(20000 - 5000);
+    expect(state.player.businessShares.laundromat).toBe(1000);
+    expect(state.player.activeHostileTakeover).toBeNull();
+
+    // Test Tender Offer
+    state.player.activeHostileTakeover = {
+      id: 'test_raid_2',
+      businessId: 'laundromat',
+      syndicateId: 'sinaloa',
+      syndicateName: 'Sinaloa Syndicate',
+      sharesAtRisk: 1000,
+      offerPricePerShare: 20,
+      defenseCost: 6000,
+      daysLeft: 2,
+      status: 'active',
+    };
+
+    const tenderRes = tenderHostileShares(state);
+    expect(tenderRes.success).toBe(true);
+    // Sold 1,000 shares at 20 = +20,000 cash
+    expect(state.player.cash).toBe(15000 + 20000);
+    expect(state.player.businessShares.laundromat).toBe(0);
+    expect(state.player.activeHostileTakeover).toBeNull();
   });
 });

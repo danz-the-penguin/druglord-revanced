@@ -35,6 +35,8 @@ export type SoundEffect =
   | 'demotion'
   | 'click';
 
+import { triggerHaptic } from './haptics';
+
 const STORAGE_KEY_VOLUME = 'druglord2_audio_volume';
 const STORAGE_KEY_MUTED = 'druglord2_audio_muted';
 
@@ -161,6 +163,41 @@ export class SoundEngine {
    * Primary method to trigger a synthesized sound effect
    */
   public play(effect: SoundEffect): void {
+    // Subtle physical haptic pulse for mobile devices
+    switch (effect) {
+      case 'buy':
+      case 'sell':
+      case 'bank':
+      case 'vault':
+      case 'courier':
+        triggerHaptic('light');
+        break;
+      case 'travel':
+      case 'bribe':
+      case 'heal':
+      case 'reload':
+        triggerHaptic('medium');
+        break;
+      case 'victory':
+        triggerHaptic('success');
+        break;
+      case 'defeat':
+      case 'demotion':
+        triggerHaptic('error');
+        break;
+      case 'police':
+      case 'wiretap':
+        triggerHaptic('warning');
+        break;
+      case 'bomb':
+      case 'explosion':
+      case 'heavy_shot':
+        triggerHaptic('heavy');
+        break;
+      default:
+        triggerHaptic('selection');
+    }
+
     if (this.muted) return;
     if (!this.initContext() || !this.ctx || !this.masterGain) return;
 

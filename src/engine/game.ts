@@ -11,17 +11,19 @@ import {
   ActiveShipment,
   FlightSeatClass,
   SyndicateId,
+  ShellLimitOrder,
+  ShellLimitOrderType,
 } from './types';
 import { memoryMirror } from './memoryBuffer';
 import { ORGANIC_DRUG_IDS } from './dailyChallenge';
 import { generateSyndicateContracts, calculatePeaceTributeCost, SYNDICATES, getSyndicateDiscount } from './syndicates';
 import { calculateSeatClassDetails } from './flightNetwork';
 import {
+  SHELL_BUSINESSES,
   SHELL_MAP,
   UPGRADE_MAP,
   calculateEffectiveFeeRate,
   calculateEffectiveDailyCapacity,
-  calculateTotalPassiveIncome,
   calculateTotalHeatShield,
   calculateCustomsBonusFromBusinesses,
   TOTAL_SHARES_PER_BUSINESS,
@@ -31,7 +33,7 @@ import {
   getBusinessSharesOwned,
   hasControllingStake,
   getControllingSynergies,
-  calculateTotalShareDividends,
+  calculateCorporateDiversification,
 } from './laundering';
 import { AIRCRAFT_MAP, calculateAircraftFlightCost } from './aviation';
 import { advanceCookBatches } from './production';
@@ -1479,26 +1481,198 @@ export function advanceDay(state: GameEngineState, isTravel = false): void {
     }
   }
 
-  // 2b. Corporate Shell Businesses Passive Income & Share Dividends
-  const shareDividends = calculateTotalShareDividends(state.player);
-  const passiveProfit = Math.max(calculateTotalPassiveIncome(state.player.ownedBusinesses), shareDividends);
-  if (passiveProfit > 0) {
-    state.player.bank += passiveProfit;
+  // 2b. Corporate Shell Businesses Passive Income, Dividends & DRIP Reinvestment
+  let totalNonDripDividends = 0;
+  if (!state.player.businessShares) state.player.businessShares = {};
+  if (!state.player.ownedBusinesses) state.player.ownedBusinesses = [];
+
+  for (const b of SHELL_BUSINESSES) {
+    const shares = getBusinessSharesOwned(state.player, b.id);
+    if (shares <= 0) continue;
+    const shareRatio = shares / TOTAL_SHARES_PER_BUSINESS;
+    const dividend = Math.round(shareRatio * b.passiveDailyProfit);
+    if (dividend <= 0) continue;
+
+    const isDrip = !!state.player.businessDrip?.[b.id];
+    const sharePrice = getBusinessSharePrice(b, state.player.currentDay);
+
+    if (isDrip && shares < TOTAL_SHARES_PER_BUSINESS && sharePrice > 0) {
+      const buyableShares = Math.min(
+        Math.floor(dividend / sharePrice),
+        TOTAL_SHARES_PER_BUSINESS - shares
+      );
+
+      if (buyableShares > 0) {
+        const reinvestedCost = buyableShares * sharePrice;
+        const leftoverCash = dividend - reinvestedCost;
+        const newShares = shares + buyableShares;
+        state.player.businessShares[b.id] = newShares;
+
+        // Weighted moving average cost basis
+        if (!state.player.businessCostBasis) state.player.businessCostBasis = {};
+        const prevBasis = state.player.businessCostBasis[b.id] ?? sharePrice;
+        const newCostBasis = Math.round(((shares * prevBasis) + (buyableShares * sharePrice)) / newShares);
+        state.player.businessCostBasis[b.id] = newCostBasis;
+
+        if (newShares >= TOTAL_SHARES_PER_BUSINESS && !state.player.ownedBusinesses.includes(b.id)) {
+          state.player.ownedBusinesses.push(b.id);
+        }
+
+        if (leftoverCash > 0) {
+          state.player.bank += leftoverCash;
+        }
+
+        state.logs.unshift({
+          day: state.player.currentDay,
+          city: currentCity,
+          type: 'finance',
+          message: `🔄 DRIP ACCUMULATION: Auto-reinvested $${reinvestedCost.toLocaleString()} dividend into ${buyableShares.toLocaleString()} shares of ${b.name} @ $${sharePrice.toLocaleString()}/sh (New Stake: ${((newShares / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1)}%).${leftoverCash > 0 ? ` +$${leftoverCash.toLocaleString()} deposited to bank.` : ''}`,
+          timestamp: Date.now(),
+        });
+      } else {
+        totalNonDripDividends += dividend;
+      }
+    } else {
+      totalNonDripDividends += dividend;
+    }
+  }
+
+  if (totalNonDripDividends > 0) {
+    state.player.bank += totalNonDripDividends;
     state.logs.unshift({
       day: state.player.currentDay,
       city: currentCity,
       type: 'finance',
-      message: `CORPORATE REVENUE: Received $${passiveProfit.toLocaleString()} clean dividends/profits from underworld shell corporations (credited to Bank).`,
+      message: `CORPORATE REVENUE: Received $${totalNonDripDividends.toLocaleString()} clean dividends from shell corporations (credited to Bank).`,
       timestamp: Date.now(),
     });
   }
 
+  // 2b-2. Automated Shell Stock Limit Orders & Stop-Losses
+  if (state.player.shellLimitOrders && state.player.shellLimitOrders.length > 0) {
+    for (const order of state.player.shellLimitOrders) {
+      if (!order.active) continue;
+      const b = SHELL_MAP.get(order.businessId);
+      if (!b) continue;
+      const spotPrice = getBusinessSharePrice(b, state.player.currentDay);
+
+      if (order.type === 'buy_limit' && spotPrice <= order.targetPrice) {
+        const totalOrderCost = Math.round(order.shares * spotPrice * (1 + BROKERAGE_FEE_RATE));
+        if (state.player.cash >= totalOrderCost) {
+          const buyRes = buyBusinessShares(state, order.businessId, order.shares);
+          if (buyRes.success) {
+            order.active = false;
+            state.logs.unshift({
+              day: state.player.currentDay,
+              city: currentCity,
+              type: 'finance',
+              message: `🎯 LIMIT ORDER FILLED: Auto-bought ${order.shares.toLocaleString()} shares of ${b.name} at $${spotPrice.toLocaleString()}/sh (Target: <=$${order.targetPrice.toLocaleString()}).`,
+              timestamp: Date.now(),
+            });
+          }
+        }
+      } else if (order.type === 'sell_limit' && spotPrice >= order.targetPrice) {
+        const sharesOwned = getBusinessSharesOwned(state.player, order.businessId);
+        if (sharesOwned >= order.shares) {
+          const sellRes = sellBusinessShares(state, order.businessId, order.shares);
+          if (sellRes.success) {
+            order.active = false;
+            state.logs.unshift({
+              day: state.player.currentDay,
+              city: currentCity,
+              type: 'finance',
+              message: `🎯 LIMIT ORDER FILLED: Auto-sold ${order.shares.toLocaleString()} shares of ${b.name} at $${spotPrice.toLocaleString()}/sh (Target: >=$${order.targetPrice.toLocaleString()}).`,
+              timestamp: Date.now(),
+            });
+          }
+        }
+      } else if (order.type === 'stop_loss' && spotPrice <= order.targetPrice) {
+        const sharesOwned = getBusinessSharesOwned(state.player, order.businessId);
+        if (sharesOwned >= order.shares) {
+          const sellRes = sellBusinessShares(state, order.businessId, order.shares);
+          if (sellRes.success) {
+            order.active = false;
+            state.logs.unshift({
+              day: state.player.currentDay,
+              city: currentCity,
+              type: 'finance',
+              message: `🛑 STOP-LOSS TRIGGERED: Auto-liquidated ${order.shares.toLocaleString()} shares of ${b.name} at $${spotPrice.toLocaleString()}/sh to protect capital (Trigger: <=$${order.targetPrice.toLocaleString()}).`,
+              timestamp: Date.now(),
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // 2b-3. Hostile Corporate Raid / Syndicate Takeover Check
+  if (state.player.activeHostileTakeover && state.player.activeHostileTakeover.status === 'active') {
+    state.player.activeHostileTakeover.daysLeft -= 1;
+    if (state.player.activeHostileTakeover.daysLeft <= 0) {
+      // Force buyout by rival syndicate
+      const raid = state.player.activeHostileTakeover;
+      const b = SHELL_MAP.get(raid.businessId);
+      const buyoutProceeds = Math.round(raid.sharesAtRisk * raid.offerPricePerShare);
+      state.player.cash += buyoutProceeds;
+      const currentSh = getBusinessSharesOwned(state.player, raid.businessId);
+      state.player.businessShares[raid.businessId] = Math.max(0, currentSh - raid.sharesAtRisk);
+      if (state.player.businessShares[raid.businessId] === 0 && state.player.businessCostBasis) {
+        delete state.player.businessCostBasis[raid.businessId];
+      }
+      raid.status = 'bought_out';
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: currentCity,
+        type: 'finance',
+        message: `⚠️ HOSTILE TAKEOVER COMPLETE: ${raid.syndicateName} executed their tender offer buyout on ${b?.name ?? 'Enterprise'}. You were forced to tender ${raid.sharesAtRisk.toLocaleString()} shares for $${buyoutProceeds.toLocaleString()} cash.`,
+        timestamp: Date.now(),
+      });
+      state.player.activeHostileTakeover = null;
+    }
+  } else if (!state.player.activeHostileTakeover) {
+    // Check for new hostile takeover raid: player must own minority/floating shares (200 to 5000)
+    const vulnerableBusinesses = SHELL_BUSINESSES.filter((b) => {
+      const sh = getBusinessSharesOwned(state.player, b.id);
+      return sh >= 200 && sh <= CONTROLLING_STAKE_SHARES;
+    });
+
+    if (vulnerableBusinesses.length > 0 && Math.random() < 0.08) {
+      const targetBiz = vulnerableBusinesses[Math.floor(Math.random() * vulnerableBusinesses.length)];
+      const targetShares = getBusinessSharesOwned(state.player, targetBiz.id);
+      const spotPrice = getBusinessSharePrice(targetBiz, state.player.currentDay);
+      const rivalSyndicate = SYNDICATES[Math.floor(Math.random() * SYNDICATES.length)];
+      const offerPrice = Math.round(spotPrice * 1.35); // 35% premium tender
+      const defenseCost = Math.round(targetShares * spotPrice * 0.40); // 40% defense legal poison pill
+
+      state.player.activeHostileTakeover = {
+        id: `takeover_${Date.now()}`,
+        businessId: targetBiz.id,
+        syndicateId: rivalSyndicate.id,
+        syndicateName: rivalSyndicate.name,
+        offerPricePerShare: offerPrice,
+        sharesAtRisk: targetShares,
+        defenseCost,
+        daysLeft: 3,
+        status: 'active',
+      };
+
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: currentCity,
+        type: 'event',
+        message: `🚨 HOSTILE TAKEOVER RAID: ${rivalSyndicate.name} launched a hostile corporate raid on ${targetBiz.name}! They offer a +35% tender buyout ($${offerPrice.toLocaleString()}/sh) for your ${targetShares.toLocaleString()} shares. Defend within 3 days or face forced liquidation!`,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
   // 2c. Corporate Heat Cooling & Operational Synergies
   const controllingSynergies = getControllingSynergies(state.player);
+  const divRating = calculateCorporateDiversification(state.player);
   const corporateHeatCooling = Math.max(
     calculateTotalHeatShield(state.player.ownedBusinesses),
     controllingSynergies.heatShield
-  );
+  ) + divRating.heatReductionBonus;
   if (corporateHeatCooling > 0) {
     modifyCityHeat(state, state.player.currentCityId, -corporateHeatCooling);
   }
@@ -2304,7 +2478,10 @@ export function executeBusinessLaundering(
     };
   }
 
-  const effectiveCapacity = calculateEffectiveDailyCapacity(business, state.player.corporateUpgrades);
+  const divRating = calculateCorporateDiversification(state.player);
+  const effectiveCapacity = Math.round(
+    calculateEffectiveDailyCapacity(business, state.player.corporateUpgrades) * divRating.capacityMultiplier
+  );
   const currentLaundered = state.player.launderedToday || 0;
   if (currentLaundered + amount > effectiveCapacity) {
     const remaining = Math.max(0, effectiveCapacity - currentLaundered);
@@ -2492,6 +2669,177 @@ export function selectActiveAircraft(state: GameEngineState, aircraftId: string 
   const name = aircraftId ? AIRCRAFT_MAP.get(aircraftId)?.name ?? 'Aircraft' : 'None (Commercial Airline)';
   return { success: true, message: `Active flight craft set to: ${name}` };
 }
+
+/**
+ * Toggle Dividend Reinvestment Plan (DRIP) for a specific shell holding
+ */
+export function toggleBusinessDrip(state: GameEngineState, businessId: string): ActionResult {
+  if (!state.player.businessDrip) {
+    state.player.businessDrip = {};
+  }
+  const current = !!state.player.businessDrip[businessId];
+  state.player.businessDrip[businessId] = !current;
+  const business = SHELL_MAP.get(businessId);
+  const name = business ? business.name : businessId;
+  return {
+    success: true,
+    message: !current
+      ? `🔄 DRIP ENABLED: Daily dividends from ${name} will auto-reinvest into shares!`
+      : `⏸️ DRIP PAUSED: Daily dividends from ${name} will be deposited to Bank.`,
+  };
+}
+
+/**
+ * Bulk toggle DRIP for all shell holdings
+ */
+export function setAllBusinessDrip(state: GameEngineState, enable: boolean): ActionResult {
+  if (!state.player.businessDrip) {
+    state.player.businessDrip = {};
+  }
+  for (const b of SHELL_BUSINESSES) {
+    state.player.businessDrip[b.id] = enable;
+  }
+  return {
+    success: true,
+    message: enable
+      ? '🔄 DRIP ACTIVATED for all corporate holdings!'
+      : '⏸️ DRIP DISABLED for all corporate holdings (cash dividend payout mode).',
+  };
+}
+
+/**
+ * Place an automated limit buy, limit sell, or stop loss order
+ */
+export function placeShellLimitOrder(
+  state: GameEngineState,
+  businessId: string,
+  type: ShellLimitOrderType,
+  targetPrice: number,
+  shares: number
+): ActionResult {
+  if (targetPrice <= 0 || shares <= 0) {
+    return { success: false, message: 'Invalid target price or share quantity' };
+  }
+  const business = SHELL_MAP.get(businessId);
+  if (!business) return { success: false, message: 'Enterprise not found' };
+
+  if (!state.player.shellLimitOrders) {
+    state.player.shellLimitOrders = [];
+  }
+
+  const activeOrders = state.player.shellLimitOrders.filter((o) => o.active);
+  if (activeOrders.length >= 10) {
+    return { success: false, message: 'Limit order book full (Max 10 active orders)' };
+  }
+
+  if (type === 'sell_limit' || type === 'stop_loss') {
+    const owned = getBusinessSharesOwned(state.player, businessId);
+    if (owned < shares) {
+      return { success: false, message: `Insufficient shares. You only hold ${owned.toLocaleString()} shares.` };
+    }
+  }
+
+  const newOrder: ShellLimitOrder = {
+    id: `order_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    businessId,
+    type,
+    targetPrice,
+    shares,
+    createdDay: state.player.currentDay,
+    active: true,
+  };
+
+  state.player.shellLimitOrders.push(newOrder);
+
+  const typeLabel = type === 'buy_limit' ? 'BUY LIMIT' : type === 'sell_limit' ? 'SELL LIMIT' : 'STOP-LOSS';
+  return {
+    success: true,
+    message: `📋 ${typeLabel} ORDER PLACED: ${shares.toLocaleString()} shares of ${business.name} at $${targetPrice.toLocaleString()}/sh.`,
+  };
+}
+
+/**
+ * Cancel an active limit order
+ */
+export function cancelShellLimitOrder(state: GameEngineState, orderId: string): ActionResult {
+  if (!state.player.shellLimitOrders) return { success: false, message: 'No orders found' };
+  const order = state.player.shellLimitOrders.find((o) => o.id === orderId);
+  if (!order || !order.active) return { success: false, message: 'Order not active or not found' };
+
+  order.active = false;
+  return { success: true, message: 'Limit order cancelled.' };
+}
+
+/**
+ * Tender shares to rival syndicate in hostile takeover
+ */
+export function tenderHostileShares(state: GameEngineState): ActionResult {
+  const raid = state.player.activeHostileTakeover;
+  if (!raid || raid.status !== 'active') {
+    return { success: false, message: 'No active hostile takeover tender offer' };
+  }
+
+  const b = SHELL_MAP.get(raid.businessId);
+  const proceeds = Math.round(raid.sharesAtRisk * raid.offerPricePerShare);
+  state.player.cash += proceeds;
+  const currentSh = getBusinessSharesOwned(state.player, raid.businessId);
+  state.player.businessShares = state.player.businessShares || {};
+  state.player.businessShares[raid.businessId] = Math.max(0, currentSh - raid.sharesAtRisk);
+  if (state.player.businessShares[raid.businessId] === 0 && state.player.businessCostBasis) {
+    delete state.player.businessCostBasis[raid.businessId];
+  }
+  raid.status = 'tendered';
+  state.player.activeHostileTakeover = null;
+
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+    type: 'finance',
+    message: `🤝 TENDER ACCEPTED: Sold ${raid.sharesAtRisk.toLocaleString()} shares of ${b?.name ?? 'Enterprise'} to ${raid.syndicateName} for $${proceeds.toLocaleString()} (+35% buyout premium)!`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    success: true,
+    message: `Accepted tender offer! Cashed out $${proceeds.toLocaleString()} at premium!`,
+  };
+}
+
+/**
+ * Defend against hostile corporate takeover via poison pill defense
+ */
+export function defendHostileTakeover(state: GameEngineState): ActionResult {
+  const raid = state.player.activeHostileTakeover;
+  if (!raid || raid.status !== 'active') {
+    return { success: false, message: 'No active hostile takeover raid' };
+  }
+
+  if (state.player.cash < raid.defenseCost) {
+    return {
+      success: false,
+      message: `Insufficient cash for defense poison pill ($${raid.defenseCost.toLocaleString()} required).`,
+    };
+  }
+
+  state.player.cash -= raid.defenseCost;
+  raid.status = 'repelled';
+  state.player.activeHostileTakeover = null;
+
+  const b = SHELL_MAP.get(raid.businessId);
+  state.logs.unshift({
+    day: state.player.currentDay,
+    city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+    type: 'event',
+    message: `🛡️ HOSTILE RAID REPELLED: Deployed $${raid.defenseCost.toLocaleString()} poison pill defense against ${raid.syndicateName}! Secured all ${raid.sharesAtRisk.toLocaleString()} shares of ${b?.name ?? 'Enterprise'}.`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    success: true,
+    message: `Hostile takeover repelled! Front company secured against ${raid.syndicateName}.`,
+  };
+}
+
 
 
 

@@ -30,6 +30,12 @@ import {
   sellBusinessShares,
   buyCorporateUpgrade,
   executeBusinessLaundering,
+  toggleBusinessDrip,
+  setAllBusinessDrip,
+  placeShellLimitOrder,
+  cancelShellLimitOrder,
+  tenderHostileShares,
+  defendHostileTakeover,
   acceptSyndicateContract,
   deliverSyndicateContract,
   paySyndicateTributeAction,
@@ -67,6 +73,7 @@ import {
   BearerBond,
   ConsularImmunityLevel,
   SafehouseUpgradeId,
+  ShellLimitOrderType,
 } from '../engine/types';
 import {
   SaveSlotId,
@@ -139,6 +146,12 @@ export interface GameStore extends GameEngineState {
   openDrugGraph: (drugId: string) => void;
   closeDrugGraph: () => void;
 
+  // Shell Stock Time Graph Modal
+  isShellGraphOpen: boolean;
+  selectedShellGraphId: string | null;
+  openShellGraph: (businessId: string) => void;
+  closeShellGraph: () => void;
+
   // Global Multi-Country Price Analytics & Arbitrage Modal
   isGlobalAnalyticsOpen: boolean;
   selectedAnalyticsDrugId: string;
@@ -197,6 +210,12 @@ export interface GameStore extends GameEngineState {
   sellBusinessSharesAction: (businessId: string, shares: number) => { success: boolean; message: string };
   buyCorporateUpgradeAction: (upgradeId: string) => { success: boolean; message: string };
   executeBusinessLaunderAction: (businessId: string, amount: number) => { success: boolean; message: string };
+  toggleBusinessDripAction: (businessId: string) => { success: boolean; message: string };
+  setAllBusinessDripAction: (enable: boolean) => { success: boolean; message: string };
+  placeShellLimitOrderAction: (businessId: string, type: ShellLimitOrderType, targetPrice: number, shares: number) => { success: boolean; message: string };
+  cancelShellLimitOrderAction: (orderId: string) => { success: boolean; message: string };
+  tenderHostileSharesAction: () => { success: boolean; message: string };
+  defendHostileTakeoverAction: () => { success: boolean; message: string };
 
   // Clandestine Production Labs & Precursors
   buildLabAction: (propertyId: string, labType: LabType) => { success: boolean; message: string };
@@ -450,6 +469,18 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
     closeDrugGraph: () => {
       soundEngine.play('click');
       set({ isDrugGraphOpen: false, selectedGraphDrugId: null });
+    },
+
+    // Shell Stock Time Graph Modal
+    isShellGraphOpen: false,
+    selectedShellGraphId: null,
+    openShellGraph: (businessId: string) => {
+      soundEngine.play('click');
+      set({ isShellGraphOpen: true, selectedShellGraphId: businessId });
+    },
+    closeShellGraph: () => {
+      soundEngine.play('click');
+      set({ isShellGraphOpen: false, selectedShellGraphId: null });
     },
 
     // Global Analytics Modal
@@ -1821,6 +1852,107 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
         set({ player: state.player, logs: state.logs });
         triggerAutoSave(get, set);
         soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    toggleBusinessDripAction: (businessId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = toggleBusinessDrip(state, businessId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    setAllBusinessDripAction: (enable: boolean) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = setAllBusinessDrip(state, enable);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    placeShellLimitOrderAction: (
+      businessId: string,
+      type: ShellLimitOrderType,
+      targetPrice: number,
+      shares: number
+    ) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = placeShellLimitOrder(state, businessId, type, targetPrice, shares);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    cancelShellLimitOrderAction: (orderId: string) => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = cancelShellLimitOrder(state, orderId);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('click');
+      }
+      return result;
+    },
+
+    tenderHostileSharesAction: () => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = tenderHostileShares(state);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('bank');
+      }
+      return result;
+    },
+
+    defendHostileTakeoverAction: () => {
+      const state = {
+        player: { ...get().player },
+        market: { ...get().market },
+        logs: [...get().logs],
+      };
+      const result = defendHostileTakeover(state);
+      if (result.success) {
+        syncStateToMemory(state);
+        set({ player: state.player, logs: state.logs });
+        triggerAutoSave(get, set);
+        soundEngine.play('victory');
       }
       return result;
     },

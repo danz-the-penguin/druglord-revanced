@@ -343,6 +343,9 @@ export interface PlayerState {
   ownedBusinesses?: string[];
   businessShares?: Record<string, number>;
   businessCostBasis?: Record<string, number>;
+  businessDrip?: Record<string, boolean>;
+  shellLimitOrders?: ShellLimitOrder[];
+  activeHostileTakeover?: HostileTakeoverEvent | null;
   corporateUpgrades?: string[];
   launderedToday?: number;
   combatConsumables?: PlayerCombatConsumables;
@@ -478,5 +481,29 @@ export interface GameLogEntry {
   type: 'market' | 'finance' | 'travel' | 'combat' | 'event' | 'system' | 'cheat' | 'production' | 'corruption';
   message: string;
   timestamp: number;
+}
+
+export type ShellLimitOrderType = 'buy_limit' | 'sell_limit' | 'stop_loss';
+
+export interface ShellLimitOrder {
+  id: string;
+  businessId: string;
+  type: ShellLimitOrderType;
+  targetPrice: number;
+  shares: number;
+  createdDay: number;
+  active: boolean;
+}
+
+export interface HostileTakeoverEvent {
+  id: string;
+  businessId: string;
+  syndicateId: string;
+  syndicateName: string;
+  offerPricePerShare: number;
+  sharesAtRisk: number;
+  defenseCost: number;
+  daysLeft: number;
+  status: 'active' | 'repelled' | 'bought_out' | 'tendered';
 }
 

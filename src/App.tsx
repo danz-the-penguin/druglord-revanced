@@ -12,6 +12,7 @@ import { CartelDebugTerminal } from './components/CartelDebugTerminal';
 import { SaveLoadModal } from './components/SaveLoadModal';
 import { HallOfFameModal } from './components/HallOfFameModal';
 import { DrugGraphModal } from './components/DrugGraphModal';
+import { ShellGraphModal } from './components/ShellGraphModal';
 import { GlobalAnalyticsModal } from './components/GlobalAnalyticsModal';
 import { FlightBoardModal } from './components/FlightBoardModal';
 import { SyndicateModal } from './components/SyndicateModal';
@@ -462,6 +463,7 @@ export const App: React.FC = () => {
         />
       )}
       <DrugGraphModal />
+      <ShellGraphModal />
       <GlobalAnalyticsModal />
       <FlightBoardModal />
       <SyndicateModal />

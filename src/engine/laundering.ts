@@ -506,3 +506,97 @@ export function calculateTotalShareDividends(player: PlayerState): number {
   return total;
 }
 
+export const SHELL_SECTORS: Record<string, string> = {
+  laundromat: 'Consumer Services',
+  car_wash: 'Automotive Services',
+  underground_sportsbook: 'Gaming & Wagering',
+  luxury_watch_boutique: 'Luxury Goods',
+  nightclub: 'Hospitality & Nightlife',
+  scrap_metal_foundry: 'Industrial Materials',
+  construction_contracting: 'Infrastructure',
+  art_gallery: 'Fine Arts & Antiquities',
+  pharmaceutical_logistics: 'Healthcare & Pharma',
+  import_export: 'Maritime Logistics',
+  private_jet_charter: 'Aviation Logistics',
+  superyacht_brokerage: 'Maritime Luxury',
+  telecom_holding: 'Telecommunications',
+  panama_trust: 'Offshore Wealth',
+  macau_junket: 'Hospitality & Gaming',
+  crypto_farm: 'Digital Assets & FinTech',
+  sovereign_wealth_front: 'Sovereign Finance',
+  swiss_bank_stake: 'Private Banking',
+  sovereign_gold_depository: 'Precious Metals',
+};
+
+export interface DiversificationRating {
+  sectorCount: number;
+  sectors: string[];
+  rating: 'D' | 'C' | 'B' | 'A' | 'AAA';
+  title: string;
+  capacityMultiplier: number;
+  heatReductionBonus: number;
+}
+
+export function calculateCorporateDiversification(player: PlayerState): DiversificationRating {
+  const activeSectors = new Set<string>();
+
+  for (const b of SHELL_BUSINESSES) {
+    const shares = getBusinessSharesOwned(player, b.id);
+    if (shares > 0) {
+      const sector = SHELL_SECTORS[b.id] || 'Diversified';
+      activeSectors.add(sector);
+    }
+  }
+
+  const count = activeSectors.size;
+  const sectors = Array.from(activeSectors);
+
+  if (count >= 7) {
+    return {
+      sectorCount: count,
+      sectors,
+      rating: 'AAA',
+      title: 'Global Conglomerate Syndicate',
+      capacityMultiplier: 1.25,
+      heatReductionBonus: 3,
+    };
+  } else if (count >= 5) {
+    return {
+      sectorCount: count,
+      sectors,
+      rating: 'A',
+      title: 'Diversified Underworld Holding',
+      capacityMultiplier: 1.15,
+      heatReductionBonus: 2,
+    };
+  } else if (count >= 3) {
+    return {
+      sectorCount: count,
+      sectors,
+      rating: 'B',
+      title: 'Multi-Sector Syndicate',
+      capacityMultiplier: 1.08,
+      heatReductionBonus: 1,
+    };
+  } else if (count >= 1) {
+    return {
+      sectorCount: count,
+      sectors,
+      rating: 'C',
+      title: 'Focused Enterprise',
+      capacityMultiplier: 1.0,
+      heatReductionBonus: 0,
+    };
+  }
+
+  return {
+    sectorCount: 0,
+    sectors: [],
+    rating: 'D',
+    title: 'Uncapitalized',
+    capacityMultiplier: 1.0,
+    heatReductionBonus: 0,
+  };
+}
+
+

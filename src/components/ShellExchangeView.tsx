@@ -7,6 +7,7 @@ import {
   calculateEffectiveFeeRate,
   calculateEffectiveDailyCapacity,
   calculateTotalShareDividends,
+  calculateCorporateDiversification,
   getBusinessSharePrice,
   getBusinessSharesOwned,
   hasControllingStake,
@@ -19,6 +20,7 @@ import { ShellImage } from './ShellImage';
 import { Sparkline } from './Sparkline';
 import { ShellPreviewCard } from './ShellPreviewCard';
 import { soundEngine } from '../utils/audio';
+import { triggerHaptic } from '../utils/haptics';
 import {
   Landmark,
   Briefcase,
@@ -34,6 +36,10 @@ import {
   LayoutGrid,
   List,
   Building2,
+  Target,
+  LineChart,
+  ShieldAlert,
+  RotateCcw,
 } from 'lucide-react';
 
 export const SHELL_TICKERS: Record<string, string> = {
@@ -91,6 +97,12 @@ export const ShellExchangeView: React.FC = () => {
   const sellBusinessSharesAction = useGameStore((s) => s.sellBusinessSharesAction);
   const buyCorporateUpgradeAction = useGameStore((s) => s.buyCorporateUpgradeAction);
   const executeBusinessLaunderAction = useGameStore((s) => s.executeBusinessLaunderAction);
+  const openShellGraph = useGameStore((s) => s.openShellGraph);
+  const toggleBusinessDripAction = useGameStore((s) => s.toggleBusinessDripAction);
+  const setAllBusinessDripAction = useGameStore((s) => s.setAllBusinessDripAction);
+  const cancelShellLimitOrderAction = useGameStore((s) => s.cancelShellLimitOrderAction);
+  const tenderHostileSharesAction = useGameStore((s) => s.tenderHostileSharesAction);
+  const defendHostileTakeoverAction = useGameStore((s) => s.defendHostileTakeoverAction);
 
   // Sub-navigation: Modeled after Market & Stash
   const [activeNav, setActiveNav] = useState<ShellNavTab>('exchange');
@@ -604,7 +616,7 @@ export const ShellExchangeView: React.FC = () => {
               {viewMode === 'table' ? (
                 <div className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden max-h-[580px] overflow-y-auto">
                   <div className="overflow-x-auto w-full">
-                    <table className="w-full min-w-[580px] text-left text-xs font-mono border-collapse">
+                    <table className="w-full min-w-[620px] text-left text-xs font-mono border-collapse">
                       <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase sticky top-0 z-10 border-b border-slate-800">
                         <tr>
                           <th className="py-2.5 px-3">Ticker</th>
@@ -614,6 +626,7 @@ export const ShellExchangeView: React.FC = () => {
                           <th className="py-2.5 px-3 text-right">Stake / Sh</th>
                           <th className="py-2.5 px-3 text-right">Clean Cap</th>
                           <th className="py-2.5 px-3 text-center">Governance</th>
+                          <th className="py-2.5 px-3 text-center">Chart</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
@@ -670,14 +683,24 @@ export const ShellExchangeView: React.FC = () => {
                                 </div>
                               </td>
                               <td className="py-2.5 px-3 text-center">
-                                <div className="inline-block">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    soundEngine.play('click');
+                                    triggerHaptic('light');
+                                    openShellGraph(business.id);
+                                  }}
+                                  className="inline-block p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer group"
+                                  title="Open Time Graph"
+                                >
                                   <Sparkline
                                     data={history7d}
                                     width={70}
                                     height={20}
                                     color={volPct >= 0 ? '#10b981' : '#f43f5e'}
                                   />
-                                </div>
+                                </button>
                               </td>
                               <td className="py-2.5 px-3 text-right whitespace-nowrap">
                                 <span className={`font-bold ${isControlling ? 'text-emerald-400' : sharesOwned > 0 ? 'text-sky-300' : 'text-slate-500'}`}>
@@ -704,6 +727,22 @@ export const ShellExchangeView: React.FC = () => {
                                     0% Equity
                                   </span>
                                 )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    soundEngine.play('click');
+                                    triggerHaptic('light');
+                                    openShellGraph(business.id);
+                                  }}
+                                  className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-emerald-950 border border-slate-700 hover:border-emerald-600 text-slate-300 hover:text-emerald-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-all"
+                                  title="View Interactive Stock Time Graph"
+                                >
+                                  <LineChart className="w-3 h-3 text-emerald-400" />
+                                  <span>Chart</span>
+                                </button>
                               </td>
                             </tr>
                           );
@@ -804,14 +843,28 @@ export const ShellExchangeView: React.FC = () => {
 
                         {/* Sparkline & Equity Progress Bar */}
                         <div className="mt-2.5 flex items-center gap-3">
-                          <div className="shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              soundEngine.play('click');
+                              triggerHaptic('light');
+                              openShellGraph(business.id);
+                            }}
+                            className="shrink-0 p-1 rounded-lg bg-slate-900/90 hover:bg-emerald-950 border border-slate-800 hover:border-emerald-600/70 transition-all cursor-pointer group text-left"
+                            title="Open Interactive Stock Time Graph"
+                          >
                             <Sparkline
                               data={history7d}
                               width={80}
                               height={22}
                               color={volPct >= 0 ? '#10b981' : '#f43f5e'}
                             />
-                          </div>
+                            <div className="text-[9px] text-center text-slate-500 group-hover:text-emerald-400 font-mono mt-0.5 flex items-center justify-center gap-0.5">
+                              <LineChart className="w-2.5 h-2.5" />
+                              <span>Chart</span>
+                            </div>
+                          </button>
                           <div className="flex-1 space-y-1">
                             <div className="flex justify-between text-[10px] text-slate-400 font-mono">
                               <span>Equity: <strong className={isControlling ? 'text-emerald-400' : 'text-sky-300'}>{equityPct}%</strong> ({sharesOwned.toLocaleString()} / 10,000 sh)</span>
@@ -1000,9 +1053,24 @@ export const ShellExchangeView: React.FC = () => {
                       {activeBusiness.name}
                     </h4>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-mono text-slate-400 shrink-0">
-                    Spot: <strong className="text-emerald-400">${activeSharePrice.toLocaleString()}</strong>
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] sm:text-xs font-mono text-slate-400">
+                      Spot: <strong className="text-emerald-400">${activeSharePrice.toLocaleString()}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEngine.play('click');
+                        triggerHaptic('light');
+                        openShellGraph(activeBusiness.id);
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 hover:border-emerald-600 text-slate-300 hover:text-emerald-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-all"
+                      title="Open Interactive Stock Time Graph"
+                    >
+                      <LineChart className="w-3 h-3 text-emerald-400" />
+                      <span>Chart</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800">
@@ -1415,6 +1483,172 @@ export const ShellExchangeView: React.FC = () => {
             </div>
           </div>
 
+          {/* 1. Hostile Corporate Raid Syndicate Alert Banner */}
+          {player.activeHostileTakeover && player.activeHostileTakeover.status === 'active' && (
+            <div className="bg-rose-950/70 border-2 border-rose-500 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-rose-950/60 animate-in fade-in slide-in-from-top-3 duration-300">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-rose-900/60 border border-rose-600/80 text-rose-300 shrink-0">
+                    <ShieldAlert className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-rose-900 border border-rose-500 text-rose-200 uppercase tracking-widest">
+                        🚨 HOSTILE TAKEOVER RAID IN PROGRESS
+                      </span>
+                      <span className="text-xs text-rose-300 font-bold">
+                        {player.activeHostileTakeover.daysLeft} {player.activeHostileTakeover.daysLeft === 1 ? 'day' : 'days'} remaining
+                      </span>
+                    </div>
+                    <h4 className="text-base font-black text-white mt-1">
+                      {player.activeHostileTakeover.syndicateName} tender offer on {SHELL_MAP.get(player.activeHostileTakeover.businessId)?.name || 'Enterprise'}
+                    </h4>
+                    <p className="text-xs text-rose-200/90 mt-1 max-w-xl font-sans">
+                      A rival syndicate launched a hostile corporate raid to buyout your {player.activeHostileTakeover.sharesAtRisk.toLocaleString()} shares. They offer a +35% tender buyout premium at <strong>${player.activeHostileTakeover.offerPricePerShare.toLocaleString()}/sh</strong> (Total Proceeds: <strong>${Math.round(player.activeHostileTakeover.sharesAtRisk * player.activeHostileTakeover.offerPricePerShare).toLocaleString()}</strong>).
+                    </p>
+                  </div>
+                </div>
+
+                {/* Takeover Actions */}
+                <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 justify-end flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEngine.play('bank');
+                      triggerHaptic('success');
+                      tenderHostileSharesAction();
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all cursor-pointer shadow-md"
+                  >
+                    Accept Tender (+${Math.round(player.activeHostileTakeover.sharesAtRisk * player.activeHostileTakeover.offerPricePerShare).toLocaleString()})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEngine.play('gunshot');
+                      triggerHaptic('heavy');
+                      defendHostileTakeoverAction();
+                    }}
+                    disabled={player.cash < player.activeHostileTakeover.defenseCost}
+                    className={`px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all cursor-pointer shadow-md ${
+                      player.cash < player.activeHostileTakeover.defenseCost ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Defend Front (${player.activeHostileTakeover.defenseCost.toLocaleString()} Poison Pill)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Corporate Diversification & Master DRIP Controls Banner */}
+          {(() => {
+            const divRating = calculateCorporateDiversification(player);
+            const allDripActive = inPortfolioCount > 0 && displayList.every((b) => {
+              const sh = getBusinessSharesOwned(player, b.id);
+              return sh <= 0 || !!player.businessDrip?.[b.id];
+            });
+
+            return (
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 rounded-xl bg-emerald-950/70 border border-emerald-500/70 text-emerald-400 font-mono font-black text-xl text-center min-w-[58px]">
+                    {divRating.rating}
+                    <span className="block text-[8px] font-bold text-slate-400">RATING</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-sm text-slate-100">{divRating.title}</h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
+                        {divRating.sectorCount} Sectors Active
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs mt-1 text-slate-400 font-sans">
+                      <span>Laundering Cap Bonus: <strong className="text-emerald-400">+{Math.round((divRating.capacityMultiplier - 1) * 100)}%</strong></span>
+                      <span>•</span>
+                      <span>Heat Dissipation: <strong className="text-sky-400">-{divRating.heatReductionBonus} Heat/day</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Master DRIP Toggle */}
+                {inPortfolioCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('medium');
+                        setAllBusinessDripAction(!allDripActive);
+                      }}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        allDripActive
+                          ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                          : 'bg-slate-900 border border-slate-700 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{allDripActive ? 'All DRIP Active' : 'Enable Auto-DRIP on All'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 3. Active Limit Orders Summary */}
+          {player.shellLimitOrders && player.shellLimitOrders.filter((o) => o.active).length > 0 && (
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Target className="w-4 h-4 text-amber-400" />
+                  Active Automated Limit Orders ({player.shellLimitOrders.filter((o) => o.active).length})
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {player.shellLimitOrders.filter((o) => o.active).map((order) => {
+                  const b = SHELL_MAP.get(order.businessId);
+                  const ticker = SHELL_TICKERS[order.businessId] || '$SHLL';
+                  const typeBadge =
+                    order.type === 'buy_limit'
+                      ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                      : order.type === 'sell_limit'
+                      ? 'bg-sky-950 border-sky-500 text-sky-300'
+                      : 'bg-rose-950 border-rose-500 text-rose-300';
+                  const typeText =
+                    order.type === 'buy_limit' ? 'BUY LIMIT' : order.type === 'sell_limit' ? 'SELL LIMIT' : 'STOP LOSS';
+
+                  return (
+                    <div key={order.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-amber-400 text-xs">{ticker}</span>
+                          <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{b?.name}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${typeBadge}`}>
+                            {typeText}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-300 mt-0.5">
+                          {order.shares.toLocaleString()} sh @ <strong>${order.targetPrice.toLocaleString()}</strong>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEngine.play('click');
+                          triggerHaptic('light');
+                          cancelShellLimitOrderAction(order.id);
+                        }}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 text-[10px] font-bold transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Stash Holdings Grid or Empty State */}
           {inPortfolioCount === 0 ? (
             <div className="bg-slate-950/80 p-8 rounded-2xl border border-slate-800 text-center space-y-3">
@@ -1523,19 +1757,53 @@ export const ShellExchangeView: React.FC = () => {
                     )}
 
                     {/* Action Bar */}
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBusinessId(business.id);
-                          setOrderMode('buy');
-                          setActiveNav('exchange');
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all"
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        <span>Trade on Order Pad</span>
-                      </button>
+                    <div className="flex flex-wrap items-center justify-between pt-1 border-t border-slate-800/80 gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedBusinessId(business.id);
+                            setOrderMode('buy');
+                            setActiveNav('exchange');
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>Trade</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundEngine.play('click');
+                            triggerHaptic('light');
+                            openShellGraph(business.id);
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 hover:border-emerald-600 text-slate-300 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          title="Open Interactive Stock Time Graph"
+                        >
+                          <LineChart className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Graph</span>
+                        </button>
+
+                        {/* Per-Shell DRIP Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic('light');
+                            toggleBusinessDripAction(business.id);
+                          }}
+                          className={`px-2 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                            player.businessDrip?.[business.id]
+                              ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                          }`}
+                          title="Toggle automatic dividend reinvestment into shares"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>DRIP: {player.businessDrip?.[business.id] ? 'ON' : 'OFF'}</span>
+                        </button>
+                      </div>
 
                       <button
                         type="button"
@@ -1545,9 +1813,9 @@ export const ShellExchangeView: React.FC = () => {
                           setOrderMode('sell');
                           setActiveNav('exchange');
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all"
+                        className="px-2.5 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all ml-auto"
                       >
-                        <span>Cash Out / Liquidate</span>
+                        <span>Cash Out</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
