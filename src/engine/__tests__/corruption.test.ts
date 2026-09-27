@@ -268,4 +268,59 @@ describe('Phase 2: Corruption, Informants & Federal Wiretaps Engine', () => {
       expect(getRicoThreatLevel(100).danger).toBe('critical');
     });
   });
+
+  describe('90-Day Federal Informant & Warning Renewal System', () => {
+    it('renews informants and wiretaps and cools RICO meter on Day 90', () => {
+      state.player.currentDay = 90;
+      state.player.ricoMeter = 60;
+
+      processCorruptionAndRicoDaily(state, false);
+
+      expect(state.player.grandJuryTerm).toBe(2);
+      expect(state.player.lastInformantRotationDay).toBe(90);
+      // RICO cools by -2 (cold heat) and -50 (grand jury expiration)
+      expect(state.player.ricoMeter).toBe(8);
+      expect(state.player.federalInformants).toBeDefined();
+      expect(state.player.federalInformants!.length).toBeGreaterThan(0);
+      expect(state.player.federalWiretaps).toBeDefined();
+      expect(state.player.federalWiretaps!.length).toBeGreaterThan(0);
+      expect(state.logs.some((l) => l.message.includes('GRAND JURY MANDATE CONCLUDED'))).toBe(true);
+      expect(state.logs.some((l) => l.message.includes('FEDERAL TASK FORCE RENEWAL'))).toBe(true);
+    });
+
+    it('retains flipped double agents during the 90-day rotation', () => {
+      state.player.currentDay = 89;
+      const infs = state.player.federalInformants || [];
+      if (infs.length === 0) {
+        processCorruptionAndRicoDaily(state, false);
+      }
+      state.player.federalInformants![0].status = 'flipped_double_agent';
+      const flippedId = state.player.federalInformants![0].id;
+
+      // Advance to Day 90
+      state.player.currentDay = 90;
+      processCorruptionAndRicoDaily(state, false);
+
+      const hasFlipped = state.player.federalInformants!.some(
+        (i) => i.id === flippedId && i.status === 'flipped_double_agent'
+      );
+      expect(hasFlipped).toBe(true);
+    });
+
+    it('clears and logs evaded raid warnings when player moves to another city', () => {
+      state.player.currentDay = 5;
+      state.player.currentCityId = 'london';
+      state.player.pendingRaidWarning = {
+        cityId: 'new_york',
+        day: 4, // Was scheduled for Day 4
+        message: 'SWAT drafting raid warrant',
+        severity: 'warning',
+      };
+
+      processCorruptionAndRicoDaily(state, false);
+
+      expect(state.player.pendingRaidWarning).toBeNull();
+      expect(state.logs.some((l) => l.message.includes('RAID EVADED'))).toBe(true);
+    });
+  });
 });

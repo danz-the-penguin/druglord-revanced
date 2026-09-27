@@ -42,7 +42,7 @@ export const DrugGraphModal: React.FC = () => {
   } = useGameStore();
 
   const [selectedCityId, setSelectedCityId] = useState<string>(player.currentCityId);
-  const [hoveredPoint, setHoveredPoint] = useState<{ day: number; price: number; index: number; x: number; y: number } | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{ day: number; daysAgo: number; price: number; index: number; x: number; y: number } | null>(null);
 
   // Animation & Playback Engine State
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
@@ -561,33 +561,47 @@ export const DrugGraphModal: React.FC = () => {
                           setPlaybackProgress(pt.idx);
                           setIsPlaying(false);
                         }}
-                        onMouseEnter={() =>
+                        onMouseEnter={() => {
+                          const daysAgo = points.length - 1 - pt.idx;
                           setHoveredPoint({
-                            day: Math.max(1, player.currentDay - (points.length - 1 - pt.idx)),
+                            day: Math.max(1, player.currentDay - daysAgo),
+                            daysAgo,
                             price: pt.val,
                             index: pt.idx,
                             x: pt.x,
                             y: pt.y,
-                          })
-                        }
+                          });
+                        }}
                         onMouseLeave={() => setHoveredPoint(null)}
                       />
-                      {/* Day Label on X-axis */}
-                      <text
-                        x={pt.x}
-                        y={svgHeight - 10}
-                        fill={isPast ? '#94a3b8' : '#475569'}
-                        fontSize="9"
-                        textAnchor="middle"
-                        fontFamily="monospace"
-                        className="cursor-pointer"
-                        onClick={() => {
-                          setPlaybackProgress(pt.idx);
-                          setIsPlaying(false);
-                        }}
-                      >
-                        D{Math.max(1, player.currentDay - (points.length - 1 - pt.idx))}
-                      </text>
+                      {/* Day Label on X-axis (Relative days: D Present, D-1 (1d ago), etc.) */}
+                      {(() => {
+                        const daysAgo = points.length - 1 - pt.idx;
+                        const labelText =
+                          daysAgo === 0
+                            ? 'D (Today)'
+                            : points.length <= 6
+                            ? `D-${daysAgo} (${daysAgo}d ago)`
+                            : `D-${daysAgo}`;
+                        return (
+                          <text
+                            x={pt.x}
+                            y={svgHeight - 10}
+                            fill={isPast ? '#94a3b8' : '#475569'}
+                            fontSize="8.5"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            fontFamily="monospace"
+                            className="cursor-pointer"
+                            onClick={() => {
+                              setPlaybackProgress(pt.idx);
+                              setIsPlaying(false);
+                            }}
+                          >
+                            {labelText}
+                          </text>
+                        );
+                      })()}
                     </g>
                   );
                 })}
@@ -696,20 +710,21 @@ export const DrugGraphModal: React.FC = () => {
 
                 {/* Hover Tooltip inside SVG */}
                 {hoveredPoint && (
-                  <g transform={`translate(${hoveredPoint.x}, ${Math.max(paddingTop + 15, hoveredPoint.y - 30)})`}>
+                  <g transform={`translate(${hoveredPoint.x}, ${Math.max(paddingTop + 15, hoveredPoint.y - 34)})`}>
                     <rect
-                      x="-45"
-                      y="-18"
-                      width="90"
-                      height="22"
-                      rx="4"
+                      x="-55"
+                      y="-24"
+                      width="110"
+                      height="30"
+                      rx="5"
                       fill="#0f172a"
                       stroke="#10b981"
-                      strokeWidth="1"
+                      strokeWidth="1.2"
+                      filter="drop-shadow(0 2px 6px rgba(0,0,0,0.75))"
                     />
                     <text
                       x="0"
-                      y="-4"
+                      y="-11"
                       fill="#f1f5f9"
                       fontSize="10"
                       fontWeight="bold"
@@ -717,6 +732,17 @@ export const DrugGraphModal: React.FC = () => {
                       fontFamily="monospace"
                     >
                       ${hoveredPoint.price.toLocaleString()}
+                    </text>
+                    <text
+                      x="0"
+                      y="1"
+                      fill="#94a3b8"
+                      fontSize="8.5"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                      fontFamily="monospace"
+                    >
+                      {hoveredPoint.daysAgo === 0 ? 'D Present (Today)' : `D-${hoveredPoint.daysAgo} (${hoveredPoint.daysAgo}d ago)`}
                     </text>
                   </g>
                 )}
@@ -877,7 +903,12 @@ export const DrugGraphModal: React.FC = () => {
             {animationMode === 'timeline' && (
               <div className="flex items-center gap-3 pt-1 border-t border-slate-800/60">
                 <span className="text-[11px] text-slate-400 font-bold shrink-0">
-                  Day {currentAnimatedDay} / {totalDaysRecorded}
+                  {(() => {
+                    const daysAgoAnim = Math.round(rawSeries.length - 1 - clampedProgress);
+                    return daysAgoAnim === 0
+                      ? `D (Today) • Day ${player.currentDay} / ${totalDaysRecorded}d`
+                      : `D-${daysAgoAnim} (${daysAgoAnim}d ago) • Day ${currentAnimatedDay} / ${totalDaysRecorded}d`;
+                  })()}
                 </span>
                 <input
                   type="range"

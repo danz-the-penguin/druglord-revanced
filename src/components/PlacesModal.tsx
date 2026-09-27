@@ -40,6 +40,7 @@ import {
 } from '../engine/laundering';
 import { PropertyImage } from './PropertyImage';
 import { ArmoryPreviewCard } from './ArmoryPreviewCard';
+import { Sparkline } from './Sparkline';
 import {
   Building2,
   Skull,
@@ -69,6 +70,10 @@ import {
   FlaskConical,
   Wrench,
   Star,
+  Search,
+  X,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { soundEngine } from '../utils/audio';
 import {
@@ -98,6 +103,50 @@ import { ShellImage } from './ShellImage';
 import { SharkImage } from './SharkImage';
 import { ClandestineLabsView } from './ClandestineLabsView';
 import { CorruptionView } from './CorruptionView';
+
+export const SHELL_TICKERS: Record<string, string> = {
+  laundromat: '$WASH',
+  car_wash: '$AUTO',
+  underground_sportsbook: '$BETS',
+  luxury_watch_boutique: '$TIME',
+  nightclub: '$CLUB',
+  scrap_metal_foundry: '$IRON',
+  construction_contracting: '$BLD',
+  art_gallery: '$ARTS',
+  freight_shipping: '$PORT',
+  private_jet_charter: '$JETS',
+  pharmaceutical_packaging: '$PHRM',
+  mega_casino_resort: '$VEGAS',
+  yacht_brokerage: '$YCHT',
+  telecom_voip_network: '$TELC',
+  panama_legal_trust: '$PANM',
+  chip_foundry: '$CHIP',
+  crypto_mining_facility: '$ASIC',
+  anesthesia_clinics: '$ANST',
+  swiss_depository_bank: '$SWIS',
+};
+
+export const SHELL_SECTORS: Record<string, string> = {
+  laundromat: 'Consumer Services',
+  car_wash: 'Automotive Services',
+  underground_sportsbook: 'Gaming & Wagering',
+  luxury_watch_boutique: 'Luxury Goods',
+  nightclub: 'Hospitality & Nightlife',
+  scrap_metal_foundry: 'Industrial Materials',
+  construction_contracting: 'Infrastructure',
+  art_gallery: 'Fine Arts & Antiquities',
+  freight_shipping: 'Maritime Logistics',
+  private_jet_charter: 'Aviation Logistics',
+  pharmaceutical_packaging: 'Healthcare & Pharma',
+  mega_casino_resort: 'Hospitality & Gaming',
+  yacht_brokerage: 'Maritime Luxury',
+  telecom_voip_network: 'Telecommunications',
+  panama_legal_trust: 'Offshore Wealth',
+  chip_foundry: 'Semiconductors',
+  crypto_mining_facility: 'Digital Assets & FinTech',
+  anesthesia_clinics: 'Medical Services',
+  swiss_depository_bank: 'Private Banking',
+};
 
 export const PlacesModal: React.FC = () => {
   const {
@@ -139,6 +188,13 @@ export const PlacesModal: React.FC = () => {
   const [launderAmount, setLaunderAmount] = useState<number>(0);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>('laundromat');
   const [confirmRetire, setConfirmRetire] = useState<boolean>(false);
+
+  // Underworld Stock Exchange State
+  const [shellSearch, setShellSearch] = useState<string>('');
+  const [shellFilter, setShellFilter] = useState<'all' | 'controlling' | 'minority' | 'unowned' | 'high_yield'>('all');
+  const [shellSortField, setShellSortField] = useState<'default' | 'name' | 'price' | 'equity' | 'capacity'>('default');
+  const [shellSortDir, setShellSortDir] = useState<'asc' | 'desc'>('desc');
+  const [shellViewMode, setShellViewMode] = useState<'table' | 'cards'>('table');
 
   // Vault & Logistics Couriers state
   const [vaultSelectedCity, setVaultSelectedCity] = useState<string>(player.currentCityId);
@@ -2001,372 +2057,679 @@ export const PlacesModal: React.FC = () => {
         {/* CORRUPTION, INFORMANTS & FEDERAL WIRETAPS */}
         {placesSubTab === 'informant' && <CorruptionView />}
 
-        {/* MONEY LAUNDERING & SHELL BUSINESSES TAB */}
-        {placesSubTab === 'laundering' && (
-          <div className="space-y-6">
-            {/* Overview Conglomerate Dossier */}
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm uppercase mb-1">
-                  <Landmark className="w-5 h-5" /> Underworld Corporate Conglomerate & Laundering
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                  Acquire cash-intensive shell businesses, retain forensic offshore counsel, and layer illicit street cash into legitimate Swiss bank deposits.
-                </p>
-              </div>
+        {/* MONEY LAUNDERING & UNDERWORLD STOCK EXCHANGE (U-NASDAQ) TAB */}
+        {placesSubTab === 'laundering' && (() => {
+          let portfolioValuation = 0;
+          let controlledCount = 0;
+          let minorityCount = 0;
+          let unownedCount = 0;
+          let totalCleanCap = 0;
 
-              <div className="flex items-center gap-4 bg-slate-900/90 px-4 py-2.5 rounded-xl border border-slate-800 text-xs font-mono shrink-0">
+          for (const b of SHELL_BUSINESSES) {
+            const sh = getBusinessSharesOwned(player, b.id);
+            const p = getBusinessSharePrice(b, player.currentDay);
+            portfolioValuation += sh * p;
+            if (sh > CONTROLLING_STAKE_SHARES) {
+              controlledCount++;
+              totalCleanCap += calculateEffectiveDailyCapacity(b, player.corporateUpgrades);
+            } else if (sh > 0) {
+              minorityCount++;
+            } else {
+              unownedCount++;
+            }
+          }
+
+          let displayList = [...SHELL_BUSINESSES];
+          if (shellFilter === 'controlling') {
+            displayList = displayList.filter((b) => getBusinessSharesOwned(player, b.id) > CONTROLLING_STAKE_SHARES);
+          } else if (shellFilter === 'minority') {
+            displayList = displayList.filter((b) => {
+              const s = getBusinessSharesOwned(player, b.id);
+              return s > 0 && s <= CONTROLLING_STAKE_SHARES;
+            });
+          } else if (shellFilter === 'unowned') {
+            displayList = displayList.filter((b) => getBusinessSharesOwned(player, b.id) === 0);
+          } else if (shellFilter === 'high_yield') {
+            displayList = displayList.filter((b) => b.passiveDailyProfit >= 2500);
+          }
+
+          if (shellSearch.trim()) {
+            const q = shellSearch.trim().toLowerCase();
+            displayList = displayList.filter((b) => {
+              const ticker = (SHELL_TICKERS[b.id] || '').toLowerCase();
+              const sector = (SHELL_SECTORS[b.id] || '').toLowerCase();
+              return b.name.toLowerCase().includes(q) || ticker.includes(q) || sector.includes(q);
+            });
+          }
+
+          displayList.sort((a, b) => {
+            let valA: number | string = 0;
+            let valB: number | string = 0;
+
+            if (shellSortField === 'name') {
+              valA = a.name.toLowerCase();
+              valB = b.name.toLowerCase();
+              return shellSortDir === 'asc'
+                ? (valA as string).localeCompare(valB as string)
+                : (valB as string).localeCompare(valA as string);
+            } else if (shellSortField === 'price') {
+              valA = getBusinessSharePrice(a, player.currentDay);
+              valB = getBusinessSharePrice(b, player.currentDay);
+            } else if (shellSortField === 'equity') {
+              valA = getBusinessSharesOwned(player, a.id);
+              valB = getBusinessSharesOwned(player, b.id);
+            } else if (shellSortField === 'capacity') {
+              valA = calculateEffectiveDailyCapacity(a, player.corporateUpgrades);
+              valB = calculateEffectiveDailyCapacity(b, player.corporateUpgrades);
+            } else {
+              valA = a.tier;
+              valB = b.tier;
+            }
+
+            return shellSortDir === 'asc'
+              ? (valA as number) - (valB as number)
+              : (valB as number) - (valA as number);
+          });
+
+          const activeBusiness = SHELL_MAP.get(selectedBusinessId) || SHELL_BUSINESSES[0];
+          const activeShares = getBusinessSharesOwned(player, activeBusiness.id);
+          const activeEquityPct = ((activeShares / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+          const activeIsControlling = hasControllingStake(player, activeBusiness.id);
+          const activeSharePrice = getBusinessSharePrice(activeBusiness, player.currentDay);
+          const activeSharesNeeded = Math.max(0, CONTROLLING_STAKE_SHARES + 1 - activeShares);
+          const activeCostToControl = Math.round(activeSharesNeeded * activeSharePrice * (1 + BROKERAGE_FEE_RATE));
+          const activeSynergies = getControllingSynergies(player);
+
+          const effFee = calculateEffectiveFeeRate(activeBusiness, player.corporateUpgrades);
+          const effCap = calculateEffectiveDailyCapacity(activeBusiness, player.corporateUpgrades);
+          const remainingCap = Math.max(0, effCap - (player.launderedToday || 0));
+          const maxCleanable = Math.min(player.cash, remainingCap);
+          const netClean = Math.round(launderAmount * (1 - effFee));
+          const hasOffshoreLegal = player.corporateUpgrades?.includes('offshore_legal');
+
+          return (
+            <div className="space-y-6">
+              {/* Overview Conglomerate Dossier */}
+              <div className="bg-slate-950/90 p-5 rounded-2xl border border-emerald-500/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xl">
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase">Owned Shells:</span>
-                  <strong className="text-emerald-400 text-sm">
-                    {player.ownedBusinesses?.length ?? 0} / {SHELL_BUSINESSES.length}
-                  </strong>
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm uppercase mb-1">
+                    <Landmark className="w-5 h-5 text-emerald-400" />
+                    <span>Underworld Stock Exchange & Corporate Laundering (U-NASDAQ)</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                    Trade shares of commercial shell enterprises, accumulate majority control (&gt;50%), and route illicit street cash through offshore corporate ledgers.
+                  </p>
                 </div>
-                <div className="border-l border-slate-800 pl-4">
-                  <span className="text-slate-500 block text-[10px] uppercase">Passive Clean/Day:</span>
-                  <strong className="text-emerald-400 text-sm">
-                    +${calculateTotalPassiveIncome(player.ownedBusinesses).toLocaleString()}
-                  </strong>
-                </div>
-                <div className="border-l border-slate-800 pl-4">
-                  <span className="text-slate-500 block text-[10px] uppercase">Daily Heat Shield:</span>
-                  <strong className="text-sky-400 text-sm">
-                    -{calculateTotalHeatShield(player.ownedBusinesses)}%
-                  </strong>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-900/90 px-4 py-3 rounded-xl border border-slate-800 text-xs font-mono shrink-0">
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase">Portfolio Value:</span>
+                    <strong className="text-emerald-400 text-sm">
+                      ${portfolioValuation.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="sm:border-l sm:border-slate-800 sm:pl-3">
+                    <span className="text-slate-500 block text-[10px] uppercase">Majority Stakes:</span>
+                    <strong className="text-amber-400 text-sm">
+                      {controlledCount} / {SHELL_BUSINESSES.length} Listed
+                    </strong>
+                  </div>
+                  <div className="border-l border-slate-800 pl-3">
+                    <span className="text-slate-500 block text-[10px] uppercase">Passive Flow:</span>
+                    <strong className="text-emerald-400 text-sm">
+                      +${calculateTotalPassiveIncome(player.ownedBusinesses).toLocaleString()}/d
+                    </strong>
+                  </div>
+                  <div className="border-l border-slate-800 pl-3">
+                    <span className="text-slate-500 block text-[10px] uppercase">Daily Clean Cap:</span>
+                    <strong className="text-sky-400 text-sm">
+                      ${totalCleanCap.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="border-l border-slate-800 pl-3">
+                    <span className="text-slate-500 block text-[10px] uppercase">Heat Shield:</span>
+                    <strong className="text-sky-400 text-sm">
+                      -{calculateTotalHeatShield(player.ownedBusinesses)}%
+                    </strong>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: 8 Shell Businesses */}
-              <div className="lg:col-span-7 space-y-3">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between px-1">
-                  <span className="flex items-center gap-1.5">
-                    <Briefcase className="w-4 h-4 text-emerald-400" />
-                    <span>Commercial Shell Entities ({SHELL_BUSINESSES.length})</span>
-                  </span>
-                  <span className="text-[11px] font-normal text-slate-500">
-                    Click to select active washing front
-                  </span>
+              {/* Search, Filter, Sort & Display Bar (Consistent with MarketBoard & InventoryBoard) */}
+              <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                {/* Search Bar */}
+                <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                  <div className="relative w-full">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Search by $TICKER, corporate name, or sector..."
+                      value={shellSearch}
+                      onChange={(e) => setShellSearch(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+                    />
+                    {shellSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setShellSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
-                  {SHELL_BUSINESSES.map((business) => {
-                    const isOwned = player.ownedBusinesses?.includes(business.id);
-                    const sharesOwned = getBusinessSharesOwned(player, business.id);
-                    const equityPct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
-                    const isControlling = sharesOwned > CONTROLLING_STAKE_SHARES;
-                    const isSelected = selectedBusinessId === business.id;
-                    const effectiveFee = calculateEffectiveFeeRate(business, player.corporateUpgrades);
-                    const effectiveCap = calculateEffectiveDailyCapacity(business, player.corporateUpgrades);
-                    const sharePrice = getBusinessSharePrice(business, player.currentDay);
-                    const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
-                    const volPct = Math.round(((sharePrice - baseSharePrice) / baseSharePrice) * 100);
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { id: 'all', label: `All (${SHELL_BUSINESSES.length})` },
+                    { id: 'controlling', label: `Majority (${controlledCount})` },
+                    { id: 'minority', label: `Minority (${minorityCount})` },
+                    { id: 'unowned', label: `Unacquired (${unownedCount})` },
+                    { id: 'high_yield', label: 'High Dividend' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setShellFilter(tab.id as typeof shellFilter)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
+                        shellFilter === tab.id
+                          ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                          : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-                    const cost500 = Math.round(500 * sharePrice * (1 + BROKERAGE_FEE_RATE));
-                    const cost1000 = Math.round(1000 * sharePrice * (1 + BROKERAGE_FEE_RATE));
-                    const remainingToControl = Math.max(0, CONTROLLING_STAKE_SHARES + 1 - sharesOwned);
-                    const costToControl = Math.round(remainingToControl * sharePrice * (1 + BROKERAGE_FEE_RATE));
-                    const costTotal = Math.round((TOTAL_SHARES_PER_BUSINESS - sharesOwned) * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                {/* Sorting Controls & View Switcher */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (shellSortField === 'price') {
+                          setShellSortDir(shellSortDir === 'desc' ? 'asc' : 'desc');
+                        } else {
+                          setShellSortField('price');
+                          setShellSortDir('desc');
+                        }
+                      }}
+                      className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-all ${
+                        shellSortField === 'price' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Sort by Spot Price"
+                    >
+                      Price {shellSortField === 'price' ? (shellSortDir === 'desc' ? '▼' : '▲') : ''}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (shellSortField === 'equity') {
+                          setShellSortDir(shellSortDir === 'desc' ? 'asc' : 'desc');
+                        } else {
+                          setShellSortField('equity');
+                          setShellSortDir('desc');
+                        }
+                      }}
+                      className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-all ${
+                        shellSortField === 'equity' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Sort by Equity Stake"
+                    >
+                      Stake {shellSortField === 'equity' ? (shellSortDir === 'desc' ? '▼' : '▲') : ''}
+                    </button>
+                  </div>
 
-                    const proceeds500 = Math.max(0, Math.round(Math.min(500, sharesOwned) * sharePrice * (1 - BROKERAGE_FEE_RATE)));
+                  {/* Mode Switcher: Cards vs Table */}
+                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setShellViewMode('table')}
+                      className={`p-1.5 rounded transition-all ${
+                        shellViewMode === 'table' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                      title="Order Book / Table View"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShellViewMode('cards')}
+                      className={`p-1.5 rounded transition-all ${
+                        shellViewMode === 'cards' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                      title="Stock Cards View"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                    return (
-                      <div
-                        key={business.id}
-                        onClick={() => setSelectedBusinessId(business.id)}
-                        className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/40'
-                            : isControlling
-                            ? 'bg-slate-950/70 border-emerald-800/60 hover:border-emerald-700'
-                            : sharesOwned > 0
-                            ? 'bg-slate-950/60 border-slate-700/80 hover:border-slate-600'
-                            : 'bg-slate-950/30 border-slate-800/80 hover:border-slate-700 opacity-90'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2.5">
-                            <ShellImage business={business} size="sm" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-200 text-sm">{business.name}</span>
-                                <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[10px] font-mono text-slate-400">
-                                  T{business.tier}
-                                </span>
+              {/* Main Grid: Exchange Board (Left) & Active Terminal (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Column: 7 Cols Exchange Board */}
+                <div className="lg:col-span-7 space-y-3">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between px-1">
+                    <span className="flex items-center gap-1.5">
+                      <Briefcase className="w-4 h-4 text-emerald-400" />
+                      <span>Exchange Listed Shells ({displayList.length})</span>
+                    </span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      Click any asset to open governance & wire station
+                    </span>
+                  </div>
+
+                  {/* TABLE VIEW (ORDER BOOK) */}
+                  {shellViewMode === 'table' ? (
+                    <div className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden max-h-[580px] overflow-y-auto">
+                      <table className="w-full text-left text-xs font-mono border-collapse">
+                        <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase sticky top-0 z-10 border-b border-slate-800">
+                          <tr>
+                            <th className="py-2.5 px-3">Ticker</th>
+                            <th className="py-2.5 px-3">Entity & Sector</th>
+                            <th className="py-2.5 px-3 text-right">Spot Price</th>
+                            <th className="py-2.5 px-3 text-center">7D Trend</th>
+                            <th className="py-2.5 px-3 text-right">Stake / Sh</th>
+                            <th className="py-2.5 px-3 text-right">Clean Cap</th>
+                            <th className="py-2.5 px-3 text-center">Governance</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {displayList.map((business) => {
+                            const isSelected = selectedBusinessId === business.id;
+                            const sharesOwned = getBusinessSharesOwned(player, business.id);
+                            const equityPct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+                            const isControlling = sharesOwned > CONTROLLING_STAKE_SHARES;
+                            const sharePrice = getBusinessSharePrice(business, player.currentDay);
+                            const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
+                            const volPct = Math.round(((sharePrice - baseSharePrice) / baseSharePrice) * 100);
+                            const ticker = SHELL_TICKERS[business.id] || '$SHLL';
+                            const sector = SHELL_SECTORS[business.id] || 'Commercial';
+                            const effectiveCap = calculateEffectiveDailyCapacity(business, player.corporateUpgrades);
+
+                            const history7d = [6, 5, 4, 3, 2, 1, 0].map((d) =>
+                              getBusinessSharePrice(business, Math.max(1, player.currentDay - d))
+                            );
+
+                            return (
+                              <tr
+                                key={business.id}
+                                onClick={() => setSelectedBusinessId(business.id)}
+                                className={`cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'bg-emerald-950/40 ring-1 ring-inset ring-emerald-500/50'
+                                    : isControlling
+                                    ? 'hover:bg-slate-900/70 bg-slate-950/40'
+                                    : 'hover:bg-slate-900/50'
+                                }`}
+                              >
+                                <td className="py-2.5 px-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-amber-400 font-mono">{ticker}</span>
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400">
+                                      T{business.tier}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 max-w-[160px]">
+                                  <div className="font-bold text-slate-200 truncate">{business.name}</div>
+                                  <div className="text-[10px] text-slate-500 truncate">{sector}</div>
+                                </td>
+                                <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                                  <div className="font-bold text-slate-100">${sharePrice.toLocaleString()}</div>
+                                  <div className={`text-[10px] ${volPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {volPct >= 0 ? `+${volPct}%` : `${volPct}%`}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <div className="inline-block">
+                                    <Sparkline
+                                      data={history7d}
+                                      width={70}
+                                      height={20}
+                                      color={volPct >= 0 ? '#10b981' : '#f43f5e'}
+                                    />
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                                  <span className={`font-bold ${isControlling ? 'text-emerald-400' : sharesOwned > 0 ? 'text-sky-300' : 'text-slate-500'}`}>
+                                    {equityPct}%
+                                  </span>
+                                  <div className="text-[10px] text-slate-500">
+                                    {sharesOwned.toLocaleString()} sh
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 text-right whitespace-nowrap font-bold text-slate-300">
+                                  ${effectiveCap.toLocaleString()}
+                                </td>
+                                <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                  {isControlling ? (
+                                    <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-600/70 text-emerald-300 text-[10px] font-bold">
+                                      👑 Majority
+                                    </span>
+                                  ) : sharesOwned > 0 ? (
+                                    <span className="px-2 py-0.5 rounded bg-sky-950 border border-sky-700/60 text-sky-300 text-[10px] font-bold">
+                                      💼 Minority
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 text-[10px]">
+                                      0% Equity
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    /* CARDS VIEW */
+                    <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+                      {displayList.map((business) => {
+                        const isOwned = player.ownedBusinesses?.includes(business.id);
+                        const sharesOwned = getBusinessSharesOwned(player, business.id);
+                        const equityPct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+                        const isControlling = sharesOwned > CONTROLLING_STAKE_SHARES;
+                        const isSelected = selectedBusinessId === business.id;
+                        const effectiveFee = calculateEffectiveFeeRate(business, player.corporateUpgrades);
+                        const effectiveCap = calculateEffectiveDailyCapacity(business, player.corporateUpgrades);
+                        const sharePrice = getBusinessSharePrice(business, player.currentDay);
+                        const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
+                        const volPct = Math.round(((sharePrice - baseSharePrice) / baseSharePrice) * 100);
+                        const ticker = SHELL_TICKERS[business.id] || '$SHLL';
+                        const sector = SHELL_SECTORS[business.id] || 'Commercial';
+
+                        const cost500 = Math.round(500 * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const cost1000 = Math.round(1000 * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const remainingToControl = Math.max(0, CONTROLLING_STAKE_SHARES + 1 - sharesOwned);
+                        const costToControl = Math.round(remainingToControl * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const costTotal = Math.round((TOTAL_SHARES_PER_BUSINESS - sharesOwned) * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const proceeds500 = Math.max(0, Math.round(Math.min(500, sharesOwned) * sharePrice * (1 - BROKERAGE_FEE_RATE)));
+
+                        const history7d = [6, 5, 4, 3, 2, 1, 0].map((d) =>
+                          getBusinessSharePrice(business, Math.max(1, player.currentDay - d))
+                        );
+
+                        return (
+                          <div
+                            key={business.id}
+                            onClick={() => setSelectedBusinessId(business.id)}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/40'
+                                : isControlling
+                                ? 'bg-slate-950/70 border-emerald-800/60 hover:border-emerald-700'
+                                : sharesOwned > 0
+                                ? 'bg-slate-950/60 border-slate-700/80 hover:border-slate-600'
+                                : 'bg-slate-950/30 border-slate-800/80 hover:border-slate-700 opacity-90'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <ShellImage business={business} size="sm" />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-amber-400 font-mono">{ticker}</span>
+                                    <span className="font-bold text-slate-200 text-sm">{business.name}</span>
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[10px] font-mono text-slate-400">
+                                      T{business.tier}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">{sector} • {business.description}</div>
+                                </div>
                               </div>
-                              <p className="text-[11px] text-slate-400 mt-0.5">{business.description}</p>
+
+                              <div className="text-right shrink-0">
+                                {isOwned ? (
+                                  <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold uppercase">
+                                    100% Subsidiary
+                                  </span>
+                                ) : isControlling ? (
+                                  <span className="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/60 text-amber-300 text-[10px] font-bold uppercase">
+                                    👑 Majority ({equityPct}%)
+                                  </span>
+                                ) : sharesOwned > 0 ? (
+                                  <span className="px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/60 text-sky-300 text-[10px] font-bold uppercase">
+                                    💼 Minority ({equityPct}%)
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 text-[10px] font-bold uppercase">
+                                    0% Equity
+                                  </span>
+                                )}
+                                <div className="mt-1 font-mono text-[10px] text-slate-400">
+                                  <span>${sharePrice.toLocaleString()}/sh </span>
+                                  <span className={volPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                    {volPct >= 0 ? `+${volPct}%` : `${volPct}%`}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="text-right shrink-0">
-                            {isOwned ? (
-                              <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold uppercase">
-                                100% Subsidiary
-                              </span>
-                            ) : isControlling ? (
-                              <span className="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/60 text-amber-300 text-[10px] font-bold uppercase">
-                                👑 Majority ({equityPct}%)
-                              </span>
-                            ) : sharesOwned > 0 ? (
-                              <span className="px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/60 text-sky-300 text-[10px] font-bold uppercase">
-                                💼 Minority ({equityPct}%)
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 text-[10px] font-bold uppercase">
-                                0% Equity
-                              </span>
-                            )}
-                            <div className="mt-1 font-mono text-[10px] text-slate-400">
-                              <span>${sharePrice.toLocaleString()}/sh </span>
-                              <span className={volPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                                {volPct >= 0 ? `+${volPct}%` : `${volPct}%`}
-                              </span>
+                            {/* Sparkline & Equity Progress Bar */}
+                            <div className="mt-2.5 flex items-center gap-3">
+                              <div className="shrink-0">
+                                <Sparkline
+                                  data={history7d}
+                                  width={80}
+                                  height={22}
+                                  color={volPct >= 0 ? '#10b981' : '#f43f5e'}
+                                />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                                  <span>Equity: <strong className={isControlling ? 'text-emerald-400' : 'text-sky-300'}>{equityPct}%</strong> ({sharesOwned.toLocaleString()} / 10,000 sh)</span>
+                                  <span>Threshold: 50.0%</span>
+                                </div>
+                                <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800 relative">
+                                  <div
+                                    className={`h-full transition-all duration-300 ${
+                                      isControlling ? 'bg-emerald-400' : 'bg-sky-400'
+                                    }`}
+                                    style={{ width: `${Math.min(100, (sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100)}%` }}
+                                  />
+                                  <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-amber-500/70" />
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* Equity Progress Bar */}
-                        <div className="mt-2.5 space-y-1">
-                          <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                            <span>Equity: <strong className={isControlling ? 'text-emerald-400' : 'text-sky-300'}>{equityPct}%</strong> ({sharesOwned.toLocaleString()} / 10,000 shares)</span>
-                            <span>Majority Threshold: 50.0%</span>
-                          </div>
-                          <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800 relative">
-                            <div
-                              className={`h-full transition-all duration-300 ${
-                                isControlling ? 'bg-emerald-400' : 'bg-sky-400'
-                              }`}
-                              style={{ width: `${Math.min(100, (sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100)}%` }}
-                            />
-                            {/* 50% line */}
-                            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-amber-500/70" />
-                          </div>
-                        </div>
-
-                        {/* Metrics Bar */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-800/70 text-[11px] font-mono text-slate-400">
-                          <div>
-                            <span>Fee: </span>
-                            <strong className="text-emerald-400">{Math.round(effectiveFee * 1000) / 10}%</strong>
-                          </div>
-                          <div>
-                            <span>Daily Cap: </span>
-                            <strong className="text-slate-200">${effectiveCap.toLocaleString()}</strong>
-                          </div>
-                          <div>
-                            <span>Dividends: </span>
-                            <strong className="text-emerald-400">
-                              +${Math.round((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * business.passiveDailyProfit).toLocaleString()}/day
-                            </strong>
-                          </div>
-                          {business.specialPerk && (
-                            <div className="text-[10px] text-amber-400 font-sans font-bold flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" /> {business.specialPerk}
+                            {/* Metrics Bar */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-800/70 text-[11px] font-mono text-slate-400">
+                              <div>
+                                <span>Fee: </span>
+                                <strong className="text-emerald-400">{Math.round(effectiveFee * 1000) / 10}%</strong>
+                              </div>
+                              <div>
+                                <span>Daily Cap: </span>
+                                <strong className="text-slate-200">${effectiveCap.toLocaleString()}</strong>
+                              </div>
+                              <div>
+                                <span>Dividends: </span>
+                                <strong className="text-emerald-400">
+                                  +${Math.round((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * business.passiveDailyProfit).toLocaleString()}/day
+                                </strong>
+                              </div>
+                              {business.specialPerk && (
+                                <div className="text-[10px] text-amber-400 font-sans font-bold flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" /> {business.specialPerk}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
-                        {/* Share Trading Action Buttons */}
-                        <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {sharesOwned < TOTAL_SHARES_PER_BUSINESS && (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBuyShares(business.id, 500);
-                                  }}
-                                  disabled={player.cash < cost500}
-                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
-                                  title={`Buy 500 shares (5%) for $${cost500.toLocaleString()} incl. 2.5% brokerage fee`}
-                                >
-                                  +5% (${cost500.toLocaleString()})
-                                </button>
+                            {/* Share Trading Action Buttons */}
+                            <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {sharesOwned < TOTAL_SHARES_PER_BUSINESS && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBuyShares(business.id, 500);
+                                      }}
+                                      disabled={player.cash < cost500}
+                                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
+                                      title={`Buy 500 shares (5%) for $${cost500.toLocaleString()} incl. 2.5% brokerage fee`}
+                                    >
+                                      +5% (${cost500.toLocaleString()})
+                                    </button>
 
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBuyShares(business.id, 1000);
-                                  }}
-                                  disabled={player.cash < cost1000}
-                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
-                                  title={`Buy 1,000 shares (10%) for $${cost1000.toLocaleString()} incl. 2.5% brokerage fee`}
-                                >
-                                  +10% (${cost1000.toLocaleString()})
-                                </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBuyShares(business.id, 1000);
+                                      }}
+                                      disabled={player.cash < cost1000}
+                                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
+                                      title={`Buy 1,000 shares (10%) for $${cost1000.toLocaleString()} incl. 2.5% brokerage fee`}
+                                    >
+                                      +10% (${cost1000.toLocaleString()})
+                                    </button>
 
-                                {!isControlling && remainingToControl > 0 && (
+                                    {!isControlling && remainingToControl > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleBuyShares(business.id, remainingToControl);
+                                        }}
+                                        disabled={player.cash < costToControl}
+                                        className="px-2.5 py-0.5 rounded bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-[10px] font-black transition-all shadow cursor-pointer"
+                                        title={`Buy ${remainingToControl.toLocaleString()} shares to reach >50% controlling interest for $${costToControl.toLocaleString()}`}
+                                      >
+                                        Take Control &gt;50% (${costToControl.toLocaleString()})
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBuyShares(business.id, TOTAL_SHARES_PER_BUSINESS - sharesOwned);
+                                      }}
+                                      disabled={player.cash < costTotal}
+                                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 text-[10px] font-bold transition-all shadow cursor-pointer"
+                                      title="Buy all remaining shares to acquire 100% equity"
+                                    >
+                                      Buy 100% (${costTotal.toLocaleString()})
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+
+                              {sharesOwned > 0 && (
+                                <div className="flex items-center gap-1.5 ml-auto">
                                   <button
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleBuyShares(business.id, remainingToControl);
+                                      handleSellShares(business.id, Math.min(500, sharesOwned));
                                     }}
-                                    disabled={player.cash < costToControl}
-                                    className="px-2.5 py-0.5 rounded bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-[10px] font-black transition-all shadow cursor-pointer"
-                                    title={`Buy ${remainingToControl.toLocaleString()} shares to reach >50% controlling interest for $${costToControl.toLocaleString()}`}
+                                    className="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 text-[10px] font-bold transition-all cursor-pointer"
+                                    title={`Liquidate up to 500 shares for $${proceeds500.toLocaleString()} net`}
                                   >
-                                    Take Control &gt;50% (${costToControl.toLocaleString()})
+                                    Cash Out -500 sh (+${proceeds500.toLocaleString()})
                                   </button>
-                                )}
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBuyShares(business.id, TOTAL_SHARES_PER_BUSINESS - sharesOwned);
-                                  }}
-                                  disabled={player.cash < costTotal}
-                                  className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 text-[10px] font-bold transition-all shadow cursor-pointer"
-                                  title="Buy all remaining shares to acquire 100% equity"
-                                >
-                                  Buy 100% (${costTotal.toLocaleString()})
-                                </button>
-                              </>
-                            )}
-                          </div>
-
-                          {sharesOwned > 0 && (
-                            <div className="flex items-center gap-1.5 ml-auto">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSellShares(business.id, Math.min(500, sharesOwned));
-                                }}
-                                className="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 text-[10px] font-bold transition-all cursor-pointer"
-                                title={`Liquidate up to 500 shares for $${proceeds500.toLocaleString()} net`}
-                              >
-                                Cash Out -500 sh (+${proceeds500.toLocaleString()})
-                              </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Right Column: Corporate Upgrades & Wire Console */}
-              <div className="lg:col-span-5 space-y-4">
-                {/* Corporate Upgrades */}
-                <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2.5">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-sky-400" />
-                    <span>Forensic Retainers & Legal Defense</span>
+                {/* Right Column: 5 Cols Active Trading & Corporate Governance Terminal */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* Selected Asset Header */}
+                  <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-amber-400 text-sm">
+                          {SHELL_TICKERS[activeBusiness.id] || '$SHLL'}
+                        </span>
+                        <h4 className="font-bold text-slate-200 text-xs truncate max-w-[180px]">
+                          {activeBusiness.name}
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        Spot: <strong className="text-emerald-400">${activeSharePrice.toLocaleString()}</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800">
+                      <span className="text-slate-400 text-[11px]">Your Equity Position:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`font-mono font-bold ${activeIsControlling ? 'text-emerald-400' : activeShares > 0 ? 'text-sky-300' : 'text-slate-500'}`}>
+                          {activeEquityPct}% ({activeShares.toLocaleString()} / 10,000 sh)
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    {CORPORATE_UPGRADES.map((upgrade) => {
-                      const isRetained = player.corporateUpgrades?.includes(upgrade.id);
-                      const canAfford = player.cash >= upgrade.cost;
-
-                      return (
-                        <div
-                          key={upgrade.id}
-                          className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between gap-2 text-xs"
-                        >
-                          <div className="space-y-0.5">
-                            <div className="font-bold text-slate-200 text-[11px]">{upgrade.name}</div>
-                            <p className="text-[10px] text-slate-400 leading-tight">{upgrade.description}</p>
-                          </div>
-
-                          {isRetained ? (
-                            <span className="px-2 py-0.5 rounded bg-sky-950 border border-sky-500/60 text-sky-300 text-[10px] font-bold uppercase shrink-0">
-                              Active
+                  {/* Wire Execution & Governance Console */}
+                  {!activeIsControlling ? (
+                    <div className="bg-slate-950/90 p-5 rounded-xl border border-amber-800/60 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
+                              Corporate Governance Locked
+                            </h4>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-700/60 text-amber-300">
+                              {activeEquityPct}% / 50.1% Required
                             </span>
-                          ) : (
-                            <button
-                              onClick={() => handleBuyUpgrade(upgrade.id)}
-                              disabled={!canAfford}
-                              className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-slate-950 font-bold text-[11px] shrink-0"
-                            >
-                              Retain (${upgrade.cost.toLocaleString()})
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Wire Execution Console */}
-                {(() => {
-                  const activeBusiness = SHELL_MAP.get(selectedBusinessId) || SHELL_BUSINESSES[0];
-                  const isControlling = hasControllingStake(player, activeBusiness.id);
-                  const sharesOwned = getBusinessSharesOwned(player, activeBusiness.id);
-                  const sharePct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
-                  const sharesNeeded = Math.max(0, 5001 - sharesOwned);
-                  const livePrice = getBusinessSharePrice(activeBusiness, player.currentDay);
-                  const costToControl = Math.round(sharesNeeded * livePrice * (1 + BROKERAGE_FEE_RATE));
-                  const canAffordControl = player.cash >= costToControl;
-                  const synergies = getControllingSynergies(player);
-
-                  if (!isControlling) {
-                    return (
-                      <div className="bg-slate-950/90 p-5 rounded-xl border border-amber-800/60 space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-                            <Lock className="w-5 h-5" />
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
-                                Corporate Governance Locked
-                              </h4>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-700/60 text-amber-300">
-                                {sharePct}% / 50.1% Required
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              Falsifying ledgers and routing dirty cash requires majority executive voting control (&gt;50% equity).
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-xs font-mono">
-                          <div>
-                            <span className="text-slate-500 block text-[10px]">Current Equity:</span>
-                            <span className="font-bold text-amber-400">{sharesOwned.toLocaleString()} shares ({sharePct}%)</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 block text-[10px]">Shares to Control:</span>
-                            <span className="font-bold text-slate-200">+{sharesNeeded.toLocaleString()} shares</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 block text-[10px]">Capital Required:</span>
-                            <span className="font-bold text-emerald-400">${costToControl.toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 pt-1">
-                          <div className="text-[11px] text-slate-400">
-                            Acquire remaining block at spot price (${livePrice.toLocaleString()}/share + 2.5% broker fee) to unlock corporate money laundering.
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              soundEngine.play('buy');
-                              buyBusinessSharesAction(activeBusiness.id, sharesNeeded);
-                            }}
-                            disabled={!canAffordControl}
-                            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
-                          >
-                            <Building2 className="w-4 h-4" />
-                            <span>Seize Control (${costToControl.toLocaleString()})</span>
-                          </button>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Falsifying ledgers and routing dirty cash requires majority executive voting control (&gt;50% equity).
+                          </p>
                         </div>
                       </div>
-                    );
-                  }
 
-                  const effFee = calculateEffectiveFeeRate(activeBusiness, player.corporateUpgrades);
-                  const effCap = calculateEffectiveDailyCapacity(activeBusiness, player.corporateUpgrades);
-                  const remainingCap = Math.max(0, effCap - (player.launderedToday || 0));
-                  const maxCleanable = Math.min(player.cash, remainingCap);
-                  const netClean = Math.round(launderAmount * (1 - effFee));
-                  const hasOffshoreLegal = player.corporateUpgrades?.includes('offshore_legal');
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-xs font-mono">
+                        <div>
+                          <span className="text-slate-500 block text-[10px]">Current Equity:</span>
+                          <span className="font-bold text-amber-400">{activeShares.toLocaleString()} sh ({activeEquityPct}%)</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block text-[10px]">Shares to Control:</span>
+                          <span className="font-bold text-slate-200">+{activeSharesNeeded.toLocaleString()} sh</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block text-[10px]">Capital Required:</span>
+                          <span className="font-bold text-emerald-400">${activeCostToControl.toLocaleString()}</span>
+                        </div>
+                      </div>
 
-                  return (
+                      <div className="flex items-center justify-between gap-3 pt-1">
+                        <div className="text-[11px] text-slate-400">
+                          Acquire remaining block at spot price (${activeSharePrice.toLocaleString()}/sh + 2.5% fee) to unlock corporate money laundering.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundEngine.play('buy');
+                            buyBusinessSharesAction(activeBusiness.id, activeSharesNeeded);
+                          }}
+                          disabled={player.cash < activeCostToControl}
+                          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
+                        >
+                          <Building2 className="w-4 h-4" />
+                          <span>Seize Control (${activeCostToControl.toLocaleString()})</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-900/60 space-y-3">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-slate-300 flex items-center gap-1.5">
@@ -2376,7 +2739,7 @@ export const PlacesModal: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/80 flex items-center gap-1">
                             <ShieldCheck className="w-3 h-3" />
-                            Majority Control ({sharePct}%)
+                            Majority Control ({activeEquityPct}%)
                           </span>
                           <span className="font-mono text-[11px] text-emerald-400">
                             {Math.round(effFee * 1000) / 10}% Fee
@@ -2389,27 +2752,27 @@ export const PlacesModal: React.FC = () => {
                         <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-400 flex items-center gap-1">
                           <Sparkles className="w-3.5 h-3.5" /> Operational Synergies:
                         </span>
-                        {synergies.shippingDiscount > 0 && (
+                        {activeSynergies.shippingDiscount > 0 && (
                           <span className="bg-emerald-900/50 px-2 py-0.5 rounded text-[10px]">
-                            -{Math.round(synergies.shippingDiscount * 100)}% Shipping Logistics
+                            -{Math.round(activeSynergies.shippingDiscount * 100)}% Shipping Logistics
                           </span>
                         )}
-                        {synergies.heatShield > 0 && (
+                        {activeSynergies.heatShield > 0 && (
                           <span className="bg-emerald-900/50 px-2 py-0.5 rounded text-[10px]">
-                            +{synergies.heatShield} Heat Shield/Day
+                            +{activeSynergies.heatShield} Heat Shield/Day
                           </span>
                         )}
-                        {synergies.wireFeeDiscount > 0 && (
+                        {activeSynergies.wireFeeDiscount > 0 && (
                           <span className="bg-emerald-900/50 px-2 py-0.5 rounded text-[10px]">
-                            -{Math.round(synergies.wireFeeDiscount * 100)}% Wash Fee Discount
+                            -{Math.round(activeSynergies.wireFeeDiscount * 100)}% Wash Fee Discount
                           </span>
                         )}
-                        {synergies.auditImmunity && (
+                        {activeSynergies.auditImmunity && (
                           <span className="bg-cyan-900/50 text-cyan-300 px-2 py-0.5 rounded text-[10px]">
                             100% FinCEN Audit Immunity
                           </span>
                         )}
-                        {!synergies.shippingDiscount && !synergies.heatShield && !synergies.wireFeeDiscount && !synergies.auditImmunity && (
+                        {!activeSynergies.shippingDiscount && !activeSynergies.heatShield && !activeSynergies.wireFeeDiscount && !activeSynergies.auditImmunity && (
                           <span className="text-slate-400 text-[10px]">Corporate Ledger Authorization Active</span>
                         )}
                       </div>
@@ -2481,14 +2844,15 @@ export const PlacesModal: React.FC = () => {
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-500 pt-1">
                             <span>FinCEN Audit Threat:</span>
-                            <span className={hasOffshoreLegal || synergies.auditImmunity ? 'text-emerald-400' : 'text-amber-400'}>
-                              {hasOffshoreLegal || synergies.auditImmunity ? '0% (Immune via Retained Counsel / Secrecy Trust)' : `${Math.round(activeBusiness.auditRisk * 100)}% Risk`}
+                            <span className={hasOffshoreLegal || activeSynergies.auditImmunity ? 'text-emerald-400' : 'text-amber-400'}>
+                              {hasOffshoreLegal || activeSynergies.auditImmunity ? '0% (Immune via Retained Counsel / Secrecy Trust)' : `${Math.round(activeBusiness.auditRisk * 100)}% Risk`}
                             </span>
                           </div>
                         </div>
                       )}
 
                       <button
+                        type="button"
                         onClick={handleLaunder}
                         disabled={launderAmount <= 0 || player.cash < launderAmount || launderAmount > remainingCap}
                         className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
@@ -2497,12 +2861,54 @@ export const PlacesModal: React.FC = () => {
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
-                  );
-                })()}
+                  )}
+
+                  {/* Forensic Retainers & Legal Defense */}
+                  <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2.5">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-sky-400" />
+                      <span>Forensic Retainers & Legal Defense</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {CORPORATE_UPGRADES.map((upgrade) => {
+                        const isRetained = player.corporateUpgrades?.includes(upgrade.id);
+                        const canAfford = player.cash >= upgrade.cost;
+
+                        return (
+                          <div
+                            key={upgrade.id}
+                            className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="space-y-0.5">
+                              <div className="font-bold text-slate-200 text-[11px]">{upgrade.name}</div>
+                              <p className="text-[10px] text-slate-400 leading-tight">{upgrade.description}</p>
+                            </div>
+
+                            {isRetained ? (
+                              <span className="px-2 py-0.5 rounded bg-sky-950 border border-sky-500/60 text-sky-300 text-[10px] font-bold uppercase shrink-0">
+                                Active
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleBuyUpgrade(upgrade.id)}
+                                disabled={!canAfford}
+                                className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-slate-950 font-bold text-[11px] shrink-0"
+                              >
+                                Retain (${upgrade.cost.toLocaleString()})
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* LOAN SHARK TAB */}
         {placesSubTab === 'loans' && (

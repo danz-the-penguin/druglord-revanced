@@ -468,10 +468,24 @@ export function processCorruptionAndRicoDaily(state: GameEngineState, _isTravel 
     }
   }
 
-  // 2. Police Dispatcher Early Warning Intercepts
+  // 2. Police Dispatcher Early Warning Intercepts & Evacuation Lifecycle
   const currentCityId = state.player.currentCityId;
   const currentHeat = state.player.cityHeat?.[currentCityId] ?? 0;
   const hasDispatcher = hasActiveOfficial(state.player, 'police_dispatcher');
+
+  // Check if a previous raid warning has expired or was evaded
+  if (state.player.pendingRaidWarning && state.player.currentDay > state.player.pendingRaidWarning.day) {
+    if (state.player.currentCityId !== state.player.pendingRaidWarning.cityId) {
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: CITY_MAP.get(state.player.currentCityId)?.name ?? 'City',
+        type: 'corruption',
+        message: `🚨 RAID EVADED: Precinct SWAT and tactical units raided your previous safehouse in ${CITY_MAP.get(state.player.pendingRaidWarning.cityId)?.name}, but you had already evacuated! Dispatcher frequency cleared.`,
+        timestamp: Date.now(),
+      });
+    }
+    state.player.pendingRaidWarning = null;
+  }
 
   if (hasDispatcher) {
     if (currentHeat >= 65) {
@@ -583,6 +597,83 @@ export function processCorruptionAndRicoDaily(state: GameEngineState, _isTravel 
       city: CITY_MAP.get(currentCityId)?.name ?? 'City',
       type: 'corruption',
       message: `🚨 FEDERAL RICO INDICTMENT UNSEALED! The United States Grand Jury has issued a sealed indictment and frozen all offshore bank assets! Flee immediately to a Sovereign Non-Extradition Sanctuary (Dubai, Panama City, Zurich, Singapore, Istanbul) to establish asylum!`,
+      timestamp: Date.now(),
+    });
+  }
+
+  // 6. 90-Day Informant & Federal Warning Renewal Cycle (Infinite / Long Campaigns)
+  if (
+    state.player.currentDay > 1 &&
+    state.player.currentDay % 90 === 0 &&
+    state.player.lastInformantRotationDay !== state.player.currentDay
+  ) {
+    state.player.lastInformantRotationDay = state.player.currentDay;
+    state.player.lastFederalWarningRotationDay = state.player.currentDay;
+    state.player.grandJuryTerm = (state.player.grandJuryTerm || 1) + 1;
+
+    const termNum = state.player.grandJuryTerm;
+    const cycle = Math.floor(state.player.currentDay / 90);
+    const costMultiplier = 1 + (cycle - 1) * 0.35;
+
+    // A. Grand Jury Mandate Expiry: RICO meter cool down if not frozen
+    if (!state.player.isBankFrozen) {
+      const cooledRico = Math.min(50, state.player.ricoMeter ?? 0);
+      state.player.ricoMeter = Math.max(0, (state.player.ricoMeter ?? 0) - cooledRico);
+
+      state.logs.unshift({
+        day: state.player.currentDay,
+        city: CITY_MAP.get(currentCityId)?.name ?? 'City',
+        type: 'corruption',
+        message: `🏛️ GRAND JURY MANDATE CONCLUDED: The 90-day Federal Grand Jury Term ${termNum - 1} expired without indicting you! Subpoenas lapsed and RICO Threat Meter cooled by -${cooledRico}% (now ${state.player.ricoMeter}%). Term ${termNum} empaneled with a fresh task force mandate.`,
+        timestamp: Date.now(),
+      });
+    }
+
+    // B. Confidential Informant Renewal & Rotation
+    // Retain flipped double agents as assets, replace neutralized or bribed informants
+    const currentInfs = getOrInitInformants(state.player);
+    const retainedDoubleAgents = currentInfs.filter((i) => i.status === 'flipped_double_agent');
+
+    const freshPool = cycle % 2 === 0 ? DEFAULT_INFORMANTS : ROTATING_INFORMANTS_GEN2;
+    const newInformants: FederalInformant[] = freshPool.map((t, idx) => ({
+      ...t,
+      id: `${t.id}_t${termNum}_${idx}`,
+      snitchProgress: Math.min(65, Math.max(25, Math.round(t.snitchProgress * 0.8))),
+      status: 'active_snitch',
+      daysActive: 1,
+      bribeHushCost: Math.round(t.bribeHushCost * costMultiplier),
+      flipDoubleAgentCost: Math.round(t.flipDoubleAgentCost * costMultiplier),
+      contractHitCost: Math.round(t.contractHitCost * costMultiplier),
+    }));
+
+    state.player.federalInformants = [...retainedDoubleAgents.slice(0, 2), ...newInformants];
+
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: CITY_MAP.get(currentCityId)?.name ?? 'City',
+      type: 'corruption',
+      message: `🔄 FEDERAL TASK FORCE RENEWAL (TERM ${termNum}): The DOJ empaneled a new multi-jurisdictional strike force on Day ${state.player.currentDay}! Confidential informants and snitches have rotated with updated surveillance dossiers.`,
+      timestamp: Date.now(),
+    });
+
+    // C. Rotating Title III Federal Wiretaps
+    const freshWiretaps = cycle % 2 === 0 ? DEFAULT_WIRETAPS : ROTATING_WIRETAPS_GEN2;
+    state.player.federalWiretaps = freshWiretaps.map((w, idx) => ({
+      ...w,
+      id: `${w.id}_t${termNum}_${idx}`,
+      recordedDay: state.player.currentDay,
+      status: 'decrypted',
+      sold: false,
+      scrambled: false,
+      scrambleCost: Math.round(w.scrambleCost * costMultiplier),
+      blackMarketValue: Math.round(w.blackMarketValue * costMultiplier),
+    }));
+
+    state.logs.unshift({
+      day: state.player.currentDay,
+      city: CITY_MAP.get(currentCityId)?.name ?? 'City',
+      type: 'corruption',
+      message: `📡 TACTICAL SIGINT CHANNELS ROTATED: Intercepted new federal surveillance frequencies on Day ${state.player.currentDay}! Decrypted operational transcripts ready for analysis or black-market liquidation.`,
       timestamp: Date.now(),
     });
   }
@@ -857,6 +948,197 @@ export const DEFAULT_WIRETAPS: FederalWiretapTranscript[] = [
     },
     scrambleCost: 10500,
     blackMarketValue: 28000,
+  },
+];
+
+export const ROTATING_INFORMANTS_GEN2: FederalInformant[] = [
+  {
+    id: 'inf_specter',
+    codename: 'Specter',
+    name: 'Dr. Aris Thorne',
+    role: 'DEA Forensic Precursor Chemist',
+    locationCityId: 'bogota',
+    agencyTarget: 'DEA',
+    threatLevel: 'critical',
+    snitchProgress: 50,
+    status: 'active_snitch',
+    dossier:
+      'Auditing precursor chemical sales across South America. Providing mass spectrometer chemical fingerprints of your clandestine batches directly to DEA Special Ops.',
+    leakIntelligence: 'Turned over reagent manifest copies and laboratory coordinates.',
+    bribeHushCost: 65000,
+    flipDoubleAgentCost: 110000,
+    contractHitCost: 45000,
+    daysActive: 1,
+  },
+  {
+    id: 'inf_chameleon',
+    codename: 'Chameleon',
+    name: 'Marcus "The Ghost" Vance',
+    role: 'Private Offshore Trust Officer',
+    locationCityId: 'zurich',
+    agencyTarget: 'IRS-CI',
+    threatLevel: 'critical',
+    snitchProgress: 60,
+    status: 'active_snitch',
+    dossier:
+      'Subpoenaed by IRS Criminal Investigation. Secretly exporting encrypted wire logs of shell corporations and numbered accounts to federal prosecutors.',
+    leakIntelligence: 'Supplying bank routing logs and shareholder registry files.',
+    bribeHushCost: 85000,
+    flipDoubleAgentCost: 135000,
+    contractHitCost: 55000,
+    daysActive: 2,
+  },
+  {
+    id: 'inf_bloodhound',
+    codename: 'Bloodhound',
+    name: 'Captain Teresa Morales',
+    role: 'Canal Maritime Interdiction Inspector',
+    locationCityId: 'panama_city',
+    agencyTarget: 'CBP',
+    threatLevel: 'high',
+    snitchProgress: 40,
+    status: 'active_snitch',
+    dossier:
+      'Flagging commercial container manifests and private yacht charter bills of lading for the Joint Interagency Task Force.',
+    leakIntelligence: 'Logged 4 cargo vessel container serial numbers.',
+    bribeHushCost: 40000,
+    flipDoubleAgentCost: 75000,
+    contractHitCost: 30000,
+    daysActive: 1,
+  },
+  {
+    id: 'inf_judas',
+    codename: 'Judas',
+    name: 'Dante "The Dice" Moretti',
+    role: 'High-Stakes Casino Cage Cashier',
+    locationCityId: 'las_vegas',
+    agencyTarget: 'FBI',
+    threatLevel: 'high',
+    snitchProgress: 45,
+    status: 'active_snitch',
+    dossier:
+      'Wearing a Title III wire into private VIP high-roller suites. Cataloging large chips-to-cash laundering runs for federal prosecutors.',
+    leakIntelligence: 'Recorded 12 hours of underworld casino laundering chatter.',
+    bribeHushCost: 45000,
+    flipDoubleAgentCost: 80000,
+    contractHitCost: 35000,
+    daysActive: 2,
+  },
+  {
+    id: 'inf_cobra',
+    codename: 'Cobra',
+    name: 'Viktor Brandt',
+    role: 'Tactical Armory Logistics Specialist',
+    locationCityId: 'berlin',
+    agencyTarget: 'DEA',
+    threatLevel: 'critical',
+    snitchProgress: 65,
+    status: 'active_snitch',
+    dossier:
+      'Planting micro-transmitters inside heavy arms crates and rocket launcher cases. Transmitting warehouse coordinates to Interpol task forces.',
+    leakIntelligence: 'Surrendered warehouse armory blueprints and inventory tallies.',
+    bribeHushCost: 70000,
+    flipDoubleAgentCost: 115000,
+    contractHitCost: 48000,
+    daysActive: 3,
+  },
+  {
+    id: 'inf_wiretap',
+    codename: 'Wiretap',
+    name: 'Agent Kevin Brody',
+    role: 'FBI Cyber Forensics Wire Specialist',
+    locationCityId: 'new_york',
+    agencyTarget: 'FBI',
+    threatLevel: 'critical',
+    snitchProgress: 75,
+    status: 'active_snitch',
+    dossier:
+      'Analyzing encrypted VoIP calls, hardware token transactions, and peer-to-peer darknet markets to trace kingpin communications.',
+    leakIntelligence: 'Extracted encrypted IP call relays and flight routes.',
+    bribeHushCost: 90000,
+    flipDoubleAgentCost: 150000,
+    contractHitCost: 60000,
+    daysActive: 4,
+  },
+];
+
+export const ROTATING_WIRETAPS_GEN2: FederalWiretapTranscript[] = [
+  {
+    id: 'wire_atf_berlin',
+    frequency: '453.200 MHz (ATF Tactical Strike Band)',
+    surveillanceTarget: 'European Heavy Weapons Supply Chains',
+    interceptAgency: 'ATF Violent Crimes',
+    status: 'decrypted',
+    recordedDay: 90,
+    cityId: 'berlin',
+    headline: 'Intercepted ATF Special Ops: Operation Iron Hammer',
+    transcript:
+      '[ENCRYPTED BURST] Unit 4: Undercover arms bust underway in Berlin. Black-market military armaments supply choked off. Syndicate body armor and weapon prices surging +50%. [SQUELCH TONE]',
+    marketIntel: {
+      cityId: 'berlin',
+      effectDescription: 'Berlin arms black market clamped down; military hardware in high demand',
+      actionableTip: 'Sell acquired heavy military arms in Berlin for peak premium.',
+    },
+    scrambleCost: 12000,
+    blackMarketValue: 32000,
+  },
+  {
+    id: 'wire_fbi_tokyo',
+    frequency: '858.925 MHz (FBI Cyber Forensics Satellite)',
+    surveillanceTarget: 'Shinjuku Nightclub Synthesis Corridors',
+    interceptAgency: 'FBI Wiretap Division',
+    status: 'decrypted',
+    recordedDay: 90,
+    cityId: 'tokyo',
+    headline: 'FBI Cyber Telemetry: Tokyo Ketamine Shortage Imminent',
+    transcript:
+      '[SIGINT INTERCEPT] Agent Vance: Customs interdicted container shipments into Yokohama port. Tokyo ketamine wholesale supply down 60%. Syndicate runners scrambling to acquire stock at premium rates. [CHIRP]',
+    marketIntel: {
+      drugId: 'ketamine',
+      cityId: 'tokyo',
+      effectDescription: 'Tokyo Ketamine wholesale spot price spiking +65%',
+      actionableTip: 'Synthesize Ketamine in Clandestine Labs and fly to Tokyo for massive arbitrage.',
+    },
+    scrambleCost: 14000,
+    blackMarketValue: 38000,
+  },
+  {
+    id: 'wire_fincen_dubai',
+    frequency: '862.150 MHz (FinCEN Satellite Crypto Channel)',
+    surveillanceTarget: 'Dubai Gold Souk & Hawala Corridors',
+    interceptAgency: 'FinCEN SIGINT',
+    status: 'intercepted',
+    recordedDay: 90,
+    cityId: 'dubai',
+    headline: 'FinCEN SIGINT: Bullion Secrecy Sweep in Middle East',
+    transcript:
+      '[AUDIO CRACKLE] Analyst Drake: Monitoring unflagged bullion flows out of Dubai International. High-net-worth kingpins converting cash into gold bars. SAR alerts escalated. [END TRANSMISSION]',
+    marketIntel: {
+      cityId: 'dubai',
+      effectDescription: 'Dubai offshore bullion movement under high SIGINT monitoring',
+      actionableTip: 'Retain FinCEN Auditor or quash surveillance via Federal Judge to prevent RICO spikes.',
+    },
+    scrambleCost: 16000,
+    blackMarketValue: 42000,
+  },
+  {
+    id: 'wire_dea_bogota',
+    frequency: '151.650 MHz (DEA High-Altitude Radar Band)',
+    surveillanceTarget: 'Andean Mountain Precursor Convoys',
+    interceptAgency: 'DEA Special Ops',
+    status: 'intercepted',
+    recordedDay: 90,
+    cityId: 'bogota',
+    headline: 'DEA Airborne Telemetry: Precursor Convoy Interdictions',
+    transcript:
+      '[RADIO BURST] Sierra-1: Radar drone tracking clandestine chemical transport trucks through the mountain pass. Lab precursor availability dropping. Synthesis costs increasing across Colombia. [BEEP]',
+    marketIntel: {
+      cityId: 'bogota',
+      effectDescription: 'Bogota chemical precursor trade disrupted by DEA air patrols',
+      actionableTip: 'Stockpile chemical precursors in Clandestine Labs before local prices inflate.',
+    },
+    scrambleCost: 13500,
+    blackMarketValue: 35000,
   },
 ];
 

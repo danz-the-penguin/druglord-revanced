@@ -354,6 +354,9 @@ export interface PlayerState {
   corruptOfficials?: Record<string, import('./corruptionTypes').CorruptOfficialState>;
   federalInformants?: import('./corruptionTypes').FederalInformant[];
   federalWiretaps?: import('./corruptionTypes').FederalWiretapTranscript[];
+  lastInformantRotationDay?: number;
+  lastFederalWarningRotationDay?: number;
+  grandJuryTerm?: number;
   ricoMeter?: number;
   isBankFrozen?: boolean;
   pendingRaidWarning?: import('./corruptionTypes').RaidWarning | null;
