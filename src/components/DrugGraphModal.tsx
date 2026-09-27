@@ -574,15 +574,10 @@ export const DrugGraphModal: React.FC = () => {
                         }}
                         onMouseLeave={() => setHoveredPoint(null)}
                       />
-                      {/* Day Label on X-axis (Relative days: D Present, D-1 (1d ago), etc.) */}
+                      {/* Day Label on X-axis (D1, D2, ..., Dn, D Current Day) */}
                       {(() => {
-                        const daysAgo = points.length - 1 - pt.idx;
-                        const labelText =
-                          daysAgo === 0
-                            ? 'D (Today)'
-                            : points.length <= 6
-                            ? `D-${daysAgo} (${daysAgo}d ago)`
-                            : `D-${daysAgo}`;
+                        const isCurrentDay = pt.idx === points.length - 1;
+                        const labelText = isCurrentDay ? 'D Current Day' : `D${pt.idx + 1}`;
                         return (
                           <text
                             x={pt.x}
@@ -742,7 +737,9 @@ export const DrugGraphModal: React.FC = () => {
                       textAnchor="middle"
                       fontFamily="monospace"
                     >
-                      {hoveredPoint.daysAgo === 0 ? 'D Present (Today)' : `D-${hoveredPoint.daysAgo} (${hoveredPoint.daysAgo}d ago)`}
+                      {hoveredPoint.index === points.length - 1
+                        ? `D Current Day (Day ${hoveredPoint.day})`
+                        : `D${hoveredPoint.index + 1} (Day ${hoveredPoint.day})`}
                     </text>
                   </g>
                 )}
@@ -904,10 +901,10 @@ export const DrugGraphModal: React.FC = () => {
               <div className="flex items-center gap-3 pt-1 border-t border-slate-800/60">
                 <span className="text-[11px] text-slate-400 font-bold shrink-0">
                   {(() => {
-                    const daysAgoAnim = Math.round(rawSeries.length - 1 - clampedProgress);
-                    return daysAgoAnim === 0
-                      ? `D (Today) • Day ${player.currentDay} / ${totalDaysRecorded}d`
-                      : `D-${daysAgoAnim} (${daysAgoAnim}d ago) • Day ${currentAnimatedDay} / ${totalDaysRecorded}d`;
+                    const isCurrentDay = clampedProgress >= rawSeries.length - 1;
+                    return isCurrentDay
+                      ? `D Current Day • Day ${player.currentDay} / ${totalDaysRecorded}d`
+                      : `D${Math.round(clampedProgress) + 1} • Day ${currentAnimatedDay} / ${totalDaysRecorded}d`;
                   })()}
                 </span>
                 <input

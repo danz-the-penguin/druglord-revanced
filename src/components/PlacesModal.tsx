@@ -74,7 +74,10 @@ import {
   X,
   LayoutGrid,
   List,
+  ShoppingCart,
+  Activity,
 } from 'lucide-react';
+import { ShellPreviewCard } from './ShellPreviewCard';
 import { soundEngine } from '../utils/audio';
 import {
   AIRCRAFT_FLEET,
@@ -195,6 +198,8 @@ export const PlacesModal: React.FC = () => {
   const [shellSortField, setShellSortField] = useState<'default' | 'name' | 'price' | 'equity' | 'capacity'>('default');
   const [shellSortDir, setShellSortDir] = useState<'asc' | 'desc'>('desc');
   const [shellViewMode, setShellViewMode] = useState<'table' | 'cards'>('table');
+  const [orderShares, setOrderShares] = useState<number>(1);
+  const [orderMode, setOrderMode] = useState<'buy' | 'sell'>('buy');
 
   // Vault & Logistics Couriers state
   const [vaultSelectedCity, setVaultSelectedCity] = useState<string>(player.currentCityId);
@@ -2147,10 +2152,27 @@ export const PlacesModal: React.FC = () => {
           const netClean = Math.round(launderAmount * (1 - effFee));
           const hasOffshoreLegal = player.corporateUpgrades?.includes('offshore_legal');
 
+          // Share-by-share order calculations
+          const clampedOrderShares = Math.max(1, orderShares);
+          const orderGrossCost = clampedOrderShares * activeSharePrice;
+          const orderBrokerFee = Math.round(orderGrossCost * BROKERAGE_FEE_RATE);
+          const orderTotalCost = orderGrossCost + orderBrokerFee;
+          const orderNetProceeds = Math.max(0, orderGrossCost - orderBrokerFee);
+
+          const maxAffordableShares = Math.max(0, Math.floor(player.cash / (activeSharePrice * (1 + BROKERAGE_FEE_RATE))));
+          const maxBuyableFloat = Math.max(0, TOTAL_SHARES_PER_BUSINESS - activeShares);
+          const maxOrderBuy = Math.min(maxAffordableShares, maxBuyableFloat);
+
+          const newEquitySharesOnBuy = Math.min(TOTAL_SHARES_PER_BUSINESS, activeShares + clampedOrderShares);
+          const newEquityPctOnBuy = ((newEquitySharesOnBuy / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+
+          const newEquitySharesOnSell = Math.max(0, activeShares - clampedOrderShares);
+          const newEquityPctOnSell = ((newEquitySharesOnSell / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+
           return (
             <div className="space-y-6">
               {/* Overview Conglomerate Dossier */}
-              <div className="bg-slate-950/90 p-5 rounded-2xl border border-emerald-500/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xl">
+              <div className="bg-slate-950/90 p-4 sm:p-5 rounded-2xl border border-emerald-500/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xl">
                 <div>
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm uppercase mb-1">
                     <Landmark className="w-5 h-5 text-emerald-400" />
@@ -2161,32 +2183,32 @@ export const PlacesModal: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-900/90 px-4 py-3 rounded-xl border border-slate-800 text-xs font-mono shrink-0">
-                  <div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 bg-slate-900/90 p-3 sm:px-4 sm:py-3 rounded-xl border border-slate-800 text-xs font-mono shrink-0">
+                  <div className="p-1">
                     <span className="text-slate-500 block text-[10px] uppercase">Portfolio Value:</span>
                     <strong className="text-emerald-400 text-sm">
                       ${portfolioValuation.toLocaleString()}
                     </strong>
                   </div>
-                  <div className="sm:border-l sm:border-slate-800 sm:pl-3">
+                  <div className="p-1">
                     <span className="text-slate-500 block text-[10px] uppercase">Majority Stakes:</span>
                     <strong className="text-amber-400 text-sm">
                       {controlledCount} / {SHELL_BUSINESSES.length} Listed
                     </strong>
                   </div>
-                  <div className="border-l border-slate-800 pl-3">
+                  <div className="p-1">
                     <span className="text-slate-500 block text-[10px] uppercase">Passive Flow:</span>
                     <strong className="text-emerald-400 text-sm">
                       +${calculateTotalPassiveIncome(player.ownedBusinesses).toLocaleString()}/d
                     </strong>
                   </div>
-                  <div className="border-l border-slate-800 pl-3">
+                  <div className="p-1">
                     <span className="text-slate-500 block text-[10px] uppercase">Daily Clean Cap:</span>
                     <strong className="text-sky-400 text-sm">
                       ${totalCleanCap.toLocaleString()}
                     </strong>
                   </div>
-                  <div className="border-l border-slate-800 pl-3">
+                  <div className="p-1 col-span-2 sm:col-span-1">
                     <span className="text-slate-500 block text-[10px] uppercase">Heat Shield:</span>
                     <strong className="text-sky-400 text-sm">
                       -{calculateTotalHeatShield(player.ownedBusinesses)}%
@@ -2326,106 +2348,114 @@ export const PlacesModal: React.FC = () => {
                   {/* TABLE VIEW (ORDER BOOK) */}
                   {shellViewMode === 'table' ? (
                     <div className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden max-h-[580px] overflow-y-auto">
-                      <table className="w-full text-left text-xs font-mono border-collapse">
-                        <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase sticky top-0 z-10 border-b border-slate-800">
-                          <tr>
-                            <th className="py-2.5 px-3">Ticker</th>
-                            <th className="py-2.5 px-3">Entity & Sector</th>
-                            <th className="py-2.5 px-3 text-right">Spot Price</th>
-                            <th className="py-2.5 px-3 text-center">7D Trend</th>
-                            <th className="py-2.5 px-3 text-right">Stake / Sh</th>
-                            <th className="py-2.5 px-3 text-right">Clean Cap</th>
-                            <th className="py-2.5 px-3 text-center">Governance</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {displayList.map((business) => {
-                            const isSelected = selectedBusinessId === business.id;
-                            const sharesOwned = getBusinessSharesOwned(player, business.id);
-                            const equityPct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
-                            const isControlling = sharesOwned > CONTROLLING_STAKE_SHARES;
-                            const sharePrice = getBusinessSharePrice(business, player.currentDay);
-                            const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
-                            const volPct = Math.round(((sharePrice - baseSharePrice) / baseSharePrice) * 100);
-                            const ticker = SHELL_TICKERS[business.id] || '$SHLL';
-                            const sector = SHELL_SECTORS[business.id] || 'Commercial';
-                            const effectiveCap = calculateEffectiveDailyCapacity(business, player.corporateUpgrades);
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[580px] text-left text-xs font-mono border-collapse">
+                          <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase sticky top-0 z-10 border-b border-slate-800">
+                            <tr>
+                              <th className="py-2.5 px-3">Ticker</th>
+                              <th className="py-2.5 px-3">Entity & Sector</th>
+                              <th className="py-2.5 px-3 text-right">Spot Price</th>
+                              <th className="py-2.5 px-3 text-center">7D Trend</th>
+                              <th className="py-2.5 px-3 text-right">Stake / Sh</th>
+                              <th className="py-2.5 px-3 text-right">Clean Cap</th>
+                              <th className="py-2.5 px-3 text-center">Governance</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60">
+                            {displayList.map((business) => {
+                              const isSelected = selectedBusinessId === business.id;
+                              const sharesOwned = getBusinessSharesOwned(player, business.id);
+                              const equityPct = ((sharesOwned / TOTAL_SHARES_PER_BUSINESS) * 100).toFixed(1);
+                              const isControlling = sharesOwned > CONTROLLING_STAKE_SHARES;
+                              const sharePrice = getBusinessSharePrice(business, player.currentDay);
+                              const baseSharePrice = Math.max(1, Math.round(business.purchaseCost / TOTAL_SHARES_PER_BUSINESS));
+                              const volPct = Math.round(((sharePrice - baseSharePrice) / baseSharePrice) * 100);
+                              const ticker = SHELL_TICKERS[business.id] || '$SHLL';
+                              const sector = SHELL_SECTORS[business.id] || 'Commercial';
+                              const effectiveCap = calculateEffectiveDailyCapacity(business, player.corporateUpgrades);
 
-                            const history7d = [6, 5, 4, 3, 2, 1, 0].map((d) =>
-                              getBusinessSharePrice(business, Math.max(1, player.currentDay - d))
-                            );
+                              const history7d = [6, 5, 4, 3, 2, 1, 0].map((d) =>
+                                getBusinessSharePrice(business, Math.max(1, player.currentDay - d))
+                              );
 
-                            return (
-                              <tr
-                                key={business.id}
-                                onClick={() => setSelectedBusinessId(business.id)}
-                                className={`cursor-pointer transition-all ${
-                                  isSelected
-                                    ? 'bg-emerald-950/40 ring-1 ring-inset ring-emerald-500/50'
-                                    : isControlling
-                                    ? 'hover:bg-slate-900/70 bg-slate-950/40'
-                                    : 'hover:bg-slate-900/50'
-                                }`}
-                              >
-                                <td className="py-2.5 px-3 whitespace-nowrap">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-amber-400 font-mono">{ticker}</span>
-                                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400">
-                                      T{business.tier}
+                              return (
+                                <tr
+                                  key={business.id}
+                                  onClick={() => setSelectedBusinessId(business.id)}
+                                  className={`cursor-pointer transition-all ${
+                                    isSelected
+                                      ? 'bg-emerald-950/40 ring-1 ring-inset ring-emerald-500/50'
+                                      : isControlling
+                                      ? 'hover:bg-slate-900/70 bg-slate-950/40'
+                                      : 'hover:bg-slate-900/50'
+                                  }`}
+                                >
+                                  <td className="py-2.5 px-3 whitespace-nowrap">
+                                    <ShellPreviewCard business={business} onSelect={() => setSelectedBusinessId(business.id)}>
+                                      <div className="flex items-center gap-1.5 cursor-pointer">
+                                        <span className="font-bold text-amber-400 font-mono hover:underline">{ticker}</span>
+                                        <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400">
+                                          T{business.tier}
+                                        </span>
+                                      </div>
+                                    </ShellPreviewCard>
+                                  </td>
+                                  <td className="py-2.5 px-3 max-w-[160px]">
+                                    <ShellPreviewCard business={business} onSelect={() => setSelectedBusinessId(business.id)}>
+                                      <div className="font-bold text-slate-200 truncate hover:text-emerald-300 transition-colors">
+                                        {business.name}
+                                      </div>
+                                      <div className="text-[10px] text-slate-500 truncate">{sector}</div>
+                                    </ShellPreviewCard>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                                    <div className="font-bold text-slate-100">${sharePrice.toLocaleString()}</div>
+                                    <div className={`text-[10px] ${volPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                      {volPct >= 0 ? `+${volPct}%` : `${volPct}%`}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <div className="inline-block">
+                                      <Sparkline
+                                        data={history7d}
+                                        width={70}
+                                        height={20}
+                                        color={volPct >= 0 ? '#10b981' : '#f43f5e'}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                                    <span className={`font-bold ${isControlling ? 'text-emerald-400' : sharesOwned > 0 ? 'text-sky-300' : 'text-slate-500'}`}>
+                                      {equityPct}%
                                     </span>
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-3 max-w-[160px]">
-                                  <div className="font-bold text-slate-200 truncate">{business.name}</div>
-                                  <div className="text-[10px] text-slate-500 truncate">{sector}</div>
-                                </td>
-                                <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                                  <div className="font-bold text-slate-100">${sharePrice.toLocaleString()}</div>
-                                  <div className={`text-[10px] ${volPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {volPct >= 0 ? `+${volPct}%` : `${volPct}%`}
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-3 text-center">
-                                  <div className="inline-block">
-                                    <Sparkline
-                                      data={history7d}
-                                      width={70}
-                                      height={20}
-                                      color={volPct >= 0 ? '#10b981' : '#f43f5e'}
-                                    />
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                                  <span className={`font-bold ${isControlling ? 'text-emerald-400' : sharesOwned > 0 ? 'text-sky-300' : 'text-slate-500'}`}>
-                                    {equityPct}%
-                                  </span>
-                                  <div className="text-[10px] text-slate-500">
-                                    {sharesOwned.toLocaleString()} sh
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-3 text-right whitespace-nowrap font-bold text-slate-300">
-                                  ${effectiveCap.toLocaleString()}
-                                </td>
-                                <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                                  {isControlling ? (
-                                    <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-600/70 text-emerald-300 text-[10px] font-bold">
-                                      👑 Majority
-                                    </span>
-                                  ) : sharesOwned > 0 ? (
-                                    <span className="px-2 py-0.5 rounded bg-sky-950 border border-sky-700/60 text-sky-300 text-[10px] font-bold">
-                                      💼 Minority
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 text-[10px]">
-                                      0% Equity
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                    <div className="text-[10px] text-slate-500">
+                                      {sharesOwned.toLocaleString()} sh
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right whitespace-nowrap font-bold text-slate-300">
+                                    ${effectiveCap.toLocaleString()}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                    {isControlling ? (
+                                      <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-600/70 text-emerald-300 text-[10px] font-bold">
+                                        👑 Majority
+                                      </span>
+                                    ) : sharesOwned > 0 ? (
+                                      <span className="px-2 py-0.5 rounded bg-sky-950 border border-sky-700/60 text-sky-300 text-[10px] font-bold">
+                                        💼 Minority
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 text-[10px]">
+                                        0% Equity
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ) : (
                     /* CARDS VIEW */
@@ -2444,11 +2474,15 @@ export const PlacesModal: React.FC = () => {
                         const ticker = SHELL_TICKERS[business.id] || '$SHLL';
                         const sector = SHELL_SECTORS[business.id] || 'Commercial';
 
+                        const cost1 = Math.round(1 * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const cost10 = Math.round(10 * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const cost100 = Math.round(100 * sharePrice * (1 + BROKERAGE_FEE_RATE));
                         const cost500 = Math.round(500 * sharePrice * (1 + BROKERAGE_FEE_RATE));
-                        const cost1000 = Math.round(1000 * sharePrice * (1 + BROKERAGE_FEE_RATE));
                         const remainingToControl = Math.max(0, CONTROLLING_STAKE_SHARES + 1 - sharesOwned);
                         const costToControl = Math.round(remainingToControl * sharePrice * (1 + BROKERAGE_FEE_RATE));
                         const costTotal = Math.round((TOTAL_SHARES_PER_BUSINESS - sharesOwned) * sharePrice * (1 + BROKERAGE_FEE_RATE));
+                        const proceeds1 = Math.max(0, Math.round(1 * sharePrice * (1 - BROKERAGE_FEE_RATE)));
+                        const proceeds10 = Math.max(0, Math.round(Math.min(10, sharesOwned) * sharePrice * (1 - BROKERAGE_FEE_RATE)));
                         const proceeds500 = Math.max(0, Math.round(Math.min(500, sharesOwned) * sharePrice * (1 - BROKERAGE_FEE_RATE)));
 
                         const history7d = [6, 5, 4, 3, 2, 1, 0].map((d) =>
@@ -2470,19 +2504,21 @@ export const PlacesModal: React.FC = () => {
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2.5">
-                                <ShellImage business={business} size="sm" />
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-amber-400 font-mono">{ticker}</span>
-                                    <span className="font-bold text-slate-200 text-sm">{business.name}</span>
-                                    <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[10px] font-mono text-slate-400">
-                                      T{business.tier}
-                                    </span>
+                              <ShellPreviewCard business={business} onSelect={() => setSelectedBusinessId(business.id)}>
+                                <div className="flex items-center gap-2.5 cursor-pointer">
+                                  <ShellImage business={business} size="sm" />
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-amber-400 font-mono hover:underline">{ticker}</span>
+                                      <span className="font-bold text-slate-200 text-sm hover:text-emerald-300 transition-colors">{business.name}</span>
+                                      <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[10px] font-mono text-slate-400">
+                                        T{business.tier}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">{sector} • {business.description}</div>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">{sector} • {business.description}</div>
                                 </div>
-                              </div>
+                              </ShellPreviewCard>
 
                               <div className="text-right shrink-0">
                                 {isOwned ? (
@@ -2570,26 +2606,52 @@ export const PlacesModal: React.FC = () => {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleBuyShares(business.id, 500);
+                                        handleBuyShares(business.id, 1);
                                       }}
-                                      disabled={player.cash < cost500}
+                                      disabled={player.cash < cost1}
                                       className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
-                                      title={`Buy 500 shares (5%) for $${cost500.toLocaleString()} incl. 2.5% brokerage fee`}
+                                      title={`Buy 1 share for $${cost1.toLocaleString()} incl. fee`}
                                     >
-                                      +5% (${cost500.toLocaleString()})
+                                      +1 sh (${cost1.toLocaleString()})
                                     </button>
 
                                     <button
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleBuyShares(business.id, 1000);
+                                        handleBuyShares(business.id, 10);
                                       }}
-                                      disabled={player.cash < cost1000}
+                                      disabled={player.cash < cost10}
                                       className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
-                                      title={`Buy 1,000 shares (10%) for $${cost1000.toLocaleString()} incl. 2.5% brokerage fee`}
+                                      title={`Buy 10 shares for $${cost10.toLocaleString()} incl. fee`}
                                     >
-                                      +10% (${cost1000.toLocaleString()})
+                                      +10 sh (${cost10.toLocaleString()})
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBuyShares(business.id, 100);
+                                      }}
+                                      disabled={player.cash < cost100}
+                                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
+                                      title={`Buy 100 shares for $${cost100.toLocaleString()} incl. fee`}
+                                    >
+                                      +100 sh (${cost100.toLocaleString()})
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBuyShares(business.id, 500);
+                                      }}
+                                      disabled={player.cash < cost500}
+                                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 text-[10px] font-bold border border-slate-700 transition-all cursor-pointer"
+                                      title={`Buy 500 shares for $${cost500.toLocaleString()} incl. fee`}
+                                    >
+                                      +500 sh (${cost500.toLocaleString()})
                                     </button>
 
                                     {!isControlling && remainingToControl > 0 && (
@@ -2624,18 +2686,42 @@ export const PlacesModal: React.FC = () => {
                               </div>
 
                               {sharesOwned > 0 && (
-                                <div className="flex items-center gap-1.5 ml-auto">
+                                <div className="flex items-center gap-1.5 ml-auto flex-wrap">
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleSellShares(business.id, Math.min(500, sharesOwned));
+                                      handleSellShares(business.id, 1);
                                     }}
                                     className="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 text-[10px] font-bold transition-all cursor-pointer"
-                                    title={`Liquidate up to 500 shares for $${proceeds500.toLocaleString()} net`}
+                                    title={`Liquidate 1 share for $${proceeds1.toLocaleString()} net`}
                                   >
-                                    Cash Out -500 sh (+${proceeds500.toLocaleString()})
+                                    -1 sh (+${proceeds1.toLocaleString()})
                                   </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSellShares(business.id, Math.min(10, sharesOwned));
+                                    }}
+                                    className="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 text-[10px] font-bold transition-all cursor-pointer"
+                                    title={`Liquidate up to 10 shares for $${proceeds10.toLocaleString()} net`}
+                                  >
+                                    -10 sh (+${proceeds10.toLocaleString()})
+                                  </button>
+                                  {sharesOwned >= 500 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSellShares(business.id, 500);
+                                      }}
+                                      className="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 text-[10px] font-bold transition-all cursor-pointer"
+                                      title={`Liquidate 500 shares for $${proceeds500.toLocaleString()} net`}
+                                    >
+                                      -500 sh (+${proceeds500.toLocaleString()})
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -2649,17 +2735,17 @@ export const PlacesModal: React.FC = () => {
                 {/* Right Column: 5 Cols Active Trading & Corporate Governance Terminal */}
                 <div className="lg:col-span-5 space-y-4">
                   {/* Selected Asset Header */}
-                  <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-amber-400 text-sm">
+                  <div className="bg-slate-950/90 p-3.5 sm:p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono font-black text-amber-400 text-sm shrink-0">
                           {SHELL_TICKERS[activeBusiness.id] || '$SHLL'}
                         </span>
-                        <h4 className="font-bold text-slate-200 text-xs truncate max-w-[180px]">
+                        <h4 className="font-bold text-slate-200 text-xs sm:text-sm truncate">
                           {activeBusiness.name}
                         </h4>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-400">
+                      <span className="text-[10px] sm:text-xs font-mono text-slate-400 shrink-0">
                         Spot: <strong className="text-emerald-400">${activeSharePrice.toLocaleString()}</strong>
                       </span>
                     </div>
@@ -2674,15 +2760,279 @@ export const PlacesModal: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Interactive Share-by-Share Order Terminal */}
+                  <div className="bg-slate-950/90 p-3.5 sm:p-4 rounded-xl border border-slate-800 space-y-3 font-mono">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                      <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-emerald-400" />
+                        <span>Order Terminal</span>
+                      </div>
+
+                      {/* Buy / Sell Mode Tabs */}
+                      <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setOrderMode('buy')}
+                          className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                            orderMode === 'buy'
+                              ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          Buy Shares
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrderMode('sell')}
+                          disabled={activeShares <= 0}
+                          className={`px-3 py-1 rounded-md transition-all cursor-pointer disabled:opacity-30 ${
+                            orderMode === 'sell'
+                              ? 'bg-rose-500 text-slate-950 shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          Sell ({activeShares.toLocaleString()})
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stepper & Number Input for Share-by-Share Selection */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-[11px] text-slate-400">
+                        <span>Order Volume (Shares):</span>
+                        <span>
+                          {orderMode === 'buy'
+                            ? `Max Affordable: ${maxAffordableShares.toLocaleString()} sh`
+                            : `Holdings: ${activeShares.toLocaleString()} sh`}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOrderShares((prev) => Math.max(1, prev - 1))}
+                          className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0"
+                          title="Decrease by 1 share"
+                        >
+                          -
+                        </button>
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={orderMode === 'buy' ? maxBuyableFloat : activeShares}
+                            value={orderShares || ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
+                              setOrderShares(isNaN(val) ? 1 : Math.max(1, val));
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-slate-100 font-bold text-sm sm:text-base focus:outline-none focus:border-emerald-500 font-mono"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none hidden sm:inline">
+                            shares
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOrderShares((prev) => prev + 1)}
+                          className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0"
+                          title="Increase by 1 share"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Micro-order Presets */}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {orderMode === 'buy' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(1)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              +1 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(5)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              +5 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(10)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              +10 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(25)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              +25 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(100)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              +100 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(500)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              +500 sh
+                            </button>
+                            {!activeIsControlling && activeSharesNeeded > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setOrderShares(activeSharesNeeded)}
+                                className="px-2 py-1 rounded bg-amber-950 border border-amber-600/60 text-[10px] font-bold text-amber-300 hover:bg-amber-900/60 cursor-pointer"
+                                title="Set shares needed to seize >50% controlling interest"
+                              >
+                                Majority ({activeSharesNeeded.toLocaleString()} sh)
+                              </button>
+                            )}
+                            {maxAffordableShares > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setOrderShares(maxOrderBuy)}
+                                className="px-2 py-1 rounded bg-emerald-950 border border-emerald-600/60 text-[10px] font-bold text-emerald-300 hover:bg-emerald-900/60 cursor-pointer ml-auto"
+                              >
+                                Max Affordable
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(1)}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              -1 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(Math.min(5, activeShares))}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              -5 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(Math.min(10, activeShares))}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              -10 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(Math.min(50, activeShares))}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              -50 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(Math.min(100, activeShares))}
+                              className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
+                            >
+                              -100 sh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOrderShares(activeShares)}
+                              className="px-2 py-1 rounded bg-rose-950 border border-rose-600/60 text-[10px] font-bold text-rose-300 hover:bg-rose-900/60 cursor-pointer ml-auto"
+                            >
+                              Liquidate All ({activeShares.toLocaleString()} sh)
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Real-time Order Breakdown & Financial Estimator */}
+                    <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs font-mono space-y-1.5">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Spot Price:</span>
+                        <strong className="text-slate-200">${activeSharePrice.toLocaleString()} / sh</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>Subtotal ({clampedOrderShares.toLocaleString()} sh):</span>
+                        <strong className="text-slate-200">${orderGrossCost.toLocaleString()}</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>Brokerage Commission (1.5%):</span>
+                        <strong className={orderMode === 'buy' ? 'text-amber-400' : 'text-rose-400'}>
+                          ${orderBrokerFee.toLocaleString()}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-slate-800 text-slate-300">
+                        <span>{orderMode === 'buy' ? 'Total Cash Required:' : 'Net Wire to Bank:'}</span>
+                        <strong className={`text-sm ${orderMode === 'buy' ? 'text-emerald-400' : 'text-emerald-300'}`}>
+                          ${orderMode === 'buy' ? orderTotalCost.toLocaleString() : orderNetProceeds.toLocaleString()}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500 pt-0.5">
+                        <span>Post-Trade Equity Stake:</span>
+                        <span className="text-sky-300 font-bold">
+                          {orderMode === 'buy' ? newEquityPctOnBuy : newEquityPctOnSell}% (
+                          {orderMode === 'buy' ? newEquitySharesOnBuy.toLocaleString() : newEquitySharesOnSell.toLocaleString()} sh)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Execution CTA Button */}
+                    {orderMode === 'buy' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleBuyShares(activeBusiness.id, clampedOrderShares);
+                        }}
+                        disabled={player.cash < orderTotalCost || clampedOrderShares <= 0 || activeShares >= TOTAL_SHARES_PER_BUSINESS}
+                        className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>
+                          {player.cash < orderTotalCost
+                            ? `Insufficient Cash (Need $${orderTotalCost.toLocaleString()})`
+                            : `Buy ${clampedOrderShares.toLocaleString()} Share${clampedOrderShares > 1 ? 's' : ''} ($${orderTotalCost.toLocaleString()})`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSellShares(activeBusiness.id, clampedOrderShares);
+                        }}
+                        disabled={clampedOrderShares <= 0 || clampedOrderShares > activeShares}
+                        className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                        <span>
+                          {clampedOrderShares > activeShares
+                            ? 'Exceeds Holding'
+                            : `Liquidate ${clampedOrderShares.toLocaleString()} Share${clampedOrderShares > 1 ? 's' : ''} (+$${orderNetProceeds.toLocaleString()})`}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
                   {/* Wire Execution & Governance Console */}
                   {!activeIsControlling ? (
-                    <div className="bg-slate-950/90 p-5 rounded-xl border border-amber-800/60 space-y-4">
+                    <div className="bg-slate-950/90 p-4 sm:p-5 rounded-xl border border-amber-800/60 space-y-3 sm:space-y-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
                           <Lock className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
                               Corporate Governance Locked
                             </h4>
@@ -2691,7 +3041,7 @@ export const PlacesModal: React.FC = () => {
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            Falsifying ledgers and routing dirty cash requires majority executive voting control (&gt;50% equity).
+                            Routing dirty street cash requires majority executive voting control (&gt;50% equity). Buy shares incrementally or seize control.
                           </p>
                         </div>
                       </div>
@@ -2711,21 +3061,20 @@ export const PlacesModal: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-3 pt-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                         <div className="text-[11px] text-slate-400">
-                          Acquire remaining block at spot price (${activeSharePrice.toLocaleString()}/sh + 2.5% fee) to unlock corporate money laundering.
+                          Accumulate shares to 5,001 sh (50.1%) to unlock the corporate laundering ledger.
                         </div>
                         <button
                           type="button"
                           onClick={() => {
-                            soundEngine.play('buy');
-                            buyBusinessSharesAction(activeBusiness.id, activeSharesNeeded);
+                            setOrderShares(activeSharesNeeded);
+                            setOrderMode('buy');
                           }}
-                          disabled={player.cash < activeCostToControl}
-                          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 font-black text-slate-950 text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
+                          className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                         >
-                          <Building2 className="w-4 h-4" />
-                          <span>Seize Control (${activeCostToControl.toLocaleString()})</span>
+                          <Building2 className="w-4 h-4 text-amber-400" />
+                          <span>Fill Block (+{activeSharesNeeded.toLocaleString()} sh)</span>
                         </button>
                       </div>
                     </div>
