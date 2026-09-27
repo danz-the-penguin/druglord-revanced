@@ -128,6 +128,8 @@ export interface GameStore extends GameEngineState {
   hallOfFameTab: 'leaderboard' | 'achievements';
   recentlyUnlockedAchievement: Achievement | null;
   fontScale: 'normal' | 'large' | 'xl';
+  crtMode: boolean;
+  screenShake: 'none' | 'light' | 'medium' | 'heavy';
   tradeModal: {
     isOpen: boolean;
     drugId: string | null;
@@ -258,6 +260,8 @@ export interface GameStore extends GameEngineState {
   setActiveTab: (tab: 'market' | 'places' | 'travel') => void;
   setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation' | 'labs') => void;
   setFontScale: (scale: 'normal' | 'large' | 'xl') => void;
+  toggleCrtMode: () => void;
+  triggerScreenShake: (intensity?: 'light' | 'medium' | 'heavy') => void;
   toggleTerminal: () => void;
   openTradeModal: (drugId: string, mode: 'buy' | 'sell' | 'dump') => void;
   closeTradeModal: () => void;
@@ -451,6 +455,8 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
     recentlyUnlockedAchievement: null,
     lastSavedAt: initialPayload.lastSavedAt,
     fontScale: 'normal' as const,
+    crtMode: typeof localStorage !== 'undefined' ? localStorage.getItem('druglord2_crt_mode') === 'true' : false,
+    screenShake: 'none' as const,
     tradeModal: {
       isOpen: false,
       drugId: null,
@@ -709,6 +715,24 @@ export const useGameStore = create<GameStore>((rawSet, get) => {
     setPlacesSubTab: (subTab: 'bank' | 'loans' | 'hospital' | 'armory' | 'laundering' | 'properties' | 'vaults' | 'informant' | 'aviation' | 'labs') =>
       set({ placesSubTab: subTab }),
     setFontScale: (scale: 'normal' | 'large' | 'xl') => set({ fontScale: scale }),
+    toggleCrtMode: () => {
+      soundEngine.play('click');
+      set((state) => {
+        const next = !state.crtMode;
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('druglord2_crt_mode', String(next));
+          }
+        } catch {}
+        return { crtMode: next };
+      });
+    },
+    triggerScreenShake: (intensity: 'light' | 'medium' | 'heavy' = 'medium') => {
+      set({ screenShake: intensity });
+      setTimeout(() => {
+        set({ screenShake: 'none' });
+      }, intensity === 'heavy' ? 480 : intensity === 'medium' ? 380 : 280);
+    },
     toggleTerminal: () => set((state) => ({ isTerminalOpen: !state.isTerminalOpen })),
 
     openTradeModal: (drugId: string, mode: 'buy' | 'sell' | 'dump') =>

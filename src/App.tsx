@@ -18,6 +18,9 @@ import { FlightBoardModal } from './components/FlightBoardModal';
 import { SyndicateModal } from './components/SyndicateModal';
 import { DailyChallengeModal } from './components/DailyChallengeModal';
 import { EventLog } from './components/EventLog';
+import { CityAtmosphere } from './components/CityAtmosphere';
+import { FloatingCashManager } from './components/FloatingCashManager';
+import { AdrenalineVignette } from './components/AdrenalineVignette';
 import { useKonamiCode } from './hooks/useKonamiCode';
 import { ShoppingCart, Building, Plane, Moon, RotateCcw, Terminal, HardDrive, AlertTriangle, X, Sparkles, Trophy, Handshake, Map as MapIcon } from 'lucide-react';
 import { DURATION_MODES, GameDurationMode } from './engine/types';
@@ -40,6 +43,7 @@ export const App: React.FC = () => {
     openSyndicateModal,
     recentlyUnlockedAchievement,
     dismissAchievementToast,
+    screenShake,
   } = useGameStore();
 
   const [showRestartModal, setShowRestartModal] = useState<boolean>(false);
@@ -63,8 +67,26 @@ export const App: React.FC = () => {
   const fontScaleClass =
     fontScale === 'xl' ? 'font-scale-xl' : fontScale === 'large' ? 'font-scale-large' : 'font-scale-normal';
 
+  const shakeClass =
+    screenShake === 'heavy'
+      ? 'shake-screen-heavy'
+      : screenShake === 'medium'
+      ? 'shake-screen-medium'
+      : screenShake === 'light'
+      ? 'shake-screen-light'
+      : '';
+
   return (
-    <div className={`min-h-screen bg-[#070a0f] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 transition-all ${fontScaleClass}`}>
+    <div className={`min-h-screen bg-[#070a0f] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 transition-all relative overflow-x-hidden ${fontScaleClass} ${shakeClass}`}>
+      {/* Dynamic City Atmosphere Backdrop & Weather Particles */}
+      <CityAtmosphere />
+
+      {/* Floating Cash Transaction Splashes */}
+      <FloatingCashManager />
+
+      {/* Low-HP Adrenaline Vignette, Police Heat Beacon, and CRT Monitor Overlay */}
+      <AdrenalineVignette />
+
       {/* Live Ticker Marquee at the very top */}
       <TickerMarquee />
 

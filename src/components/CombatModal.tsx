@@ -35,6 +35,7 @@ export const CombatModal: React.FC = () => {
   const tacticalCombatRound = useGameStore((s) => s.tacticalCombatRound);
   const combatCoverActive = useGameStore((s) => s.combatCoverActive);
   const enemyBlindedRounds = useGameStore((s) => s.enemyBlindedRounds);
+  const triggerScreenShake = useGameStore((s) => s.triggerScreenShake);
 
   const [combatMode, setCombatMode] = useState<'tactical' | 'quick'>('tactical');
   const [selectedNextMode, setSelectedNextMode] = useState<GameDurationMode>(
@@ -50,10 +51,13 @@ export const CombatModal: React.FC = () => {
     const weapons = player.weapons || {};
     if ((weapons['rocket_launcher'] ?? 0) > 0 || (weapons['dynamite'] ?? 0) > 0 || (weapons['hand_grenade'] ?? 0) > 0) {
       soundEngine.play('bomb');
+      triggerScreenShake('heavy');
     } else if ((weapons['barrett_m82'] ?? 0) > 0 || (weapons['desert_eagle'] ?? 0) > 0 || (weapons['shotgun'] ?? 0) > 0) {
       soundEngine.play('heavy_shot');
+      triggerScreenShake('medium');
     } else {
       soundEngine.play('gunshot');
+      triggerScreenShake('light');
     }
   };
 
@@ -62,8 +66,10 @@ export const CombatModal: React.FC = () => {
       playAttackSound();
     } else if (action === 'suppress') {
       soundEngine.play('heavy_shot');
+      triggerScreenShake('medium');
     } else if (action === 'use_flashbang') {
       soundEngine.play('bomb');
+      triggerScreenShake('heavy');
     } else if (action === 'use_smoke') {
       soundEngine.play('flee');
     } else if (action === 'use_medkit') {
@@ -93,10 +99,11 @@ export const CombatModal: React.FC = () => {
     resolveEncounterAction('bribe');
   };
 
-  // Play audio on hostile encounter trigger
+  // Play audio and screen shake on hostile encounter trigger
   useEffect(() => {
     if (encounter) {
       soundEngine.play('police');
+      triggerScreenShake('medium');
     }
   }, [encounter?.enemyName, encounter?.danger]);
 

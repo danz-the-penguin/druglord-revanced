@@ -103,6 +103,7 @@ export const ShellExchangeView: React.FC = () => {
   const cancelShellLimitOrderAction = useGameStore((s) => s.cancelShellLimitOrderAction);
   const tenderHostileSharesAction = useGameStore((s) => s.tenderHostileSharesAction);
   const defendHostileTakeoverAction = useGameStore((s) => s.defendHostileTakeoverAction);
+  const triggerScreenShake = useGameStore((s) => s.triggerScreenShake);
 
   // Sub-navigation: Modeled after Market & Stash
   const [activeNav, setActiveNav] = useState<ShellNavTab>('exchange');
@@ -1527,6 +1528,7 @@ export const ShellExchangeView: React.FC = () => {
                     onClick={() => {
                       soundEngine.play('gunshot');
                       triggerHaptic('heavy');
+                      triggerScreenShake('heavy');
                       defendHostileTakeoverAction();
                     }}
                     disabled={player.cash < player.activeHostileTakeover.defenseCost}
